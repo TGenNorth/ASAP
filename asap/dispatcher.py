@@ -6,6 +6,8 @@ Created on Jul 8, 2015
 
 import logging
 
+job_manager = 'PBS'
+
 def _submit_job(job_submitter, command, job_parms, waitfor_id=None, hold=False, notify=False):
     import subprocess
     import re
@@ -141,7 +143,7 @@ def _run_bwa(sample, reads, reference, outdir='', dependency=None, sampath='samt
     if not os.path.exists(work_dir):
         os.makedirs(work_dir)
     final_file = os.path.join(work_dir, "%s.bam" % bam_nickname)
-    job_id = _submit_job('PBS', command, job_params, (dependency,))
+    job_id = _submit_job(job_manager, command, job_params, (dependency,))
     return (final_file, job_id)
 
 def _run_bowtie2(sample, reads, reference, outdir='', dependency=None, sampath='samtools', bt2path='bowtie2', ncpus=4, args=''):
@@ -165,7 +167,7 @@ def _run_bowtie2(sample, reads, reference, outdir='', dependency=None, sampath='
         os.makedirs(work_dir)
     final_file = os.path.join(work_dir, "%s.bam" % bam_nickname)
     job_params['work_dir'] = work_dir
-    job_id = _submit_job('PBS', command, job_params, (dependency,))
+    job_id = _submit_job(job_manager, command, job_params, (dependency,))
     return (final_file, job_id)
 
 def _run_novoalign(sample, reads, reference, outdir='', dependency=None, sampath='samtools', novopath='novoalign', ncpus=4, args=''):
@@ -189,7 +191,7 @@ def _run_novoalign(sample, reads, reference, outdir='', dependency=None, sampath
     if not os.path.exists(work_dir):
         os.makedirs(work_dir)
     final_file = os.path.join(work_dir, "%s.bam" % bam_nickname)
-    job_id = _submit_job('PBS', command, job_params, (dependency,))
+    job_id = _submit_job(job_manager, command, job_params, (dependency,))
     return (final_file, job_id)
 
 def findReads(path):
@@ -270,7 +272,7 @@ def indexFasta(fasta, aligner="bwa"):
         command = "bowtie2-build %s %s" % (fasta, os.path.splitext(fasta)[0])
     else:
         command = "bwa index %s" % (fasta)
-    return _submit_job('PBS', command, job_params)
+    return _submit_job(job_manager, command, job_params)
 
 def trimAdapters(sample, reads, outdir, quality=None, adapters="../illumina_adapters_all.fasta", minlen=80):
     from collections import namedtuple
@@ -293,7 +295,7 @@ def trimAdapters(sample, reads, outdir, quality=None, adapters="../illumina_adap
     else:
         out_reads = [os.path.join(trim_dir, sample+"_trimmed.fastq")]
         command = "java -jar /scratch/bin/trimmomatic-0.32.jar SE -threads %d %s %s ILLUMINACLIP:%s:2:30:10 %s MINLEN:%d" % (job_params['num_cpus'], read1, out_reads[0], adapters, qual_string, minlen)
-    jobid = _submit_job('PBS', command, job_params)
+    jobid = _submit_job(job_manager, command, job_params)
     return TrimmedRead(sample, jobid, out_reads)
 
 def alignReadsToReference(sample, reads, reference, outdir, jobid=None, aligner="bowtie2", args=None):
@@ -312,7 +314,7 @@ def processBam(sample_name, json_file, bam_file, xml_dir, dependency, depth, bre
     job_params['work_dir'] = xml_dir
     out_file = os.path.join(xml_dir, sample_name+".xml")
     command = "bamProcessor -j %s -b %s -o %s -d %d --breadth %f -p %f" % (json_file, bam_file, out_file, depth, breadth, proportion)
-    jobid = _submit_job('PBS', command, job_params, (dependency,)) if dependency else _submit_job('PBS', command, job_params)
+    jobid = _submit_job(job_manager, command, job_params, (dependency,)) if dependency else _submit_job(job_manager, command, job_params)
     return (out_file, jobid)
 
 def combineOutputFiles(run_name, xml_dir, out_dir, dependencies):
@@ -323,7 +325,7 @@ def combineOutputFiles(run_name, xml_dir, out_dir, dependencies):
     out_file = os.path.join(out_dir, run_name+"_analysis.xml")
     dependency_string = ":".join(dependencies)
     command = "outputCombiner -n %s -x %s -o %s" % (run_name, xml_dir, out_file)
-    jobid = _submit_job('PBS', command, job_params, (dependency_string, 'afterany'), notify=True)
+    jobid = _submit_job(job_manager, command, job_params, (dependency_string, 'afterany'), notify=True)
     return (out_file, jobid)
 
 if __name__ == '__main__':

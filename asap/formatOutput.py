@@ -43,6 +43,9 @@ class CLIError(Exception):
     def __unicode__(self):
         return self.msg
 
+def distinct_values(context, values):
+    return list(set(values))
+
 def main(argv=None): # IGNORE:C0111
     '''Command line options.'''
 
@@ -81,6 +84,7 @@ USAGE
         required_group.add_argument("-s", "--stylesheet", metavar="FILE", required=True, help="XSLT stylesheet to use for transforming the output. [REQUIRED]")
         required_group.add_argument("-x", "--xml", metavar="FILE", required=True, help="XML output file to transform. [REQUIRED]")
         required_group.add_argument("-o", "--out", dest="out", metavar="FILE", help="output file to write. [REQUIRED]")
+        parser.add_argument("-t", "--text", action="store_true", default=False, help="output plain text.")
         parser.add_argument('-V', '--version', action='version', version=program_version_message)
 
         # Process arguments
@@ -90,6 +94,7 @@ USAGE
         xml_file = args.xml
         out_file = args.out
         run_name = ""
+        text = args.text
 
         match = re.search('^(.*)_analysis.xml$', xml_file)
         if match:
@@ -98,13 +103,19 @@ USAGE
         if run_name and not os.path.exists(run_name):
             os.makedirs(run_name)
 
+        ns = ET.FunctionNamespace("http://pathogen.tgen.org/ASAP/functions")
+        ns['distinct-values'] = distinct_values
+
         dom = ET.parse(xml_file)
         xslt = ET.parse(stylesheet)
         transform = ET.XSLT(xslt)
         newdom = transform(dom)
         
         output = open(out_file, 'wb')
-        output.write(ET.tostring(newdom, pretty_print=True, xml_declaration=True, encoding='UTF-8'))
+        if text:
+            output.write(newdom)
+        else:
+            output.write(ET.tostring(newdom, pretty_print=True, xml_declaration=True, encoding='UTF-8'))
         output.close()
 
         return 0

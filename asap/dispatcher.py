@@ -6,7 +6,8 @@ Created on Jul 8, 2015
 
 import logging
 
-job_manager = 'PBS'
+job_manager = "PBS"
+job_manager_args = ""
 
 def _submit_job(job_submitter, command, job_parms, waitfor_id=None, hold=False, notify=False):
     import subprocess
@@ -16,15 +17,15 @@ def _submit_job(job_submitter, command, job_parms, waitfor_id=None, hold=False, 
     # TODO(jtravis): remove unused output variable
     output = jobid = None
     logging.info("command = %s" % command)
+    args = job_parms["args"] or job_manager_args or ""
     if job_submitter == "PBS":
         waitfor = ""
-        if waitfor_id:
+        if waitfor_id and waitfor_id[0]:
             dependency_string = waitfor_id[1] if len(waitfor_id) > 1 else 'afterok'
             waitfor = "-W depend=%s:%s" % (dependency_string, waitfor_id[0])
         queue = ""
         if job_parms["queue"]:
             queue = "-q %s" % job_parms["queue"]
-        args = job_parms["args"]
         if hold:
             args += " -h"
         if notify:
@@ -49,7 +50,6 @@ def _submit_job(job_submitter, command, job_parms, waitfor_id=None, hold=False, 
         queue = ""
         if job_parms["queue"]:
             queue = "-p %s" % job_parms["queue"]
-        args = job_parms["args"]
         if hold:
             args += " -H"
         if notify:
@@ -73,7 +73,6 @@ def _submit_job(job_submitter, command, job_parms, waitfor_id=None, hold=False, 
         queue = ""
         if job_parms["queue"]:
             queue = "-q %s" % job_parms["queue"]
-        args = job_parms["args"]
         if hold:
             args += " -h"
         if notify:
@@ -136,6 +135,8 @@ def _run_bwa(sample, reads, reference, outdir='', dependency=None, sampath='samt
     bam_nickname = "%s-%s" % (sample, aligner_name)
     samview_command = "%s view -S -b -h -" % sampath
     samsort_command = "%s sort - %s" % (sampath, bam_nickname)
+    #samtools 1.3 version
+    #samsort_command = "%s sort -T %s -o %s.bam -" % (sampath, bam_nickname, bam_nickname)
     samindex_command = "%s index %s.bam" % (sampath, bam_nickname)
     command = "%s | %s | %s \n %s" % (aligner_command, samview_command, samsort_command, samindex_command)
     work_dir = os.path.join(outdir, aligner_name)
@@ -160,6 +161,8 @@ def _run_bowtie2(sample, reads, reference, outdir='', dependency=None, sampath='
     bam_nickname = "%s-%s" % (sample, aligner_name)
     samview_command = "%s view -S -b -h -" % sampath
     samsort_command = "%s sort - %s" % (sampath, bam_nickname)
+    #samtools 1.3 version
+    #samsort_command = "%s sort -T %s -o %s.bam -" % (sampath, bam_nickname, bam_nickname)
     samindex_command = "%s index %s.bam" % (sampath, bam_nickname)
     command = "%s | %s | %s \n %s" % (aligner_command, samview_command, samsort_command, samindex_command)
     work_dir = os.path.join(outdir, aligner_name)
@@ -184,6 +187,8 @@ def _run_novoalign(sample, reads, reference, outdir='', dependency=None, sampath
     bam_nickname = "%s-%s" % (sample, aligner_name)
     samview_command = "%s view -S -b -h -" % sampath
     samsort_command = "%s sort - %s" % (sampath, bam_nickname)
+    #samtools 1.3 version
+    #samsort_command = "%s sort -T %s -o %s.bam -" % (sampath, bam_nickname, bam_nickname)
     samindex_command = "%s index %s.bam" % (sampath, bam_nickname)
     command = "%s | %s | %s \n %s" % (aligner_command, samview_command, samsort_command, samindex_command)
     work_dir = os.path.join(outdir, aligner_name)
@@ -211,30 +216,35 @@ def findReads(path):
                 logging.warning("Read file %s has no data, skipping..." % file)
                 read_list.append(Read(sample_name, None))
                 continue
-            is_paired = re.search('^((.*?)(?:_L\d\d\d)?(?:[_\.](?:R(?:ead)?)?))([12])([_\.].*)?$', sample_name, re.IGNORECASE)
-            if is_paired:
-                if is_paired.group(3) == '1':  # If paired, only process read 1, so we don't double count the pair, see TODO below
-                    sample_name = is_paired.group(2)
-                    read1 = file
-                    read2 = "%s2%s%s" % (is_paired.group(1), is_paired.group(4), is_read.group(2))
-                    #print("\t%s\t%s\t%s" % (sample_name, read1, read2))
-                    if os.path.exists(os.path.join(path, read2)):
-                        read = Read(sample_name, [os.path.join(path, read1), os.path.join(path, read2)])
-                        read_list.append(read)
-                        logging.info(read)
-                    else:
-                        # TODO: If only R2 exists, it won't be included
-                        logging.warning("Cannot find %s, the matching read to %s. Including as unpaired..." % (read2, read1))
-                        read = Read(sample_name, [os.path.join(path, read1)])
-                        read_list.append(read)
-                        logging.info(read)
-            else: #Read is unpaired
-                is_merged = re.search('^(.*?)(?:[_\.](?:assembled|merged))+$', sample_name, re.IGNORECASE)
-                if is_merged:
-                    sample_name = is_merged.group(1)
+            is_merged = re.search('^(.*?)(?:[_\.](?:assembled|merged))+$', sample_name, re.IGNORECASE)
+            if is_merged:
+                sample_name = is_merged.group(1)
                 read = Read(sample_name, [os.path.join(path, file)])
                 read_list.append(read)
                 logging.info(read)
+            else:
+                is_paired = re.search('^(?:((.*?)(?:_L\d\d\d)?(?:(?:[_\.](?:R(?:ead)?)?)))([12])([_\.])?)(?!.*[_\.](?:R(?:ead)?)?[12][_\.])(.*)$', sample_name, re.IGNORECASE)
+                if is_paired:
+                    if is_paired.group(3) == '1':  # If paired, only process read 1, so we don't double count the pair, see TODO below
+                        sample_name = is_paired.group(2)
+                        read1 = file
+                        read2 = "%s2%s%s%s" % (is_paired.group(1), is_paired.group(4), is_paired.group(5), is_read.group(2))
+                        #print("\t%s\t%s\t%s" % (sample_name, read1, read2))
+                        if os.path.exists(os.path.join(path, read2)):
+                            read = Read(sample_name, [os.path.join(path, read1), os.path.join(path, read2)])
+                            read_list.append(read)
+                            logging.info(read)
+                        else:
+                            # TODO: If only R2 exists, it won't be included
+                            logging.warning("Cannot find %s, the matching read to %s. Including as unpaired..." % (read2, read1))
+                            read = Read(sample_name, [os.path.join(path, read1)])
+                            read_list.append(read)
+                            logging.info(read)
+                else: #Read is unpaired
+                    sample_name = is_merged.group(1)
+                    read = Read(sample_name, [os.path.join(path, file)])
+                    read_list.append(read)
+                    logging.info(read)
     return read_list
 
 def findBams(path):
@@ -264,7 +274,7 @@ def indexFasta(fasta, aligner="bwa"):
     import os
     import re
     job_params = {'queue':'', 'mem_requested':2, 'num_cpus':1, 'walltime':4, 'args':''}
-    job_params['name'] = "asap_index_%s" % fasta
+    job_params['name'] = "asap_index_%s" % os.path.basename(fasta)
     job_params['work_dir'] = os.path.dirname(fasta)
     if re.search('novo', aligner, re.IGNORECASE):
         command = "novoindex %s.idx %s" % (fasta, fasta)
@@ -307,13 +317,14 @@ def alignReadsToReference(sample, reads, reference, outdir, jobid=None, aligner=
     else: #re.search('b(ow)?t(ie)?2', aligner, re.IGNORECASE)
         return _run_bowtie2(sample, reads, reference, outdir, jobid, bt2path=aligner, args=args)
 
-def processBam(sample_name, json_file, bam_file, xml_dir, dependency, depth, breadth, proportion):
+def processBam(sample_name, json_file, bam_file, xml_dir, dependency, depth, breadth, proportion, percid, smor=False):
     import os
     job_params = {'queue':'', 'mem_requested':2, 'num_cpus':1, 'walltime':4, 'args':''}
     job_params['name'] = "asap_bamprocesser_%s" % sample_name
     job_params['work_dir'] = xml_dir
     out_file = os.path.join(xml_dir, sample_name+".xml")
-    command = "bamProcessor -j %s -b %s -o %s -d %d --breadth %f -p %f" % (json_file, bam_file, out_file, depth, breadth, proportion)
+    smor_option = " -s" if smor else ""
+    command = "bamProcessor -j %s -b %s -o %s -d %d --breadth %f -p %f -i %f%s" % (json_file, bam_file, out_file, depth, breadth, proportion, percid, smor_option)
     jobid = _submit_job(job_manager, command, job_params, (dependency,)) if dependency else _submit_job(job_manager, command, job_params)
     return (out_file, jobid)
 

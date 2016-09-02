@@ -318,6 +318,12 @@ class Significance(object):
     def __str__(self):
         return "Significance: %s" % self.message
         
+    def as_dict(self):
+        return_dict = {'message':self.message}
+        if self.resistance:
+            return_dict['resistance'] = self.resistance
+        return return_dict
+    
 class AND(object):
     '''
     classdocs
@@ -415,7 +421,7 @@ def _json_encode(obj):
         roi_dict = obj.as_dict()
         return roi_dict
     if isinstance(obj, Significance):
-        sig_dict = {"message":obj.message}
+        sig_dict = obj.as_dict()
         return sig_dict
     else: 
         return json.JSONEncoder.default(obj)

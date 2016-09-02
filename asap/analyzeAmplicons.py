@@ -85,11 +85,14 @@ USAGE
         reads_bams_group.add_argument("-r", "--read-dir", dest="rdir", metavar="DIR", help="directory of read files to analyze.")
         reads_bams_group.add_argument("--bam-dir", dest="bdir", metavar="DIR", help="directory of bam files to analyze.")
         optional_group.add_argument("-o", "--out-dir", dest="odir", metavar="DIR", help="directory to write output files to. [default: `pwd`]")
+        optional_group.add_argument("-s", "--submitter", dest="job_manager", default="PBS", help="cluster job submitter to use (PBS, SLURM, SGE, none). [default: PBS]")
+        optional_group.add_argument("--submitter-args", dest="sargs", metavar="ARGS", help="additional arguments to pass to the job submitter, enclosed in \"\".")
+        optional_group.add_argument("--smor", action="store_true", default=False, help="perform SMOR analysis with overlapping reads. [default: False]")
         trim_group = parser.add_argument_group("read trimming options")
         on_off_group = trim_group.add_mutually_exclusive_group()
         on_off_group.add_argument("--trim", action="store_true", default=True, help="perform adapter trimming on reads. [default: True]")
         on_off_group.add_argument("--no-trim", dest="trim", action="store_false", help="do not perform adapter trimming.")
-        trim_group.add_argument("-s", "--adapter-sequences", dest="adapters", default="/scratch/dlemmer/ASAP/illumina_adapters_all.fasta", help="location of the adapter sequence file to use for trimming. [default: /scratch/dlemmer/ASAP/illumina_adapters_all.fasta]")
+        trim_group.add_argument("--adapter-sequences", dest="adapters", default="/scratch/dlemmer/ASAP/illumina_adapters_all.fasta", help="location of the adapter sequence file to use for trimming. [default: /scratch/dlemmer/ASAP/illumina_adapters_all.fasta]")
         trim_group.add_argument("-q", "--qual", nargs="?", const="SLIDINGWINDOW:5:20", help="perform quality trimming [default: False], optional parameter can be used to customize quality trimming parameters to trimmomatic. [default: SLIDINGWINDOW:5:20]")
         trim_group.add_argument("-m", "--minlen", metavar="LEN", default=80, type=int, help="minimum read length to keep after trimming. [default: 80]")
         align_group = parser.add_argument_group("read mapping options")
@@ -98,6 +101,7 @@ USAGE
         align_group.add_argument("-d", "--depth", default=100, type=int, help="minimum read depth required to consider a position covered. [default: 100]")
         align_group.add_argument("-b", "--breadth", default=0.8, type=float, help="minimum breadth of coverage required to consider an amplicon as present. [default: 0.8]")
         align_group.add_argument("-p", "--proportion", default=0.1, type=float, help="minimum proportion required to call a SNP at a given position. [default: 0.1]")
+        align_group.add_argument("-i", "--identity", dest="percid", default=0, type=float, help="minimum percent identity required to align a read to a reference amplicon sequence. [default: 0]")
         parser.add_argument("-V", "--version", action="version", version=program_version_message)
      
         # Process arguments
@@ -116,7 +120,11 @@ USAGE
         depth = args.depth
         breadth = args.breadth
         proportion = args.proportion
+        percid = args.percid
         adapters = dispatcher.expandPath(args.adapters)
+        dispatcher.job_manager = args.job_manager.upper()
+        dispatcher.job_manager_args = args.sargs
+        smor = args.smor
         
         if not out_dir:
             out_dir = os.getcwd()
@@ -178,7 +186,7 @@ USAGE
                 bam_list.append((read.sample, bam_file, job_id))    
          
         for sample, bam, job in bam_list:
-            (xml_file, job_id) = dispatcher.processBam(sample, json_fp, bam, xml_dir, job, depth, breadth, proportion)
+            (xml_file, job_id) = dispatcher.processBam(sample, json_fp, bam, xml_dir, job, depth, breadth, proportion, percid, smor)
             output_files.append(xml_file)
             final_jobs.append(job_id)
             

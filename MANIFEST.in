@@ -1,0 +1,8 @@
+include asap/illumina_adapters_all.fasta
+
+include README.rst
+include LICENSE
+
+recursive-include assay_data *
+recursive-include output_transforms *
+

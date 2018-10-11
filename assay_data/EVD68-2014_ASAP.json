@@ -1,0 +1,30 @@
+{
+  "Assay": [
+    {
+      "Target": {
+        "function": "species ID",
+        "Amplicon": {
+          "Significance": {
+            "message": "EVD68 present"
+          },
+          "sequence": "CGTGGGTCTTCCTGACTTGACACTTCAAGCAATGTTTGTGCCCACTGGTGCTCTTACCCCAGAAAAGCAGGACTCATTCCACTGGCAGTCAGGC"
+        }
+      },
+      "name": "EVD68-2014",
+      "assay_type": "presence/absence"
+    },
+    {
+      "Target": {
+        "function": "species ID",
+        "Amplicon": {
+          "Significance": {
+            "message": "Human DNA control assay is positive"
+          },
+          "sequence": "GTGGTCATTGAGGGCAATGCCAGTCCCAGCATCGAAGGTGGAAAAGTGCATGATGCTGATAAAGTTGGAGGAGACAACCTGGTGCTCATTGTAGCCCAGGATGCCCTTGAGGGAGCCTTCCAATTCTGCTTCACCACCTTCTTGATGTCATCATATTTGGCAGG"
+        }
+      },
+      "name": "Human_gapDH",
+      "assay_type": "presence/absence"
+    }
+  ]
+}

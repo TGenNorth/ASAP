@@ -22,12 +22,12 @@ import logging
 from xml.etree import ElementTree
 import lxml.etree as ET
 
-import asap.dispatcher as dispatcher
+from asap import dispatcher
+from asap import __version__
 
 __all__ = []
-__version__ = 0.1
 __date__ = '2015-07-29'
-__updated__ = '2015-07-29'
+__updated__ = '2018-04-11'
 
 DEBUG = 1
 TESTRUN = 0
@@ -83,7 +83,8 @@ USAGE
         required_group = parser.add_argument_group("required arguments")
         required_group.add_argument("-s", "--stylesheet", metavar="FILE", required=True, help="XSLT stylesheet to use for transforming the output. [REQUIRED]")
         required_group.add_argument("-x", "--xml", metavar="FILE", required=True, help="XML output file to transform. [REQUIRED]")
-        required_group.add_argument("-o", "--out", dest="out", metavar="FILE", help="output file to write. [REQUIRED]")
+        parser.add_argument("-o", "--out", dest="out", metavar="FILE", help="output file to write.")
+        parser.add_argument("-d", "--outdir", dest="out_dir", metavar="DIR", help="output directory to write files to.")
         parser.add_argument("-t", "--text", action="store_true", default=False, help="output plain text.")
         parser.add_argument('-V', '--version', action='version', version=program_version_message)
 
@@ -93,30 +94,34 @@ USAGE
         stylesheet = args.stylesheet
         xml_file = args.xml
         out_file = args.out
-        run_name = ""
+        out_dir = args.out_dir
         text = args.text
 
-        match = re.search('^(.*)_analysis.xml$', xml_file)
-        if match:
-            run_name = match.group(1)
+        if not out_dir:
+            match = re.search('^(.*)_analysis.xml$', xml_file)
+            if match:
+                out_dir = match.group(1)
             
-        if run_name and not os.path.exists(run_name):
-            os.makedirs(run_name)
+        if out_dir and not os.path.exists(out_dir):
+            os.makedirs(out_dir)
 
         ns = ET.FunctionNamespace("http://pathogen.tgen.org/ASAP/functions")
         ns['distinct-values'] = distinct_values
 
+        #parser = ET.XMLParser(huge_tree=True)
+        #dom = ET.parse(xml_file, parser=parser)
         dom = ET.parse(xml_file)
         xslt = ET.parse(stylesheet)
         transform = ET.XSLT(xslt)
         newdom = transform(dom)
         
-        output = open(out_file, 'wb')
-        if text:
-            output.write(newdom)
-        else:
-            output.write(ET.tostring(newdom, pretty_print=True, xml_declaration=True, encoding='UTF-8'))
-        output.close()
+        if out_file:
+            output = open(out_file, 'wb')
+            if text:
+                output.write(newdom)
+            else:
+                output.write(ET.tostring(newdom, pretty_print=True, xml_declaration=True, encoding='UTF-8'))
+            output.close()
 
         return 0
     except KeyboardInterrupt:

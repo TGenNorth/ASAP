@@ -3,10 +3,13 @@
 <xsl:output method="text"/>
 <xsl:template match="/analysis">    
 <xsl:for-each select="sample">
-<xsl:text/>><xsl:value-of select="@name"/>
+<xsl:variable name="SAMPLE" select="@name"/>
+<xsl:for-each select="assay">
+<xsl:text/>><xsl:value-of select="$SAMPLE"/>_<xsl:value-of select="@name"/>
 <xsl:text>&#xa;</xsl:text>
-<xsl:value-of select="./assay/amplicon/consensus_sequence"/>
+<xsl:value-of select="./amplicon[1]/consensus_sequence"/>
 <xsl:text>&#xa;</xsl:text>
+</xsl:for-each>
 </xsl:for-each>
 <xsl:text/>
 </xsl:template>

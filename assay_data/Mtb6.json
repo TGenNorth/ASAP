@@ -283,7 +283,7 @@
           "name" : "1401G",
           "Significance" : {
             "message" : "rrs 1401 mutation present which is associated with kanamycin, capreomycin, and amikacin resistance. Specificity for Capreomycin is about 96%, 3-4% of isolates with this mutation may be sensitive to CAP.",
-            "resistance" : "Rifampin, Capreomycin, Amikacin"
+            "resistance" : "Kanamycin, Capreomycin, Amikacin"
           }
         },
         {
@@ -293,7 +293,7 @@
           "name" : "1402T",
           "Significance" : {
             "message" : "rrs 1402 mutation present which is associated with capreomycin and kanamycin resistance",
-            "resistance" : "Capreomycin, Amikacin"
+            "resistance" : "Capreomycin"
           }
         },
         {

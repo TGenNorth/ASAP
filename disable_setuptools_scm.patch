@@ -1,0 +1,14 @@
+diff --git a/setup.py b/setup.py
+index 79a97e1..13561f9 100755
+--- a/setup.py
++++ b/setup.py
+@@ -9,8 +9,7 @@ with open(os.path.join(os.path.abspath(os.path.dirname(__file__)), 'README.rst')
+ 
+ setup(
+     name='asap',
+-    use_scm_version={'write_to': 'asap/version.py'},
+-    setup_requires=['setuptools_scm'],
++    version=os.environ['PKG_VERSION'],
+     description='Amplicon Sequencing Analysis Pipeline',
+     long_description=long_description,
+     author='Darrin Lemmer',

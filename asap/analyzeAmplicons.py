@@ -19,14 +19,16 @@ import os
 import re
 import argparse
 import logging
+import skbio
+import pkg_resources
 
-import asap.dispatcher as dispatcher
-import asap.assayInfo as assayInfo
+from asap import dispatcher
+from asap import assayInfo
+from asap import __version__
 
 __all__ = []
-__version__ = 0.1
 __date__ = '2015-06-04'
-__updated__ = '2015-06-04'
+__updated__ = '2018-04-11'
 
 DEBUG = 1
 TESTRUN = 0
@@ -85,14 +87,14 @@ USAGE
         reads_bams_group.add_argument("-r", "--read-dir", dest="rdir", metavar="DIR", help="directory of read files to analyze.")
         reads_bams_group.add_argument("--bam-dir", dest="bdir", metavar="DIR", help="directory of bam files to analyze.")
         optional_group.add_argument("-o", "--out-dir", dest="odir", metavar="DIR", help="directory to write output files to. [default: `pwd`]")
-        optional_group.add_argument("-s", "--submitter", dest="job_manager", default="PBS", help="cluster job submitter to use (PBS, SLURM, SGE, none). [default: PBS]")
+        optional_group.add_argument("-s", "--submitter", dest="job_manager", default="SLURM", help="cluster job submitter to use (PBS, SLURM, SGE, none). [default: SLURM]")
         optional_group.add_argument("--submitter-args", dest="sargs", metavar="ARGS", help="additional arguments to pass to the job submitter, enclosed in \"\".")
         optional_group.add_argument("--smor", action="store_true", default=False, help="perform SMOR analysis with overlapping reads. [default: False]")
         trim_group = parser.add_argument_group("read trimming options")
         on_off_group = trim_group.add_mutually_exclusive_group()
         on_off_group.add_argument("--trim", action="store_true", default=True, help="perform adapter trimming on reads. [default: True]")
         on_off_group.add_argument("--no-trim", dest="trim", action="store_false", help="do not perform adapter trimming.")
-        trim_group.add_argument("--adapter-sequences", dest="adapters", default="/scratch/dlemmer/ASAP/illumina_adapters_all.fasta", help="location of the adapter sequence file to use for trimming. [default: /scratch/dlemmer/ASAP/illumina_adapters_all.fasta]")
+        trim_group.add_argument("--adapter-sequences", dest="adapters", default=pkg_resources.resource_filename(__name__, 'illumina_adapters_all.fasta'), help="location of the adapter sequence file to use for trimming. [default: <ASAP install dir>/asap/illumina_adapters_all.fasta]")
         trim_group.add_argument("-q", "--qual", nargs="?", const="SLIDINGWINDOW:5:20", help="perform quality trimming [default: False], optional parameter can be used to customize quality trimming parameters to trimmomatic. [default: SLIDINGWINDOW:5:20]")
         trim_group.add_argument("-m", "--minlen", metavar="LEN", default=80, type=int, help="minimum read length to keep after trimming. [default: 80]")
         align_group = parser.add_argument_group("read mapping options")
@@ -168,9 +170,9 @@ USAGE
             bam_list = dispatcher.findBams(bam_dir)
                    
         if read_dir:
-            reference = assayInfo.generateReference(assay_list)
+            #reference = assayInfo.generateReference(assay_list)
             ref_fasta = os.path.join(out_dir, "reference.fasta")
-            reference.write(ref_fasta, 'fasta')
+            skbio.io.registry.write(assayInfo.generateReference(assay_list), 'fasta', ref_fasta)
             index_job = dispatcher.indexFasta(ref_fasta, aligner)        
         
             read_list = dispatcher.findReads(read_dir)
@@ -179,7 +181,7 @@ USAGE
                     #TODO: write out appropriate xml for samples with empty read files so they show up in results
                     continue
                 if trim:
-                    trimmed_reads = dispatcher.trimAdapters(*read, outdir=out_dir, adapters=adapters, quality=qual, minlen=minlen)
+                    trimmed_reads = dispatcher.trimAdapters(*read, outdir=out_dir, adapters=adapters, quality=qual, minlen=minlen, dependency=index_job)
                     (bam_file, job_id) = dispatcher.alignReadsToReference(trimmed_reads.sample, trimmed_reads.reads, ref_fasta, out_dir, jobid=trimmed_reads.jobid, aligner=aligner, args=aligner_args)
                 else:            
                     (bam_file, job_id) = dispatcher.alignReadsToReference(read.sample, read.reads, ref_fasta, out_dir, jobid=index_job, aligner=aligner, args=aligner_args)

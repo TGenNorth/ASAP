@@ -21,12 +21,12 @@ import argparse
 import logging
 from xml.etree import ElementTree
 
-import asap.dispatcher as dispatcher
+from asap import dispatcher
+from asap import __version__ 
 
 __all__ = []
-__version__ = 0.1
 __date__ = '2015-07-29'
-__updated__ = '2015-07-29'
+__updated__ = '2017-04-11'
 
 DEBUG = 1
 TESTRUN = 0
@@ -36,7 +36,7 @@ def _write_xml(root, xml_file):
     from xml.dom import minidom
     dom = minidom.parseString(ElementTree.tostring(root))
     output = open(xml_file, 'w')
-    output.write(dom.toprettyxml(indent="    "))
+    output.write('\n'.join([line for line in dom.toprettyxml(indent=' '*2).split('\n') if line.strip()]))
     output.close()
     return xml_file
 

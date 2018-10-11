@@ -6,7 +6,7 @@ Created on Jul 8, 2015
 
 import logging
 
-job_manager = "PBS"
+job_manager = "SLURM"
 job_manager_args = ""
 
 def _submit_job(job_submitter, command, job_parms, waitfor_id=None, hold=False, notify=False):
@@ -54,8 +54,11 @@ def _submit_job(job_submitter, command, job_parms, waitfor_id=None, hold=False, 
             args += " -H"
         if notify:
             args += " --mail-type=END"
-        submit_command = "sbatch -D \'%s\' -c%s --mem=%s000 --time=%s:00:00 --mail-type=FAIL -J \'%s\' %s %s %s" % (
-            job_parms["work_dir"], job_parms['num_cpus'], job_parms['mem_requested'], job_parms['walltime'],
+        #submit_command = "sbatch -D \'%s\' -c%s --mem=%s000 --time=%s:00:00 --mail-type=FAIL -J \'%s\' %s %s %s" % (
+        #    job_parms["work_dir"], job_parms['num_cpus'], job_parms['mem_requested'], job_parms['walltime'],
+        #    job_parms['name'], waitfor, queue, args)
+        submit_command = "sbatch -D \'%s\' -c%s --mem=%s000 --mail-type=FAIL -J \'%s\' %s %s %s" % (
+            job_parms["work_dir"], job_parms['num_cpus'], job_parms['mem_requested'],
             job_parms['name'], waitfor, queue, args)
         logging.debug("submit_command = %s" % submit_command)
         output = subprocess.getoutput("%s --wrap=\"%s\"" % (submit_command, command))
@@ -180,7 +183,7 @@ def _run_novoalign(sample, reads, reference, outdir='', dependency=None, sampath
     #paired_string = "-i PE 500,100" if read2 else ""
     paired_string = ""
     bam_string = "\'@RG\\tID:%s\\tSM:%s\'" % (sample, sample)
-    job_params = {'queue':'', 'mem_requested':4, 'num_cpus':ncpus, 'walltime':8, 'args':''}
+    job_params = {'queue':'', 'mem_requested':4, 'num_cpus':ncpus, 'walltime':24, 'args':''}
     job_params['name'] = "asap_novo_%s" % sample
     aligner_name = "novo"
     aligner_command = "%s -f %s %s %s -c %s -o SAM %s -d %s.idx %s" % (novopath, read1, read2, paired_string, ncpus, bam_string, reference, args)
@@ -228,7 +231,7 @@ def findReads(path):
                     if is_paired.group(3) == '1':  # If paired, only process read 1, so we don't double count the pair, see TODO below
                         sample_name = is_paired.group(2)
                         read1 = file
-                        read2 = "%s2%s%s%s" % (is_paired.group(1), is_paired.group(4), is_paired.group(5), is_read.group(2))
+                        read2 = "%s2%s%s%s" % (is_paired.group(1), is_paired.group(4) or '', is_paired.group(5), is_read.group(2))
                         #print("\t%s\t%s\t%s" % (sample_name, read1, read2))
                         if os.path.exists(os.path.join(path, read2)):
                             read = Read(sample_name, [os.path.join(path, read1), os.path.join(path, read2)])
@@ -241,7 +244,7 @@ def findReads(path):
                             read_list.append(read)
                             logging.info(read)
                 else: #Read is unpaired
-                    sample_name = is_merged.group(1)
+                    sample_name = is_read.group(1)
                     read = Read(sample_name, [os.path.join(path, file)])
                     read_list.append(read)
                     logging.info(read)
@@ -284,7 +287,7 @@ def indexFasta(fasta, aligner="bwa"):
         command = "bwa index %s" % (fasta)
     return _submit_job(job_manager, command, job_params)
 
-def trimAdapters(sample, reads, outdir, quality=None, adapters="../illumina_adapters_all.fasta", minlen=80):
+def trimAdapters(sample, reads, outdir, quality=None, adapters="../illumina_adapters_all.fasta", minlen=80, dependency=None):
     from collections import namedtuple
     import os
     read1 = reads[0]
@@ -298,28 +301,28 @@ def trimAdapters(sample, reads, outdir, quality=None, adapters="../illumina_adap
     job_params['work_dir'] = trim_dir
     qual_string = quality if quality else ''
     if read2:
-        out_reads1 = [sample+"_R1_trimmed.fastq", sample+"_R1_unpaired.fastq"]
-        out_reads2 = [sample+"_R2_trimmed.fastq", sample+"_R2_unpaired.fastq"]
+        out_reads1 = [sample + "_R1_trimmed.fastq.gz", sample + "_R1_unpaired.fastq.gz"]
+        out_reads2 = [sample + "_R2_trimmed.fastq.gz", sample + "_R2_unpaired.fastq.gz"]
         out_reads = [os.path.join(trim_dir, out_reads1[0]), os.path.join(trim_dir, out_reads2[0])]
-        command = "java -jar /scratch/bin/trimmomatic-0.32.jar PE -threads %d %s %s %s %s %s %s ILLUMINACLIP:%s:4:30:10:1:true %s MINLEN:%d" % (job_params['num_cpus'], read1, read2, out_reads1[0], out_reads1[1], out_reads2[0], out_reads2[1], adapters, qual_string, minlen)
+        command = "java -Xmx%sg org.usadellab.trimmomatic.Trimmomatic PE -threads %d %s %s %s %s %s %s ILLUMINACLIP:%s:4:30:10:1:true %s MINLEN:%d" % (job_params['mem_requested'], job_params['num_cpus'], read1, read2, out_reads1[0], out_reads1[1], out_reads2[0], out_reads2[1], adapters, qual_string, minlen)
     else:
-        out_reads = [os.path.join(trim_dir, sample+"_trimmed.fastq")]
-        command = "java -jar /scratch/bin/trimmomatic-0.32.jar SE -threads %d %s %s ILLUMINACLIP:%s:2:30:10 %s MINLEN:%d" % (job_params['num_cpus'], read1, out_reads[0], adapters, qual_string, minlen)
-    jobid = _submit_job(job_manager, command, job_params)
+        out_reads = [os.path.join(trim_dir, sample + "_trimmed.fastq.gz")]
+        command = "java -Xmx%sg org.usadellab.trimmomatic.Trimmomatic SE -threads %d %s %s ILLUMINACLIP:%s:2:30:10 %s MINLEN:%d" % (job_params['mem_requested'], job_params['num_cpus'], read1, out_reads[0], adapters, qual_string, minlen)
+    jobid = _submit_job(job_manager, command, job_params, (dependency,))
     return TrimmedRead(sample, jobid, out_reads)
 
 def alignReadsToReference(sample, reads, reference, outdir, jobid=None, aligner="bowtie2", args=None):
     import re
     if re.search('novo', aligner, re.IGNORECASE):
-        return _run_novoalign(sample, reads, reference, outdir, jobid, novopath=aligner, args=args)
+        return _run_novoalign(sample, reads, reference, outdir, jobid, args=args)
     elif re.search('bwa', aligner, re.IGNORECASE):
-        return _run_bwa(sample, reads, reference, outdir, jobid, bwapath=aligner, args=args)
+        return _run_bwa(sample, reads, reference, outdir, jobid, args=args)
     else: #re.search('b(ow)?t(ie)?2', aligner, re.IGNORECASE)
-        return _run_bowtie2(sample, reads, reference, outdir, jobid, bt2path=aligner, args=args)
+        return _run_bowtie2(sample, reads, reference, outdir, jobid, args=args)
 
 def processBam(sample_name, json_file, bam_file, xml_dir, dependency, depth, breadth, proportion, percid, smor=False):
     import os
-    job_params = {'queue':'', 'mem_requested':2, 'num_cpus':1, 'walltime':4, 'args':''}
+    job_params = {'queue':'', 'mem_requested':4, 'num_cpus':2, 'walltime':24, 'args':''}
     job_params['name'] = "asap_bamprocesser_%s" % sample_name
     job_params['work_dir'] = xml_dir
     out_file = os.path.join(xml_dir, sample_name+".xml")
@@ -330,7 +333,7 @@ def processBam(sample_name, json_file, bam_file, xml_dir, dependency, depth, bre
 
 def combineOutputFiles(run_name, xml_dir, out_dir, dependencies):
     import os
-    job_params = {'queue':'', 'mem_requested':2, 'num_cpus':1, 'walltime':4, 'args':''}
+    job_params = {'queue':'', 'mem_requested':4, 'num_cpus':2, 'walltime':4, 'args':''}
     job_params['name'] = "asap_final_%s" % run_name
     job_params['work_dir'] = out_dir
     out_file = os.path.join(out_dir, run_name+"_analysis.xml")

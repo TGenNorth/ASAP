@@ -7,7 +7,7 @@ asap.prepareJSONInput
 
 @author:     Darrin Lemmer
 
-@copyright:  2015 TGen North. All rights reserved.
+@copyright:  2015,2019 TGen North. All rights reserved.
 
 @license:    ACADEMIC AND RESEARCH LICENSE -- see ../LICENSE
 
@@ -28,7 +28,7 @@ from asap import assayInfo
 from asap import __version__
 
 __all__ = []
-__updated__ = '2017-04-11'
+__updated__ = '2019-01-15'
 __date__ = '2015-08-03'
 
 DEBUG = 1
@@ -51,6 +51,11 @@ def _process_fasta(fasta, fasta_type, message=None):
             assay = assayInfo.Assay(name=seq.metadata['id'], assay_type='presence/absence', target=target)
             return_list.append(assay)
     return return_list
+
+def _process_fasta_single(fasta):
+    for seq in skbio.io.registry.read(fasta, format='fasta', constructor=DNA):
+        amplicon = assayInfo.Amplicon(sequence=_clean_seq(str(seq)))
+    return amplicon
 
 def _clean_seq(sequence):
     return_seq = sequence.upper()
@@ -182,7 +187,10 @@ USAGE
                     element = assayInfo.SNP(position=_strip(row[10].value), reference=_strip(row[11].value), variant=_strip(row[12].value), name=_strip(row[9].value), significance=significance)
                 if _strip(row[8].value): #Process amplicon
                     if os.path.isfile(_strip(row[8].value)):
-                        amplicon = _process_fasta(_strip(row[8].value), GENE_VARIANT, significance)
+                        if assay.assay_type == "gene variant":
+                            amplicon = _process_fasta(_strip(row[8].value), GENE_VARIANT, significance)
+                        else:
+                            amplicon = _process_fasta_single(_strip(row[8].value))
                     else:
                         amplicon = assayInfo.Amplicon(sequence=_clean_seq(_strip(row[8].value)), variant_name=_clean_str(_strip(row[7].value)))
                         if element:

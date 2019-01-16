@@ -7,7 +7,7 @@ asap.analyzeAmplicons
 
 @author:     Darrin Lemmer
 
-@copyright:  2015 TGen North. All rights reserved.
+@copyright:  2015,2019 TGen North. All rights reserved.
 
 @license:    ACADEMIC AND RESEARCH LICENSE -- see ../LICENSE
 
@@ -28,7 +28,7 @@ from asap import __version__
 
 __all__ = []
 __date__ = '2015-06-04'
-__updated__ = '2018-04-11'
+__updated__ = '2019-01-15'
 
 DEBUG = 1
 TESTRUN = 0
@@ -96,13 +96,14 @@ USAGE
         on_off_group.add_argument("--no-trim", dest="trim", action="store_false", help="do not perform adapter trimming.")
         trim_group.add_argument("--adapter-sequences", dest="adapters", default=pkg_resources.resource_filename(__name__, 'illumina_adapters_all.fasta'), help="location of the adapter sequence file to use for trimming. [default: <ASAP install dir>/asap/illumina_adapters_all.fasta]")
         trim_group.add_argument("-q", "--qual", nargs="?", const="SLIDINGWINDOW:5:20", help="perform quality trimming [default: False], optional parameter can be used to customize quality trimming parameters to trimmomatic. [default: SLIDINGWINDOW:5:20]")
-        trim_group.add_argument("-m", "--minlen", metavar="LEN", default=80, type=int, help="minimum read length to keep after trimming. [default: 80]")
+        trim_group.add_argument("-l", "--minlen", metavar="LEN", default=80, type=int, help="minimum read length to keep after trimming. [default: 80]")
         align_group = parser.add_argument_group("read mapping options")
         align_group.add_argument("-a", "--aligner", default="bowtie2", help="aligner to use for read mapping, supports bowtie2, novoalign, and bwa. [default: bowtie2]")
         align_group.add_argument("--aligner-args", dest="aargs", metavar="ARGS", default='', help="additional arguments to pass to the aligner, enclosed in \"\".")
         align_group.add_argument("-d", "--depth", default=100, type=int, help="minimum read depth required to consider a position covered. [default: 100]")
         align_group.add_argument("-b", "--breadth", default=0.8, type=float, help="minimum breadth of coverage required to consider an amplicon as present. [default: 0.8]")
-        align_group.add_argument("-p", "--proportion", default=0.1, type=float, help="minimum proportion required to call a SNP at a given position. [default: 0.1]")
+        align_group.add_argument("-p", "--proportion", default=0.1, type=float, help="minimum proportion required to call a mutation at a given locus. [default: 0.1]")
+        align_group.add_argument("-m", "--mutation-depth", dest="mutdepth", default=10, type=int, help="minimum number of reads required to call a mutation at a given locus. [default: 10]")
         align_group.add_argument("-i", "--identity", dest="percid", default=0, type=float, help="minimum percent identity required to align a read to a reference amplicon sequence. [default: 0]")
         parser.add_argument("-V", "--version", action="version", version=program_version_message)
      
@@ -123,6 +124,7 @@ USAGE
         breadth = args.breadth
         proportion = args.proportion
         percid = args.percid
+        mutdepth = args.mutdepth
         adapters = dispatcher.expandPath(args.adapters)
         dispatcher.job_manager = args.job_manager.upper()
         dispatcher.job_manager_args = args.sargs
@@ -188,7 +190,7 @@ USAGE
                 bam_list.append((read.sample, bam_file, job_id))    
          
         for sample, bam, job in bam_list:
-            (xml_file, job_id) = dispatcher.processBam(sample, json_fp, bam, xml_dir, job, depth, breadth, proportion, percid, smor)
+            (xml_file, job_id) = dispatcher.processBam(sample, json_fp, bam, xml_dir, job, depth, breadth, proportion, percid, mutdepth, smor)
             output_files.append(xml_file)
             final_jobs.append(job_id)
             

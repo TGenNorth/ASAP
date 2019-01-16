@@ -137,9 +137,9 @@ def _run_bwa(sample, reads, reference, outdir='', dependency=None, sampath='samt
     aligner_command = "%s mem -R %s %s -t %s %s %s %s" % (bwapath, bam_string, args, ncpus, reference, read1, read2)
     bam_nickname = "%s-%s" % (sample, aligner_name)
     samview_command = "%s view -S -b -h -" % sampath
-    samsort_command = "%s sort - %s" % (sampath, bam_nickname)
+    #samsort_command = "%s sort - %s" % (sampath, bam_nickname)
     #samtools 1.3 version
-    #samsort_command = "%s sort -T %s -o %s.bam -" % (sampath, bam_nickname, bam_nickname)
+    samsort_command = "%s sort -T %s -o %s.bam -" % (sampath, bam_nickname, bam_nickname)
     samindex_command = "%s index %s.bam" % (sampath, bam_nickname)
     command = "%s | %s | %s \n %s" % (aligner_command, samview_command, samsort_command, samindex_command)
     work_dir = os.path.join(outdir, aligner_name)
@@ -163,9 +163,9 @@ def _run_bowtie2(sample, reads, reference, outdir='', dependency=None, sampath='
     aligner_command = "%s %s -p %s %s -x %s %s" % (bt2path, args, ncpus, bam_string, ref_string, read_string)
     bam_nickname = "%s-%s" % (sample, aligner_name)
     samview_command = "%s view -S -b -h -" % sampath
-    samsort_command = "%s sort - %s" % (sampath, bam_nickname)
+    #samsort_command = "%s sort - %s" % (sampath, bam_nickname)
     #samtools 1.3 version
-    #samsort_command = "%s sort -T %s -o %s.bam -" % (sampath, bam_nickname, bam_nickname)
+    samsort_command = "%s sort -T %s -o %s.bam -" % (sampath, bam_nickname, bam_nickname)
     samindex_command = "%s index %s.bam" % (sampath, bam_nickname)
     command = "%s | %s | %s \n %s" % (aligner_command, samview_command, samsort_command, samindex_command)
     work_dir = os.path.join(outdir, aligner_name)
@@ -189,9 +189,9 @@ def _run_novoalign(sample, reads, reference, outdir='', dependency=None, sampath
     aligner_command = "%s -f %s %s %s -c %s -o SAM %s -d %s.idx %s" % (novopath, read1, read2, paired_string, ncpus, bam_string, reference, args)
     bam_nickname = "%s-%s" % (sample, aligner_name)
     samview_command = "%s view -S -b -h -" % sampath
-    samsort_command = "%s sort - %s" % (sampath, bam_nickname)
+    #samsort_command = "%s sort - %s" % (sampath, bam_nickname)
     #samtools 1.3 version
-    #samsort_command = "%s sort -T %s -o %s.bam -" % (sampath, bam_nickname, bam_nickname)
+    samsort_command = "%s sort -T %s -o %s.bam -" % (sampath, bam_nickname, bam_nickname)
     samindex_command = "%s index %s.bam" % (sampath, bam_nickname)
     command = "%s | %s | %s \n %s" % (aligner_command, samview_command, samsort_command, samindex_command)
     work_dir = os.path.join(outdir, aligner_name)
@@ -320,14 +320,14 @@ def alignReadsToReference(sample, reads, reference, outdir, jobid=None, aligner=
     else: #re.search('b(ow)?t(ie)?2', aligner, re.IGNORECASE)
         return _run_bowtie2(sample, reads, reference, outdir, jobid, args=args)
 
-def processBam(sample_name, json_file, bam_file, xml_dir, dependency, depth, breadth, proportion, percid, smor=False):
+def processBam(sample_name, json_file, bam_file, xml_dir, dependency, depth, breadth, proportion, percid, mutdepth, smor=False):
     import os
     job_params = {'queue':'', 'mem_requested':4, 'num_cpus':2, 'walltime':24, 'args':''}
     job_params['name'] = "asap_bamprocesser_%s" % sample_name
     job_params['work_dir'] = xml_dir
     out_file = os.path.join(xml_dir, sample_name+".xml")
     smor_option = " -s" if smor else ""
-    command = "bamProcessor -j %s -b %s -o %s -d %d --breadth %f -p %f -i %f%s" % (json_file, bam_file, out_file, depth, breadth, proportion, percid, smor_option)
+    command = "bamProcessor -j %s -b %s -o %s -d %d --breadth %f -p %f -m %d -i %f%s" % (json_file, bam_file, out_file, depth, breadth, proportion, mutdepth, percid, smor_option)
     jobid = _submit_job(job_manager, command, job_params, (dependency,)) if dependency else _submit_job(job_manager, command, job_params)
     return (out_file, jobid)
 

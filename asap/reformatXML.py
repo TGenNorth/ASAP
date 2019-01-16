@@ -7,7 +7,7 @@ asap.reformatXML
 
 @author:     Jonathon Todd
 
-@copyright:  2018 TGen North. All rights reserved.
+@copyright:  2018,2019 TGen North. All rights reserved.
 
 @license:    ACADEMIC AND RESEARCH LICENSE -- see ../LICENSE
 
@@ -23,7 +23,7 @@ import argparse
 __all__ = []
 __version__ = 0.6
 __date__ = '2018-04-11'
-__updated__ = '2018-04-11'
+__updated__ = '2019-01-15'
 
 DEBUG = 1
 TESTRUN = 0

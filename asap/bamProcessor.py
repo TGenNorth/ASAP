@@ -7,7 +7,7 @@ asap.bamProcessor
 
 @author:     Darrin Lemmer
 
-@copyright:  2015 TGen North. All rights reserved.
+@copyright:  2015,2019 TGen North. All rights reserved.
 
 @license:    ACADEMIC AND RESEARCH LICENSE -- see ../LICENSE
 
@@ -31,7 +31,7 @@ from asap import assayInfo
 from asap import __version__
 
 __all__ = []
-__updated__ = '2018-04-11'
+__updated__ = '2019-01-15'
 __date__ = '2015-07-16'
 
 DEBUG = 1
@@ -54,7 +54,7 @@ def _write_parameters(node, data):
         subnode.text = str(v)
     return node
 
-def _process_pileup_SMOR(pileup, amplicon, depth, proportion, offset):
+def _process_pileup_SMOR(pileup, amplicon, depth, proportion, mutdepth, offset, wholegenome):
     from operator import attrgetter
     pileup_dict = {}
     snp_dict = _create_snp_dict(amplicon)
@@ -104,12 +104,14 @@ def _process_pileup_SMOR(pileup, amplicon, depth, proportion, offset):
             reference_call = '_' #Need to use '_' instead of '-' for gaps because of XSLT
         if alignment_call != reference_call:
             snp_call = alignment_call
+            snp_count = ordered_list[0][1]
             snp_call_proportion = alignment_call_proportion
         elif len(ordered_list) > 1:
             snp_call = ordered_list[1][0]
+            snp_count = ordered_list[1][1]
             snp_call_proportion = ordered_list[1][1] / column_depth
         else:
-            snp_call = snp_call_proportion = None
+            snp_call = snp_count = snp_call_proportion = None
         consensus_seq += alignment_call if alignment_call_proportion >= proportion else "N"
         (proportion, low_level_cutoff, high_level_cutoff) = _compute_thresholds_SMOR(column_depth)
         translated = offset+position
@@ -117,7 +119,8 @@ def _process_pileup_SMOR(pileup, amplicon, depth, proportion, offset):
             for (name, reference, variant, significance) in snp_dict[position]:
                 snp = {'name':name, 'position':str(translated), 'depth':str(column_depth), 'reference':reference, 'variant':variant, 'basecalls':base_counter}
                 variant_proportion = base_counter[variant]/column_depth
-                if variant_proportion >= proportion:
+                variant_count = base_counter[variant]
+                if variant_proportion >= proportion and variant_count >= mutdepth:
                     snp['significance'] = significance
                     if variant_proportion <= low_level_cutoff:
                         snp['level'] = "low"
@@ -127,7 +130,9 @@ def _process_pileup_SMOR(pileup, amplicon, depth, proportion, offset):
                     snp['flag'] = "low coverage"
                 snp_list.append(snp)
                 #print("Found position of interest %d, reference: %s, distribution:%s" % (position, snp_dict[position][0], base_counter))
-        elif depth_passed and snp_call and snp_call_proportion >= proportion:
+            # We've covered it, now remove it from the dict so we can see what we might have missed
+            del snp_dict[position]
+        elif depth_passed and snp_call and snp_count >= mutdepth and snp_call_proportion >= proportion:
             snp = {'name':'unknown', 'position':str(translated), 'depth':str(column_depth), 'reference':reference_call, 'variant':snp_call, 'basecalls':base_counter}
             if 0 in snp_dict:
                 (name, *rest, significance) = snp_dict[0][0]
@@ -136,16 +141,24 @@ def _process_pileup_SMOR(pileup, amplicon, depth, proportion, offset):
             snp_list.append(snp)
             #print("SNP found at position %d: %s->%s" % (position, reference_call, alignment_call))
     
-    pileup_dict['consensus_sequence'] = consensus_seq
+    #Check for any positions_of_interest that weren't covered
+    snp_dict.pop(0, None)
+    for position in snp_dict.keys():
+        for (name, reference, variant, significance) in snp_dict[position]:
+            snp = {'name':name, 'position':str(position), 'depth':str(0), 'reference':reference, 'variant':variant}
+            snp_list.append(snp)
+
+    if not wholegenome: #If reference is whole genome, none of these are going to make sense, and they will make the output too large
+        pileup_dict['consensus_sequence'] = consensus_seq
+        pileup_dict['depths'] = ",".join(str(n) for n in depth_array)
+        pileup_dict['proportions'] = ",".join(prop_array)
     pileup_dict['breadth'] = str(breadth_positions/amplicon_length * 100)
-    pileup_dict['depths'] = ",".join(str(n) for n in depth_array)
     pileup_dict['discards'] = ",".join(str(n) for n in discard_array)
-    pileup_dict['proportions'] = ",".join(prop_array)
     pileup_dict['SNPs'] = snp_list
     pileup_dict['average_depth'] = str(avg_depth_total/avg_depth_positions) if avg_depth_positions else "0"
     return pileup_dict 
 
-def _process_pileup(pileup, amplicon, depth, proportion, offset):
+def _process_pileup(pileup, amplicon, depth, proportion, mutdepth, offset, wholegenome):
     pileup_dict = {}
     snp_dict = _create_snp_dict(amplicon)
     consensus_seq = ""
@@ -186,24 +199,34 @@ def _process_pileup(pileup, amplicon, depth, proportion, offset):
             reference_call = '_' #Need to use '_' instead of '-' for gaps because of XSLT
         if alignment_call != reference_call:
             snp_call = alignment_call
+            snp_count = ordered_list[0][1]
             snp_call_proportion = alignment_call_proportion
         elif len(ordered_list) > 1:
             snp_call = ordered_list[1][0]
+            snp_count = ordered_list[1][1]
             snp_call_proportion = ordered_list[1][1] / pileupcolumn.n
         else:
-            snp_call = snp_call_proportion = None
+            snp_call = snp_count = snp_call_proportion = None
         consensus_seq += alignment_call if alignment_call_proportion >= proportion else "N"
         translated = offset+position
         if position in snp_dict:
             for (name, reference, variant, significance) in snp_dict[position]:
                 snp = {'name':name, 'position':str(translated), 'depth':str(pileupcolumn.n), 'reference':reference, 'variant':variant, 'basecalls':base_counter}
-                if base_counter[variant]/pileupcolumn.n >= proportion:
+                variant_proportion = base_counter[variant]/pileupcolumn.n
+                variant_count = base_counter[variant]
+                if variant_proportion >= proportion and variant_count >= mutdepth:
                     snp['significance'] = significance
+                    if variant_proportion <= low_level_cutoff:
+                        snp['level'] = "low"
+                    elif variant_proportion >= high_level_cutoff:
+                        snp['level'] = "high"
                 if not depth_passed:
                     snp['flag'] = "low coverage"
                 snp_list.append(snp)
                 #print("Found position of interest %d, reference: %s, distribution:%s" % (position, snp_dict[position][0], base_counter))
-        elif depth_passed and snp_call and snp_call_proportion >= proportion:
+            # We've covered it, now remove it from the dict so we can see what we might have missed
+            del snp_dict[position]
+        elif depth_passed and snp_call and snp_count >= mutdepth and snp_call_proportion >= proportion:
             snp = {'name':'unknown', 'position':str(translated), 'depth':str(pileupcolumn.n), 'reference':reference_call, 'variant':snp_call, 'basecalls':base_counter}
             if 0 in snp_dict:
                 (name, *rest, significance) = snp_dict[0][0]
@@ -211,11 +234,19 @@ def _process_pileup(pileup, amplicon, depth, proportion, offset):
                 snp['significance'] = significance
             snp_list.append(snp)
             #print("SNP found at position %d: %s->%s" % (position, reference_call, alignment_call))
-    
-    pileup_dict['consensus_sequence'] = consensus_seq
+
+    #Check for any positions_of_interest that weren't covered
+    snp_dict.pop(0, None)
+    for position in snp_dict.keys():
+        for (name, reference, variant, significance) in snp_dict[position]:
+            snp = {'name':name, 'position':str(position), 'depth':str(0), 'reference':reference, 'variant':variant}
+            snp_list.append(snp)
+
+    if not wholegenome: #If reference is whole genome, none of these are going to make sense, and they will make the output too large
+        pileup_dict['consensus_sequence'] = consensus_seq
+        pileup_dict['depths'] = ",".join(depth_array)
+        pileup_dict['proportions'] = ",".join(prop_array)
     pileup_dict['breadth'] = str(breadth_positions/amplicon_length * 100)
-    pileup_dict['depths'] = ",".join(depth_array)
-    pileup_dict['proportions'] = ",".join(prop_array)
     pileup_dict['SNPs'] = snp_list
     pileup_dict['average_depth'] = str(avg_depth_total/avg_depth_positions) if avg_depth_positions else "0"
     return pileup_dict 
@@ -250,7 +281,7 @@ def _create_snp_dict(amplicon):
 def _add_snp_node(parent, snp):
     snp_attributes = {k:snp[k] for k in ('name', 'position', 'depth', 'reference')}
     snp_node = ElementTree.SubElement(parent, 'snp', snp_attributes)
-    base_counter = snp['basecalls']
+    base_counter = snp.get('basecalls')
     snpcall = snp['variant']
     depth = int(snp['depth'])
     snpcount = base_counter[snpcall] if base_counter else 0
@@ -278,6 +309,9 @@ def _process_roi(roi, samdata, amplicon_ref, reverse_comp=False):
         return roi_dict
     start = int(range_match.group(1)) - 1
     end = int(range_match.group(2))
+    if end < start:
+        reverse_comp = True
+        start,end = end,start
     expected_length = end - start
     aa_sequence_counter = Counter()
     aa_sequence_counter_temp = Counter()
@@ -351,6 +385,9 @@ def _process_roi_SMOR(roi, samdata, amplicon_ref, reverse_comp=False):
         return roi_dict
     start = int(range_match.group(1)) - 1
     end = int(range_match.group(2))
+    if end < start:
+        reverse_comp = True
+        start,end = end,start
     expected_length = end - start
     aa_sequence_counter = Counter()
     aa_sequence_counter_temp = Counter()
@@ -432,7 +469,7 @@ def _process_roi_SMOR(roi, samdata, amplicon_ref, reverse_comp=False):
     roi_dict['depth'] = str(depth)
     return roi_dict
 
-def _add_roi_node(parent, roi, roi_dict, depth, proportion, smor):
+def _add_roi_node(parent, roi, roi_dict, depth, proportion, mutdepth, smor):
     global low_level_cutoff, high_level_cutoff
     nonsynonymous = False
     if "flag" in roi_dict:
@@ -447,9 +484,12 @@ def _add_roi_node(parent, roi, roi_dict, depth, proportion, smor):
     roi_attributes = {k:roi_dict[k] for k in ('region', 'reference', 'depth')}
     roi_attributes['name'] = str(roi.name)
     roi_node = ElementTree.SubElement(parent, "region_of_interest", roi_attributes)
-    reporting_threshold = math.ceil(int(roi_dict['depth']) * proportion)
+    reporting_threshold = max(mutdepth, math.ceil(int(roi_dict['depth']) * proportion))
+    dominant_count = 0; #Number of reads containing the most common amino acid sequence
     aa_seq_counter = roi_dict['aa_sequence_distribution']
     for ((seq, aa_changes), count) in aa_seq_counter.most_common():
+        if dominant_count == 0:
+            dominant_count = count
         if count >= reporting_threshold:
             aa_seq_node = ElementTree.SubElement(roi_node, "amino_acid_sequence", {'count':str(count), 'percent':str(count/int(roi_dict['depth'])*100), 'aa_changes':str(aa_changes)})
             aa_seq_node.text = seq
@@ -472,11 +512,11 @@ def _add_roi_node(parent, roi, roi_dict, depth, proportion, smor):
             count = nt_seq_counter[mutation]
             mutant_proportion = count/int(roi_dict['depth'])
         else:
-            count = aa_seq_counter[mutation]
+            count = aa_seq_counter[next((k for k in aa_seq_counter.keys() if k[0] == mutation), None)]
             mutant_proportion = count/int(roi_dict['depth'])
         mutation_node = ElementTree.SubElement(roi_node, 'mutation', {'name':str(roi.name)+mutation, 'count':str(count), 'percent':str(mutant_proportion*100)})
         mutation_node.text = mutation
-        if mutant_proportion >= proportion:
+        if mutant_proportion >= proportion and count >= mutdepth:
             significant = True
             if mutant_proportion > low_level_cutoff:
                 low_level = False
@@ -493,7 +533,7 @@ def _add_roi_node(parent, roi, roi_dict, depth, proportion, smor):
             significance_node.set("level", "low")
         elif high_level:
             significance_node.set("level", "high")
-    elif ('changes' in roi_dict and int(roi_dict['changes']) > 0) or nonsynonymous:
+    elif len(roi.mutations) == 0 and dominant_count >= mutdepth and (('changes' in roi_dict and int(roi_dict['changes']) > 0) or nonsynonymous):
         significance_node = ElementTree.SubElement(roi_node, "significance", {'changes':roi_dict['changes']})
         significance_node.text = roi.significance.message                       
         if roi.significance.resistance:
@@ -660,18 +700,20 @@ USAGE
         #parser.add_argument("-n", "--name", help="sample name, if not provided it will be derived from BAM file")
         parser.add_argument("-d", "--depth", default=100, type=int, help="minimum read depth required to consider a position covered. [default: 100]")
         parser.add_argument("--breadth", default=0.8, type=float, help="minimum breadth of coverage required to consider an amplicon as present. [default: 0.8]")
-        parser.add_argument("-p", "--proportion", default=0.1, type=float, help="minimum proportion required to call a SNP at a given position. [default: 0.1]")
+        parser.add_argument("-p", "--proportion", default=0.1, type=float, help="minimum proportion required to call a mutation at a given locus. [default: 0.1]")
+        parser.add_argument("-m", "--mutation-depth", dest="mutdepth", default=10, type=int, help="minimum number of reads required to call a mutation at a given locus. [default: 10]")
         identity_group = parser.add_argument_group("identity filter options")
         identity_group.add_argument("-i", "--identity", dest="percid", default=0, type=float, help="minimum percent identity required to align a read to a reference amplicon sequence. [default: 0]")
         keep_discarded_group = identity_group.add_mutually_exclusive_group()
         keep_discarded_group.add_argument("-k", "--keep", action="store_true", default=False, help="keep filtered reads. [default: True]")
         keep_discarded_group.add_argument("--no-keep", action="store_false", dest="keep", help="discard filtered reads.")
         merge_group = identity_group.add_mutually_exclusive_group()
-        merge_group.add_argument("-m", "--merge", action="store_true", default=False, help="merge paired reads. [default: False]")
+        merge_group.add_argument("--merge", action="store_true", default=False, help="merge paired reads. [default: False]")
         merge_group.add_argument("--no-merge", action="store_false", dest="merge", help="do not merge paired reads.")
         parser.add_argument("-s", "--smor", action="store_true", default=False, help="perform SMOR analysis with overlapping reads. [default: False]")
         parser.add_argument("-V", "--version", action="version", version=program_version_message)
         parser.add_argument("-D", "--debug", action="store_true", default=False, help="write <sample_name>.log file with debugging information")
+        parser.add_argument("-w", "--whole-genome", action="store_true", dest="wholegenome", default=False, help="JSON file uses a whole genome reference, so don't write out the consensus, depth, and proportion arrays for each sample")
      
         # Process arguments
         args = parser.parse_args()
@@ -682,11 +724,13 @@ USAGE
         depth = args.depth
         breadth = args.breadth
         proportion = args.proportion
+        mutdepth = args.mutdepth
         percid = args.percid
         keep = args.keep
         merge = args.merge
         smor = args.smor
-        debug =args.debug
+        debug = args.debug
+        wholegenome = args.wholegenome
         #ref_fp = args.ref
         #out_dir = args.odir
         #if not out_dir:
@@ -701,8 +745,8 @@ USAGE
         #reference = pysam.FastaFile(ref_fp)
         
         sample_dict = {}
-        if 'RG' in samdata.header :
-            sample_dict['name'] = samdata.header['RG'][0]['ID']
+        if 'RG' in samdata.header.to_dict() :
+            sample_dict['name'] = samdata.header.to_dict()['RG'][0]['ID']
         else:
             sample_dict['name'] = os.path.splitext(os.path.basename(bam_fp))[0]
         sample_dict['mapped_reads'] = str(samdata.mapped)
@@ -713,9 +757,10 @@ USAGE
         # and will ignore passed-in value. Let's specifically set to zero, to make sure all get reported.
         if smor:
             sample_dict['SMOR'] = 'True'
-            proportion = 0
+            proportion = 0.001
         sample_dict['proportion_filter'] = str(proportion)
         sample_dict['breadth_filter'] = str(breadth)
+        sample_dict['mutation_depth_filter'] = str(mutdepth)
         if percid:
             sample_dict['identity_filter'] = str(percid)
         sample_dict['json_file'] = json_fp
@@ -807,9 +852,9 @@ USAGE
 
                     pileup = samdata.pileup(ref_name, max_depth=1000000)
                     if smor:
-                        amplicon_data = _process_pileup_SMOR(pileup, amplicon, depth, proportion, offset)
+                        amplicon_data = _process_pileup_SMOR(pileup, amplicon, depth, proportion, mutdepth, offset, wholegenome)
                     else:
-                        amplicon_data = _process_pileup(pileup, amplicon, depth, proportion, offset)
+                        amplicon_data = _process_pileup(pileup, amplicon, depth, proportion, mutdepth, offset, wholegenome)
                     if float(amplicon_data['breadth']) < breadth*100:
                         significance_node = amplicon_node.find("significance")
                         if significance_node is None:
@@ -828,7 +873,7 @@ USAGE
                             roi_dict = _process_roi_SMOR(roi, samdata, ref_name, reverse_comp)
                         else:
                             roi_dict = _process_roi(roi, samdata, ref_name, reverse_comp)
-                        _add_roi_node(amplicon_node, roi, roi_dict, depth, proportion, smor)
+                        _add_roi_node(amplicon_node, roi, roi_dict, depth, proportion, mutdepth, smor)
 
                 if temp_file:
                     samdata.close()

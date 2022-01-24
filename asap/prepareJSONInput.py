@@ -69,7 +69,7 @@ def _clean_str(string):
         return None
 
 def _strip(string):
-    if string:
+    if string or string is 0:
         if type(string) is str:
             return string.strip()
         else:
@@ -191,6 +191,10 @@ USAGE
                             amplicon = _process_fasta(_strip(row[8].value), GENE_VARIANT, significance)
                         else:
                             amplicon = _process_fasta_single(_strip(row[8].value))
+                            if element:
+                                amplicon.add_SNP(element) if isinstance(element, assayInfo.SNP) else amplicon.add_ROI(element)
+                            else:
+                                amplicon.significance = significance
                     else:
                         amplicon = assayInfo.Amplicon(sequence=_clean_seq(_strip(row[8].value)), variant_name=_clean_str(_strip(row[7].value)))
                         if element:

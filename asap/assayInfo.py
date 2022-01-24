@@ -1,3 +1,6 @@
+#!/usr/bin/env python
+import json
+
 '''
 Created on Jun 4, 2015
 
@@ -396,7 +399,6 @@ def _json_decode(json_dict):
 
 # This needs to be beefed up a lot, but fine for converting fasta to json    
 def _json_encode(obj):
-    import json
     if isinstance(obj, Assay):
         assay_dict = {"name":obj.name, "assay_type":obj.assay_type}
         if obj.target:
@@ -426,14 +428,10 @@ def _json_encode(obj):
     else: 
         return json.JSONEncoder.default(obj)
     
-def parseJSON(filename):
-    import json
-    with open(filename) as json_fh:
-        assay_data = json.load(json_fh, object_hook=_json_decode)
-        return assay_data['assay']
+def parseJSON(file_object):
+    return json.load(file_object, object_hook=_json_decode)['assay']
     
 def writeJSON(assay_data, filename):
-    import json
     with open(filename, 'w') as json_fh:
         json.dump(assay_data, json_fh, indent=2, default=_json_encode)
     
@@ -456,9 +454,16 @@ def generateReference(assay_list):
                 yield seq
         
 def main():
-    assays = parseJSON('../TB.json')
-    for assay in assays:
-        print(assay)
+    import argparse
+    import json
+    import skbio
+    import sys
+    parser = argparse.ArgumentParser(description='backdoor command to generate a reference fasta from an ASAP JSON file', epilog='', formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    parser.add_argument('json', type=argparse.FileType('r'), help='JSON file to print as a fasta')
+    args = parser.parse_args()
+
+    data = json.load(args.json, object_hook=_json_decode)
+    skbio.io.registry.write(generateReference(data['assay']), "fasta", sys.stdout)
 
 if __name__ == "__main__":
     main()

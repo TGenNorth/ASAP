@@ -1,0 +1,149 @@
+{
+  "Assay": [
+    {
+      "name": "Rv0678",
+      "assay_type": "mixed",
+      "Target": {
+        "gene_name": "Rv068",
+        "Amplicon": {
+          "RegionOfInterest": [
+            {
+              "aa_sequence": "C",
+              "name": "C46R",
+              "Significance": {
+                "message": "C46R mutation present",
+                "resistance": "Bedaquilline"
+              },
+              "mutations": "R",
+              "position_range": "136-138"
+            },
+            {
+              "aa_sequence": "S",
+              "name": "S68G",
+              "Significance": {
+                "message": "S68G mutation present",
+                "resistance": "Bedaquilline"
+              },
+              "mutations": "G",
+              "position_range": "202-204"
+            },
+            {
+              "aa_sequence": "D",
+              "name": "D88G",
+              "Significance": {
+                "message": "D88G mutation present",
+                "resistance": "Bedaquilline"
+              },
+              "mutations": "G",
+              "position_range": "262-264"
+            },
+            {
+              "aa_sequence": "L",
+              "name": "L154P",
+              "Significance": {
+                "message": "L154P mutation present",
+                "resistance": "Bedaquilline"
+              },
+              "mutations": "P",
+              "position_range": "460-462"
+            }
+          ],
+          "SNP": [
+            {
+              "name": "141C",
+              "position": 141,
+              "Significance": {
+                "message": "141 C insertion present",
+                "resistance": "Bedaquilline"
+              },
+              "reference": "T",
+              "variant": "TC"
+            },
+            {
+              "name": "138G",
+              "position": 138,
+              "Significance": {
+                "message": "138 G insertion present",
+                "resistance": "Bedaquilline"
+              },
+              "reference": "T",
+              "variant": "TG"
+            },
+            {
+              "name": "140TC",
+              "position": 140,
+              "Significance": {
+                "message": "140 TC insertion present",
+                "resistance": "Bedaquilline"
+              },
+              "reference": "A",
+              "variant": "ATC"
+            },
+            {
+              "name": "137TGA",
+              "position": 137,
+              "Significance": {
+                "message": "137 TGA insertion present",
+                "resistance": "Bedaquilline"
+              },
+              "reference": "G",
+              "variant": "GTGA"
+            },
+            {
+              "name": "192G",
+              "position": 192,
+              "Significance": {
+                "message": "192 G insertion present",
+                "resistance": "Bedaquilline"
+              },
+              "reference": "C",
+              "variant": "CG"
+            },
+            {
+              "name": "138GA",
+              "position": 138,
+              "Significance": {
+                "message": "138 GA insertion present",
+                "resistance": "Bedaquilline"
+              },
+              "reference": "T",
+              "variant": "TGA"
+            },
+            {
+              "name": "135-",
+              "position": 135,
+              "Significance": {
+                "message": "135 G deletion present",
+                "resistance": "Bedaquilline"
+              },
+              "reference": "G",
+              "variant": "_"
+            },
+            {
+              "name": "290-",
+              "position": 290,
+              "Significance": {
+                "message": "290 A deletion present",
+                "resistance": "Bedaquilline"
+              },
+              "reference": "A",
+              "variant": "_"
+            },
+            {
+              "name": "141-",
+              "position": 141,
+              "Significance": {
+                "message": "141 C deletion present",
+                "resistance": "Bedaquilline"
+              },
+              "reference": "C",
+              "variant": "_"
+            }
+          ],
+          "sequence": "GTGAGCGTCAACGACGGGGTCGATCAGATGGGCGCCGAGCCCGACATCATGGAATTCGTCGAACAGATGGGCGGCTATTTCGAGTCCAGGAGTTTGACTCGGTTGGCGGGTCGATTGTTGGGCTGGCTGCTGGTGTGTGATCCCGAGCGGCAGTCCTCGGAGGAACTGGCGACGGCGCTGGCGGCCAGCAGCGGGGGGATCAGCACCAATGCCCGGATGCTGATCCAATTTGGGTTCATTGAGCGGCTCGCGGTCGCCGGGGATCGGCGCACCTATTTCCGGTTGCGGCCCAACGCTTTCGCGGCTGGCGAGCGTGAACGCATCCGGGCAATGGCCGAACTGCAGGACCTGGCTGACGTGGGGCTGAGGGCGCTGGGCGACGCCCCGCCGCAGCGAAGCCGACGGCTGCGGGAGATGCGGGATCTGTTGGCATATATGGAGAACGTCGTCTCCGACGCCCTGGGGCGATACAGCCAGCGAACCGGAGAGGACGACTGA"
+        },
+        "function": "resistance type"
+      }
+    }
+  ]
+}

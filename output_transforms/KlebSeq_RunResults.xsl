@@ -60,6 +60,7 @@
                             </xsl:for-each>
                             </xsl:variable>
 			<script>
+			  function render_<xsl:value-of select="str:replace(str:replace(@name, '+', '_'), '-', '_')"/>() {
 				var ctx_<xsl:value-of select="str:replace(str:replace(@name, '+', '_'), '-', '_')"/> = document.getElementById("<xsl:value-of select="@name"/>-canvas").getContext("2d");
 				var chart_<xsl:value-of select="str:replace(str:replace(@name, '+', '_'), '-', '_')"/> = new Chart(ctx_<xsl:value-of select="str:replace(str:replace(@name, '+', '_'), '-', '_')"/>, {
                                     type: 'bar',
@@ -120,6 +121,7 @@
 				        }
 				    }
 				});
+				}
 		    </script>
             </div>
         </div>
@@ -313,7 +315,7 @@
                             </xsl:variable>
 	    		    <xsl:call-template name="amplicon-graph"></xsl:call-template>
 	    		    <tr>
-	    		        <td><a href="#{@name}-graph"><xsl:value-of select="@name"/></a></td>
+	    		        <td><a href="#{@name}-graph" onclick="render_{str:replace(str:replace(@name, '+', '_'), '-', '_')}()"><xsl:value-of select="@name"/></a></td>
 	    		        <td><xsl:value-of select='format-number(exsl:node-set($best_amp)/average_depth, "#.##")'/></td>
 	    		        <td><xsl:value-of select='format-number(exsl:node-set($best_amp)/breadth, "##.##")'/>%</td>
 	    		        <xsl:choose>
@@ -383,7 +385,7 @@
                             </xsl:variable>
 	    		    <xsl:call-template name="amplicon-graph"></xsl:call-template>
 	    		    <tr>
-	    		        <td><a href="#{@name}-graph"><xsl:value-of select="@name"/></a></td>
+	    		        <td><a href="#{@name}-graph" onclick="render_{str:replace(str:replace(@name, '+', '_'), '-', '_')}()"><xsl:value-of select="@name"/></a></td>
 	    		        <td><xsl:value-of select='format-number(exsl:node-set($best_amp)/average_depth, "#.##")'/></td>
 	    		        <td><xsl:value-of select='format-number(exsl:node-set($best_amp)/breadth, "##.##")'/>%</td>
 	    		        <xsl:choose>
@@ -453,7 +455,7 @@
                             </xsl:variable>
 	    		    <xsl:call-template name="amplicon-graph"></xsl:call-template>
 	    		    <tr>
-	    		        <td><a href="#{@name}-graph"><xsl:value-of select="@name"/></a></td>
+	    		        <td><a href="#{@name}-graph" onclick="render_{str:replace(str:replace(@name, '+', '_'), '-', '_')}()"><xsl:value-of select="@name"/></a></td>
 	    		        <td><xsl:value-of select='format-number(exsl:node-set($best_amp)/average_depth, "#.##")'/></td>
 	    		        <td><xsl:value-of select='format-number(exsl:node-set($best_amp)/breadth, "##.##")'/>%</td>
 	    		        <xsl:choose>

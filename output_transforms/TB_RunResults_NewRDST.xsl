@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <xsl:stylesheet version="2.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform" xmlns:exsl="http://exslt.org/common" xmlns:str="http://exslt.org/strings" extension-element-prefixes="exsl str">
+  <xsl:import href="http://exslt.org/str/functions/replace/str.replace.function.xsl"/>
     <xsl:output method="xhtml" doctype-public="-//W3C//DTD XHTML 1.0 Strict//EN" doctype-system="http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd" omit-xml-declaration="yes" encoding="UTF-8" indent="yes"/>
 
 <!-- Clinical Run Summary -->
@@ -162,7 +163,7 @@
 			    		            </xsl:when>
 			    		            <xsl:when test="region_of_interest/significance">
 			    		                <xsl:for-each select="region_of_interest">
-			    		                    <xsl:if test="significance and not(significance/@changes)">
+			    		                    <xsl:if test="significance">
 			    		                        <xsl:for-each select="mutation">
 			    		                            <xsl:if test="@percent &gt; $prop_filter"><xsl:value-of select="@name"/> (<xsl:value-of select='format-number(@percent, "##.##")'/>%)<br/></xsl:if>
 			    		                        </xsl:for-each>
@@ -395,7 +396,7 @@
 	    		            </xsl:when>
 	    		            <xsl:when test="region_of_interest/significance">
 	    		                <xsl:for-each select="region_of_interest">
-	    		                    <xsl:if test="significance and not(significance/@changes)">
+	    		                    <xsl:if test="significance">
 	    		                        <xsl:for-each select="mutation">
 	    		                            <xsl:if test="@percent &gt; $prop_filter"><xsl:value-of select="@name"/> (<xsl:value-of select='format-number(@percent, "##.##")'/>%)<br/></xsl:if>
 	    		                        </xsl:for-each>
@@ -538,11 +539,12 @@
 	    		<th>Known Mutations - # reads containing mutation(% reads) - Significance</th>
 	    		<th>Other SNPs found(% reads containing SNP)</th>
 	    		</tr>
-	    		<xsl:for-each select="assay[not(@name = 'pncA')]">
+	    		<!--<xsl:for-each select="assay[not(@name = 'pncA')]">-->
+	    		<xsl:for-each select="assay">
 	    		    <xsl:if test="@type = 'SNP' or @type = 'ROI' or @type = 'mixed'">
 	    		    <xsl:call-template name="amplicon-graph"></xsl:call-template>
 	    		    <tr>
-	    		        <td><a href="#{@name}-graph"><xsl:value-of select="@name"/></a></td>
+	    		        <td><a href="#{@name}-graph" onclick="render_{str:replace(str:replace(@name, '+', '_'), '-', '_')}()"><xsl:value-of select="@name"/></a></td>
 	    		        <td><xsl:value-of select='format-number(amplicon/average_depth, "#.##")'/></td>
 	    		        <xsl:if test="amplicon/@reads &gt; 0">
 		    		        <td>
@@ -595,6 +597,7 @@
                 <h2>Amplicon Graph</h2>
 			<canvas id="{@name}-canvas" height="90vh" class="ampCanvas"></canvas>
 			<script>
+			   function render_<xsl:value-of select="str:replace(str:replace(@name, '+', '_'), '-', '_')"/>() {
 				var ctx_<xsl:value-of select="str:replace(str:replace(@name, '+', '_'), '-', '_')"/> = document.getElementById("<xsl:value-of select="@name"/>-canvas").getContext("2d");
 				var chart_<xsl:value-of select="str:replace(str:replace(@name, '+', '_'), '-', '_')"/> = new Chart(ctx_<xsl:value-of select="str:replace(str:replace(@name, '+', '_'), '-', '_')"/>, {
                                     type: 'bar',
@@ -655,6 +658,7 @@
 				        }
 				    }
 				});
+				}
 		    </script>
             </div>
         </div>

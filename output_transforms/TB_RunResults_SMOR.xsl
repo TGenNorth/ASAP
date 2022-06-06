@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <xsl:stylesheet version="2.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform" xmlns:asap="http://pathogen.tgen.org/ASAP/functions" xmlns:exsl="http://exslt.org/common" xmlns:str="http://exslt.org/strings" extension-element-prefixes="exsl str asap">
-    <xsl:output method="xhtml" doctype-public="-//W3C//DTD XHTML 1.0 Strict//EN" doctype-system="http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd" omit-xml-declaration="yes" encoding="UTF-8" indent="yes"/>
+   <xsl:import href="http://exslt.org/str/functions/replace/str.replace.function.xsl"/>
+  <xsl:output method="xhtml" doctype-public="-//W3C//DTD XHTML 1.0 Strict//EN" doctype-system="http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd" omit-xml-declaration="yes" encoding="UTF-8" indent="yes"/>
 
 <!-- Clinical Run Summary -->
     <xsl:template match="/analysis">
@@ -74,6 +75,13 @@
             </style>
         </head>
         <body>
+        <xsl:variable name="prop_filter" select="sample[1]/@proportion_filter * 100"/>
+        <xsl:variable name="mutant_count_filter">
+            <xsl:choose>
+                <xsl:when test="sample[1]/@mutation_depth_filter"><xsl:value-of select="sample[1]/@mutation_depth_filter"/></xsl:when>
+                <xsl:otherwise>0</xsl:otherwise>
+            </xsl:choose>
+        </xsl:variable>
         	<center><h1>TB Clinical SMOR ASAP Run Summary for: <xsl:value-of select="@run_name"/></h1></center>
 	        <br />
 	        <br />
@@ -167,8 +175,7 @@
 	    		<xsl:for-each select="sample[1]/assay[not(@type='presence/absence')]">
 	    		    <xsl:variable name="current_assay" select="./@name"/>
                     <xsl:text disable-output-escaping="yes"><![CDATA[<tr>]]></xsl:text>
-	    		    <xsl:choose>
-	    		        <xsl:when test="@type = 'SNP' or @type = 'mixed'">
+	    		    <xsl:if test="@type = 'SNP' or @type = 'mixed'">
                             <xsl:for-each select="asap:distinct-values(//assay[@name=current()/@name]//amplicon//snp/@name[. != 'unknown' and . != 'position of interest'])">
                             <xsl:sort select="."/>
 	    		            <xsl:variable name="current_snp" select="."/>
@@ -190,8 +197,8 @@
 	                            </xsl:for-each>
 	                            <xsl:text disable-output-escaping="yes"><![CDATA[</tr><tr>]]></xsl:text>
                             </xsl:for-each>
-	    		        </xsl:when>
-	    		        <xsl:when test="@type = 'ROI' or @type = 'mixed'">
+	    		    </xsl:if>
+	    		    <xsl:if test="@type = 'ROI' or @type = 'mixed'">
                             <xsl:for-each select="asap:distinct-values(//assay[@name=current()/@name]//amplicon//region_of_interest//mutation/@name)">
                             <xsl:sort select="."/>
 	    		            <xsl:variable name="current_codon" select="."/>
@@ -203,7 +210,7 @@
 		                            <xsl:choose>
 		                            <xsl:when test="../../significance/@flag"><em><xsl:value-of select="../../significance/@flag"/></em></xsl:when>
 		                            <xsl:when test="../significance/@flag"><em><xsl:value-of select="../significance/@flag"/></em></xsl:when>
-		                            <xsl:when test="../significance[not(@flag)]">
+		                            <xsl:when test="../significance[not(@flag)] and @count &gt;= $mutant_count_filter and @percent &gt;= $prop_filter">
 		                                <xsl:value-of select="@count"/>/<xsl:value-of select="../@depth"/>(<xsl:value-of select='format-number(@percent, "##.##")'/>%)
 		                            </xsl:when>
 		                            <xsl:otherwise><!-- mutant codon not present --><em>-</em></xsl:otherwise>
@@ -213,9 +220,7 @@
 	                            </xsl:for-each>
                             <xsl:text disable-output-escaping="yes"><![CDATA[</tr><tr>]]></xsl:text>
                             </xsl:for-each>
-	    		        </xsl:when>
-	    		        <xsl:otherwise><td><xsl:value-of select="@name"/></td></xsl:otherwise>
-	    		    </xsl:choose>
+	    		    </xsl:if>
 	    		    <xsl:text disable-output-escaping="yes"><![CDATA[</tr>]]></xsl:text>
 	    		<!--<xsl:apply-templates select="."/>  -->
                 </xsl:for-each>
@@ -269,6 +274,12 @@
 	<xsl:template match="sample">
         
         <xsl:variable name="prop_filter" select="@proportion_filter * 100"/>
+        <xsl:variable name="mutant_count_filter">
+            <xsl:choose>
+                <xsl:when test="@mutation_depth_filter"><xsl:value-of select="@mutation_depth_filter"/></xsl:when>
+                <xsl:otherwise>0</xsl:otherwise>
+            </xsl:choose>
+        </xsl:variable>
 
 <!-- Per Sample Clinical Results -->
 	<exsl:document method="html" href="{/analysis/@run_name}/{@name}.html">
@@ -416,6 +427,7 @@
 	    		    <xsl:choose>
 	    		        <xsl:when test="@type = 'SNP'"><th><xsl:value-of select="@name"/> SNP (% res)</th></xsl:when>
 	    		        <xsl:when test="@type = 'ROI'"><th><xsl:value-of select="@name"/> codon (% res)</th></xsl:when>
+	    		        <xsl:when test="@type = 'mixed'"><th><xsl:value-of select="@name"/> SNP/codon (% res)</th></xsl:when>
 	    		        <xsl:otherwise></xsl:otherwise>
 	    		    </xsl:choose>
 	    		</xsl:for-each>
@@ -439,9 +451,9 @@
 	    		            </xsl:when>
 	    		            <xsl:when test="region_of_interest/significance">
 	    		                <xsl:for-each select="region_of_interest">
-	    		                    <xsl:if test="significance and not(significance/@changes)">
+	    		                    <xsl:if test="significance">
 	    		                        <xsl:for-each select="mutation">
-	    		                            <xsl:if test="@percent &gt; $prop_filter"><xsl:value-of select="@name"/> (<xsl:value-of select='format-number(@percent, "##.##")'/>%)<br/></xsl:if>
+	    		                            <xsl:if test="@percent &gt; $prop_filter and @count &gt;= $mutant_count_filter"><xsl:value-of select="@name"/> (<xsl:value-of select='format-number(@percent, "##.##")'/>%)<br/></xsl:if>
 	    		                        </xsl:for-each>
 	    		                    </xsl:if>
 	    		                </xsl:for-each>
@@ -553,7 +565,7 @@
 	    		    <xsl:if test="@name = 'IS6110'">
 	    		    <xsl:call-template name="amplicon-graph"></xsl:call-template>
 	    		    <tr>
-	    		        <td><a href="#{@name}-graph"><xsl:value-of select="@name"/></a></td>
+	    		        <td><a href="#{@name}-graph" onclick="render_{str:replace(str:replace(@name, '+', '_'), '-', '_')}()"><xsl:value-of select="@name"/></a></td>
 	    		        <td><xsl:value-of select='format-number(amplicon/average_depth, "#.##")'/></td>
 	    		        <td><xsl:value-of select='format-number(amplicon/breadth, "##.##")'/>%</td>
 	    		        <td><xsl:value-of select="amplicon/significance"/><xsl:if test="amplicon/significance/@flag"> (<xsl:value-of select="amplicon/significance/@flag"/>)</xsl:if></td>
@@ -577,7 +589,7 @@
 	    		    <xsl:if test="@type = 'SNP' or @type = 'ROI' or @type = 'mixed'">
 	    		    <xsl:call-template name="amplicon-graph"></xsl:call-template>
 	    		    <tr>
-	    		        <td><a href="#{@name}-graph"><xsl:value-of select="@name"/></a></td>
+	    		        <td><a href="#{@name}-graph" onclick="render_{str:replace(str:replace(@name, '+', '_'), '-', '_')}()"><xsl:value-of select="@name"/></a></td>
 	    		        <td><xsl:value-of select='format-number(amplicon/average_depth, "#.##")'/></td>
 	    		        <xsl:if test="amplicon/@reads &gt; 0">
 		    		        <td>
@@ -630,6 +642,7 @@
                 <h2>Amplicon Graph</h2>
 			<canvas id="{@name}-canvas" height="90vh" class="ampCanvas"></canvas>
 			<script>
+			  function render_<xsl:value-of select="str:replace(str:replace(@name, '+', '_'), '-', '_')"/>() {
 				var ctx_<xsl:value-of select="str:replace(str:replace(@name, '+', '_'), '-', '_')"/> = document.getElementById("<xsl:value-of select="@name"/>-canvas").getContext("2d");
 				var chart_<xsl:value-of select="str:replace(str:replace(@name, '+', '_'), '-', '_')"/> = new Chart(ctx_<xsl:value-of select="str:replace(str:replace(@name, '+', '_'), '-', '_')"/>, {
                                     type: 'bar',
@@ -690,6 +703,7 @@
 				        }
 				    }
 				});
+				}
 		    </script>
             </div>
         </div>

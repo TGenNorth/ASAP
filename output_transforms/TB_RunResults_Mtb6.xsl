@@ -115,6 +115,7 @@
 	    		</xsl:for-each>
 	    		</tr>
                 <xsl:for-each select="sample">
+                    <xsl:variable name="prop_filter" select="@proportion_filter * 100"/>                
                     <tr>
                         <td nowrap="true"><a href="{/analysis/@run_name}/{./@name}.html"><xsl:value-of select="@name"/></a></td>
 			    		<xsl:for-each select="assay[not(@type='presence/absence')]">
@@ -136,7 +137,7 @@
 			    		                <xsl:for-each select="region_of_interest">
 			    		                    <xsl:if test="significance and not(significance/@changes)">
 			    		                        <xsl:for-each select="mutation">
-			    		                            <xsl:if test="@percent &gt; 10"><xsl:value-of select="@name"/> (<xsl:value-of select='format-number(@percent, "##.##")'/>%)<br/></xsl:if>
+			    		                            <xsl:if test="@percent &gt; $prop_filter"><xsl:value-of select="@name"/> (<xsl:value-of select='format-number(@percent, "##.##")'/>%)<br/></xsl:if>
 			    		                        </xsl:for-each>
 			    		                    </xsl:if>
 			    		                </xsl:for-each>
@@ -196,6 +197,8 @@
 	</xsl:template>
 	
 	<xsl:template match="sample">
+
+        <xsl:variable name="prop_filter" select="@proportion_filter * 100"/>
 
 <!-- Per Sample Clinical Results -->
 	<exsl:document method="html" href="{/analysis/@run_name}/{@name}.html">
@@ -338,7 +341,7 @@
 	    		                <xsl:for-each select="region_of_interest">
 	    		                    <xsl:if test="significance and not(significance/@changes)">
 	    		                        <xsl:for-each select="mutation">
-	    		                            <xsl:if test="@percent &gt; 10"><xsl:value-of select="@name"/> (<xsl:value-of select='format-number(@percent, "##.##")'/>%)<br/></xsl:if>
+	    		                            <xsl:if test="@percent &gt; $prop_filter"><xsl:value-of select="@name"/> (<xsl:value-of select='format-number(@percent, "##.##")'/>%)<br/></xsl:if>
 	    		                        </xsl:for-each>
 	    		                    </xsl:if>
 	    		                </xsl:for-each>
@@ -411,7 +414,7 @@
 		    		        <xsl:for-each select="amplicon/region_of_interest">
 		    		            <xsl:for-each select="mutation">
 		    		                <xsl:value-of select="./@name"/> - <xsl:value-of select='./@count'/>(<xsl:value-of select='format-number(./@percent, "##.##")'/>%)
-	    		                    <xsl:if test="../significance and ./@percent &gt; 10"> - <xsl:value-of select="../significance"/><xsl:if test="../significance/@flag">(<xsl:value-of select="../significance/@flag"/>)</xsl:if></xsl:if>
+	    		                    <xsl:if test="../significance and ./@percent &gt; $prop_filter"> - <xsl:value-of select="../significance"/><xsl:if test="../significance/@flag">(<xsl:value-of select="../significance/@flag"/>)</xsl:if></xsl:if>
 		    		                <br/>
 		    		            </xsl:for-each>
 		    		        </xsl:for-each>

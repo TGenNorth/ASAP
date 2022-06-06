@@ -69,7 +69,7 @@ def _clean_str(string):
         return None
 
 def _strip(string):
-    if string:
+    if string or string is 0:
         if type(string) is str:
             return string.strip()
         else:
@@ -106,7 +106,9 @@ def main(argv=None): # IGNORE:C0111
     if argv is None:
         argv = sys.argv
     else:
-        sys.argv.extend(argv)
+        if not isinstance(argv, argparse.Namespace):
+            sys.argv.extend(argv)
+            pass
 
     program_name = os.path.basename(sys.argv[0])
     program_version = "v%s" % __version__
@@ -115,7 +117,7 @@ def main(argv=None): # IGNORE:C0111
     if __name__ == '__main__':
         program_shortdesc = __import__('__main__').__doc__.split("\n")[1]
     else:
-        program_shortdesc = __doc__.split("\n")[1]    
+        program_shortdesc = __doc__.split("\n")[1]
     program_license = '''%s
 
   Created by TGen North on %s.
@@ -133,17 +135,21 @@ USAGE
 
     try:
         # Setup argument parser
-        parser = argparse.ArgumentParser(description=program_license, formatter_class=argparse.RawDescriptionHelpFormatter)
-        required_group = parser.add_argument_group("required arguments")
-        exclusive_group = required_group.add_mutually_exclusive_group(required=True)
-        exclusive_group.add_argument("-f", "--fasta", metavar="FILE", help="fasta file containing amplicon sequences.")
-        exclusive_group.add_argument("-x", "--excel", metavar="FILE", help="Excel file of assay data.")
-        required_group.add_argument("-o", "--out", metavar="FILE", required=True, help="output JSON file to write. [REQUIRED]")
-        parser.add_argument("-w", "--worksheet", help="Excel worksheet to use, the first one in the file will be used if not specified")
-        parser.add_argument('-v', '--version', action='version', version=program_version_message)
+        # parser = argparse.ArgumentParser(description=program_license, formatter_class=argparse.RawDescriptionHelpFormatter)
+        # required_group = parser.add_argument_group("required arguments")
+        # exclusive_group = required_group.add_mutually_exclusive_group(required=True)
+        # exclusive_group.add_argument("-f", "--fasta", metavar="FILE", help="fasta file containing amplicon sequences.")
+        # exclusive_group.add_argument("-x", "--excel", metavar="FILE", help="Excel file of assay data.")
+        # required_group.add_argument("-o", "--out", metavar="FILE", required=True, help="output JSON file to write. [REQUIRED]")
+        # parser.add_argument("-w", "--worksheet", help="Excel worksheet to use, the first one in the file will be used if not specified")
+        # parser.add_argument('-v', '--version', action='version', version=program_version_message)
 
         # Process arguments
-        args = parser.parse_args()
+        if isinstance(argv, argparse.Namespace):
+            args = argv
+            pass
+        else:
+            args = asapParser.parser.parse_args(argv)
 
         fasta_file = args.fasta
         excel_file = args.excel
@@ -163,14 +169,14 @@ USAGE
             target = None
             assay = None
             for row in ws.iter_rows(row_offset=2):
-                
+
                 if _strip(row[0].value): #Create a new assay
                     if assay:
                         assay_list.append(assay)
                         target = None
                         amplicon = None
                     assay = assayInfo.Assay(name=_clean_str(_strip(row[0].value)), assay_type=_strip(row[1].value))
-                
+
                 if _strip(row[18].value):
                     significance = assayInfo.Significance(message=_strip(row[17].value), resistance=_strip(row[18].value))
                 else:
@@ -191,6 +197,10 @@ USAGE
                             amplicon = _process_fasta(_strip(row[8].value), GENE_VARIANT, significance)
                         else:
                             amplicon = _process_fasta_single(_strip(row[8].value))
+                            if element:
+                                amplicon.add_SNP(element) if isinstance(element, assayInfo.SNP) else amplicon.add_ROI(element)
+                            else:
+                                amplicon.significance = significance
                     else:
                         amplicon = assayInfo.Amplicon(sequence=_clean_seq(_strip(row[8].value)), variant_name=_clean_str(_strip(row[7].value)))
                         if element:
@@ -199,7 +209,7 @@ USAGE
                             amplicon.significance = significance
                 elif amplicon and element: #We already have an amplicon, but we need to add another SNP or ROI to it
                    amplicon.add_SNP(element) if isinstance(element, assayInfo.SNP) else amplicon.add_ROI(element)
-                
+
                 if target and _strip(row[8].value):
                     target.add_amplicon(amplicon)
                     amplicon = None
@@ -208,10 +218,10 @@ USAGE
                 else:
                     target = assayInfo.Target(function=_strip(row[2].value), gene_name=_strip(row[3].value), start_position=_strip(row[4].value), end_position=_strip(row[5].value), reverse_comp=_strip(row[6].value), amplicon=amplicon)
                     assay.target = target
-                                                
+
             assay_list.append(assay) #get the last one
-            
-        assay_data = {"Assay":assay_list} 
+
+        assay_data = {"Assay":assay_list}
         assayInfo.writeJSON(assay_data, out_file)
 
         return 0

@@ -3,7 +3,7 @@
 '''
 asap.reformatXML -- re-write the XML output file to be sorted by assay instead of sample
 
-asap.reformatXML 
+asap.reformatXML
 
 @author:     Jonathon Todd
 
@@ -53,7 +53,9 @@ def main(argv=None): # IGNORE:C0111
     if argv is None:
         argv = sys.argv
     else:
-        sys.argv.extend(argv)
+        if not isinstance(argv, argparse.Namespace):
+            sys.argv.extend(argv)
+            pass
 
     program_name = os.path.basename(sys.argv[0])
     program_version = "v%s" % __version__
@@ -62,7 +64,7 @@ def main(argv=None): # IGNORE:C0111
     if __name__ == '__main__':
         program_shortdesc = __import__('__main__').__doc__.split("\n")[1]
     else:
-        program_shortdesc = __doc__.split("\n")[1]    
+        program_shortdesc = __doc__.split("\n")[1]
     #program_shortdesc = __import__('__main__').__doc__.split("\n")[1]
     program_license = '''%s
 
@@ -81,12 +83,16 @@ USAGE
 
     try:
         # Setup argument parser
-        parser = argparse.ArgumentParser(description=program_license, formatter_class=argparse.RawDescriptionHelpFormatter)
-        parser.add_argument("-x", "--xml", required=True, help="ASAP output XML file to reformat. [REQUIRED]")
-        parser.add_argument("-V", "--version", action="version", version=program_version_message)
-     
+        # parser = argparse.ArgumentParser(description=program_license, formatter_class=argparse.RawDescriptionHelpFormatter)
+        # parser.add_argument("-x", "--xml", required=True, help="ASAP output XML file to reformat. [REQUIRED]")
+        # parser.add_argument("-V", "--version", action="version", version=program_version_message)
+
         # Process arguments
-        args = parser.parse_args()
+        if isinstance(argv, argparse.Namespace):
+            args = argv
+            pass
+        else:
+            args = asapParser.parser.parse_args(argv)
 
         tree = ET.parse(args.xml)
         root = tree.getroot()

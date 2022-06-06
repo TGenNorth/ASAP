@@ -1,54 +1,95 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<xsl:stylesheet version="2.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform" xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:exsl="http://exslt.org/common" xmlns:str="http://exslt.org/strings" extension-element-prefixes="exsl str">
+<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform" xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:exsl="http://exslt.org/common" xmlns:str="http://exslt.org/strings" extension-element-prefixes="exsl str">
     <xsl:import href="http://exslt.org/str/functions/replace/str.replace.function.xsl"/>
-    <xsl:output method="xhtml" doctype-public="-//W3C//DTD XHTML 1.0 Strict//EN" doctype-system="http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd" omit-xml-declaration="yes" encoding="UTF-8" indent="yes"/>
+    <xsl:output method="html" doctype-public="-//W3C//DTD XHTML 1.0 Strict//EN" doctype-system="http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd" omit-xml-declaration="yes" encoding="UTF-8" indent="yes"/>
     <xsl:template match="/analysis">
         <html>
         <head>
             <title>Run Summary for: <xsl:value-of select="@run_name"/></title>
+            <style type="text/css">
+		.table-column-locked {
+                  border-collapse:separate;
+                  border-top: 1px solid black;
+                  border-spacing: 0px;
+                }
+                .div-table-column-locked {
+                  overflow-x: scroll;
+                  margin-left: 11em;
+                  overflow-y: visible;
+                  padding-bottom: 1px;
+                }
+                .table-column-locked td, .table-column-locked th {
+                  margin: 0;
+                  border: 1px solid black;
+                  border-top-width: 0px;
+                  white-space: nowrap;
+                }
+                .table-column-locked th.headcol {
+                  position: absolute;
+                  width: 11em;
+                  left: 0;
+                  top: auto;
+                  border-right: 3px solid black;
+                  border-top-width: 1px;
+                  margin-top: -1px;
+ 		}
+            </style>
         </head>
         <body>
             <center><h1>ASAP Run Summary for: <xsl:value-of select="@run_name"/></h1></center>
 	    <br/>
 	    <em>Number of reads aligning to each assay or containing a SNP of interest</em>
-            <table border="1" width="100%">
+            <div class="div-table-column-locked"><table class="table-column-locked">
 	        <tr>
-	    	<th>Assay</th>
+	    	<th class="headcol">Assay</th>
 	    	<xsl:for-each select="sample">
 	    	    <th nowrap="true"><a href="{/analysis/@run_name}/{./@name}.html"><xsl:value-of select="@name"/></a></th>
 	    	</xsl:for-each>
 	    	</tr>
 	    	<xsl:for-each select="sample[1]">
 	    	    <xsl:for-each select="assay">
-	    	        <xsl:if test="../assay[@name = ./@name and @reads &gt; 100]">
+                        <xsl:variable name='NAME' select='@name'/>
+	    	        <xsl:if test="boolean(../..//assay[@name = $NAME and amplicon/@reads >= 100])">
 	    	            <tr>
-	    	            <th><xsl:value-of select='@name'/></th>
-	    	            <xsl:for-each select="sample">
+	    	            <th class="headcol"><xsl:value-of select='@name'/></th>
+	    	            <xsl:for-each select="../../sample">
+                                <xsl:for-each select='assay[@name = $NAME]'>
 	    	                <td align="center">
 	    	                    <xsl:choose>
-			                    <xsl:when test="@type = 'gene variant'">
+			            <xsl:when test="@type = 'gene variant'">
                                     <xsl:for-each select="amplicon">
                                         <xsl:sort select="@reads" data-type="number" order="descending"/>
                                         <xsl:if test="position()=1">
                                         <xsl:value-of select="@variant"/> - <strong><xsl:value-of select="@reads"/></strong>
                                         </xsl:if>
                                     </xsl:for-each>
-			                    </xsl:when>
-			                    <xsl:otherwise><xsl:value-of select="amplicon/@reads"/></xsl:otherwise>
-			                    </xsl:choose>
+			            </xsl:when>
+                                    <xsl:when test="@type = 'SNP'">
+                                        <!--<xsl:if test="amplicon/@reads = 0">0</xsl:if>-->
+		    		        <xsl:for-each select="amplicon/snp">
+		    		            <xsl:if test="./@name != 'unknown'">
+		    		                <xsl:value-of select="./snp_call/@count"/>(<xsl:value-of select='format-number(./snp_call/@percent, "##.##")'/>%)
+		    		            </xsl:if>
+		    		        </xsl:for-each>
+                                    </xsl:when>
+                                    <!-- <xsl:when test="@type = 'ROI'">
+                                    </xsl:when> -->
+			            <xsl:otherwise><xsl:value-of select="amplicon/@reads"/></xsl:otherwise>
+			            </xsl:choose>
 	    	                </td>
+                                </xsl:for-each>
+                                <xsl:apply-templates select="."/>
 	    	            </xsl:for-each>
 	    	            </tr>
 	    	        </xsl:if>
 	    	    </xsl:for-each>
 	    	</xsl:for-each>
-            </table>
+            </table></div>
         </body>
         </html>
     </xsl:template>
-                    
-    <!-- <xsl:apply-templates select="."/> -->
-    
+
+
     <xsl:template name="amplicon-graph">
         <div id="{@name}-graph" class="ampGraph">
             <div>
@@ -56,6 +97,7 @@
                 <h2>Amplicon Graph</h2>
 			<canvas id="{@name}-canvas" height="90vh" class="ampCanvas"></canvas>
 			<script>
+        function render_<xsl:value-of select="str:replace(str:replace(@name, '+', '_'), '-', '_')"/>() {
 				var ctx_<xsl:value-of select="str:replace(str:replace(@name, '+', '_'), '-', '_')"/> = document.getElementById("<xsl:value-of select="@name"/>-canvas").getContext("2d");
 				var chart_<xsl:value-of select="str:replace(str:replace(@name, '+', '_'), '-', '_')"/> = new Chart(ctx_<xsl:value-of select="str:replace(str:replace(@name, '+', '_'), '-', '_')"/>, {
                                     type: 'bar',
@@ -116,11 +158,12 @@
 				        }
 				    }
 				});
+        }
 		    </script>
             </div>
         </div>
     </xsl:template>
-    
+
     <xsl:template match="sample">
 	<exsl:document method="html" href="{/analysis/@run_name}/{@name}.html">
 	    <html>
@@ -215,7 +258,7 @@
 	    		    <xsl:if test="@type = 'presence/absence' and amplicon/@reads &gt; 0">
 	    		    <xsl:call-template name="amplicon-graph"></xsl:call-template>
 	    		    <tr>
-	    		        <td><a href="#{@name}-graph"><xsl:value-of select="@name"/></a></td>
+	    		        <td><a href="#{@name}-graph" onclick="render_{str:replace(str:replace(@name, '+', '_'), '-', '_')}()"><xsl:value-of select="@name"/></a></td>
 	    		        <td><xsl:value-of select="amplicon/@reads"/></td>
 	    		        <td><xsl:value-of select='format-number(amplicon/breadth, "##.##")'/>%</td>
 	    		        <td><xsl:value-of select="amplicon/significance"/><xsl:if test="amplicon/significance/@flag"> (<xsl:value-of select="amplicon/significance/@flag"/>)</xsl:if></td>
@@ -240,7 +283,7 @@
 	    		    <xsl:if test="@type = 'SNP' or @type = 'mixed'">
 	    		    <xsl:call-template name="amplicon-graph"></xsl:call-template>
 	    		    <tr>
-	    		        <td><a href="#{@name}-graph"><xsl:value-of select="@name"/></a></td>
+	    		        <td><a href="#{@name}-graph" onclick="render_{str:replace(str:replace(@name, '+', '_'), '-', '_')}()"><xsl:value-of select="@name"/></a></td>
 	    		        <td><xsl:value-of select="amplicon/@reads"/></td>
 	    		        <xsl:if test="amplicon/@reads &gt; 0">
 		    		        <td><xsl:value-of select='format-number(amplicon/breadth, "##.##")'/>%</td>
@@ -275,7 +318,7 @@
 	    		    <xsl:if test="@type = 'ROI' or @type = 'mixed' and amplicon/region_of_interest">
 	    		    <xsl:call-template name="amplicon-graph"></xsl:call-template>
 	    		    <tr>
-	    		        <td><a href="#{@name}-graph"><xsl:value-of select="@name"/></a></td>
+	    		        <td><a href="#{@name}-graph" onclick="render_{str:replace(str:replace(@name, '+', '_'), '-', '_')}()"><xsl:value-of select="@name"/></a></td>
 	    		        <td><xsl:value-of select="amplicon/@reads"/></td>
 	    		        <xsl:if test="amplicon/@reads &gt; 0">
 		    		        <td><xsl:value-of select='format-number(amplicon/breadth, "##.##")'/>%</td>

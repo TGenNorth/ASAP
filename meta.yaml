@@ -24,15 +24,17 @@ requirements:
     - python 3.*
     - pip
   run:
-    - python 3.*
-    - numpy
-    - pysam >0.13
-    - scikit-bio
-    - openpyxl
-    - lxml
-    - samtools >=1.0
-    - trimmomatic
+    # TODO: see conda documentation to determine if pin_compatible is required/recommended
     - bowtie2
+    - lxml
+    - numpy
+    - openpyxl <=2.2.5
+    - pysam >0.13
+    - python 3.*
+    - samtools >=1.0
+    - scikit-bio
+    - trimmomatic
+    - xmltodict
 
 test:
   imports:

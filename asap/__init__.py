@@ -2,5 +2,4 @@
 
 __author__ = 'Darrin Lemmer'
 __email__ = 'dlemmer@tgen.org'
-
-from .version import version as __version__
+__version__ = "0.0.12"

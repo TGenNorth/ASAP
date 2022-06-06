@@ -1,16 +1,31 @@
 # https://packaging.python.org/tutorials/distributing-packages
 
 from setuptools import setup
+import codecs
 from codecs import open
 import os
 
 with open(os.path.join(os.path.abspath(os.path.dirname(__file__)), 'README.rst'), encoding='utf-8') as f:
     long_description = f.read()
 
+def read(rel_path):
+    here = os.path.abspath(os.path.dirname(__file__))
+    with codecs.open(os.path.join(here, rel_path), 'r') as fp:
+        return fp.read()
+
+def get_version(rel_path):
+    for line in read(rel_path).splitlines():
+        if line.startswith('__version__'):
+            delim = '"' if '"' in line else "'"
+            return line.split(delim)[1]
+    else:
+        raise RuntimeError("Unable to find version string.")
+
 setup(
     name='asap',
-    use_scm_version={'write_to': 'asap/version.py'},
-    setup_requires=['setuptools_scm'],
+    version=get_version("asap/__init__.py"),
+    # use_scm_version={'write_to': 'asap/version.py'},
+    # setup_requires=['setuptools_scm'],
     description='Amplicon Sequencing Analysis Pipeline',
     long_description=long_description,
     author='Darrin Lemmer',
@@ -32,26 +47,22 @@ setup(
         'Development Status :: 4 - Beta',
         'Intended Audience :: Science/Research',
         'Natural Language :: English',
-        'Programming Language :: Python :: 3 :: Only'
+        'Programming Language :: Python :: 3 :: Only',
         'Programming Language :: Python :: 3',
         'Programming Language :: Python :: 3.3',
         'Programming Language :: Python :: 3.4',
     ],
     entry_points = {
         'console_scripts': [
-            'prepareJSONInput = asap.prepareJSONInput:main',
-            'analyzeAmplicons = asap.analyzeAmplicons:main',
-            'bamProcessor = asap.bamProcessor:main',
-            'outputCombiner = asap.outputCombiner:main',
-            'formatOutput = asap.formatOutput:main',
-            'reformatXML = asap.reformatXML:main'
+            'asap = asap.cmdParser:main',
         ]
     },
     install_requires=[
+        'lxml',
         'numpy',
+        'openpyxl',
         'pysam>0.13',
         'scikit-bio',
-        'openpyxl',
-        'lxml',
+        'xmltodict',
     ]
 )

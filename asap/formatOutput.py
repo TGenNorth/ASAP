@@ -52,7 +52,9 @@ def main(argv=None): # IGNORE:C0111
     if argv is None:
         argv = sys.argv
     else:
-        sys.argv.extend(argv)
+        if not isinstance(argv, argparse.Namespace):
+            sys.argv.extend(argv)
+            pass
 
     program_name = os.path.basename(sys.argv[0])
     program_version = "v%s" % __version__
@@ -61,7 +63,7 @@ def main(argv=None): # IGNORE:C0111
     if __name__ == '__main__':
         program_shortdesc = __import__('__main__').__doc__.split("\n")[1]
     else:
-        program_shortdesc = __doc__.split("\n")[1]    
+        program_shortdesc = __doc__.split("\n")[1]
     program_license = '''%s
 
   Created by TGen North on %s.
@@ -79,17 +81,21 @@ USAGE
 
     try:
         # Setup argument parser
-        parser = argparse.ArgumentParser(description=program_license, formatter_class=argparse.RawDescriptionHelpFormatter)
-        required_group = parser.add_argument_group("required arguments")
-        required_group.add_argument("-s", "--stylesheet", metavar="FILE", required=True, help="XSLT stylesheet to use for transforming the output. [REQUIRED]")
-        required_group.add_argument("-x", "--xml", metavar="FILE", required=True, help="XML output file to transform. [REQUIRED]")
-        parser.add_argument("-o", "--out", dest="out", metavar="FILE", help="output file to write.")
-        parser.add_argument("-d", "--outdir", dest="out_dir", metavar="DIR", help="output directory to write files to.")
-        parser.add_argument("-t", "--text", action="store_true", default=False, help="output plain text.")
-        parser.add_argument('-V', '--version', action='version', version=program_version_message)
+        # parser = argparse.ArgumentParser(description=program_license, formatter_class=argparse.RawDescriptionHelpFormatter)
+        # required_group = parser.add_argument_group("required arguments")
+        # required_group.add_argument("-s", "--stylesheet", metavar="FILE", required=True, help="XSLT stylesheet to use for transforming the output. [REQUIRED]")
+        # required_group.add_argument("-x", "--xml", metavar="FILE", required=True, help="XML output file to transform. [REQUIRED]")
+        # parser.add_argument("-o", "--out", dest="out", metavar="FILE", help="output file to write.")
+        # parser.add_argument("-d", "--outdir", dest="out_dir", metavar="DIR", help="output directory to write files to.")
+        # parser.add_argument("-t", "--text", action="store_true", default=False, help="output plain text.")
+        # parser.add_argument('-V', '--version', action='version', version=program_version_message)
 
         # Process arguments
-        args = parser.parse_args()
+        if isinstance(argv, argparse.Namespace):
+            args = argv
+            pass
+        else:
+            args = asapParser.parser.parse_args(argv)
 
         stylesheet = args.stylesheet
         xml_file = args.xml
@@ -101,7 +107,7 @@ USAGE
             match = re.search('^(.*)_analysis.xml$', xml_file)
             if match:
                 out_dir = match.group(1)
-            
+
         if out_dir and not os.path.exists(out_dir):
             os.makedirs(out_dir)
 
@@ -114,7 +120,7 @@ USAGE
         xslt = ET.parse(stylesheet)
         transform = ET.XSLT(xslt)
         newdom = transform(dom)
-        
+
         if out_file:
             output = open(out_file, 'wb')
             if text:

@@ -100,7 +100,7 @@ def main(argv=None): # IGNORE:C0111
             args = argv
             pass
         else:
-            args = asapParser.parser.parse_args(argv)
+            args = cmdParser.parser.parse_args(argv)
 
         run_name = args.name
         xml_dir = args.xdir

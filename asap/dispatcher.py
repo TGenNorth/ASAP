@@ -8,13 +8,11 @@ import logging
 
 from asap import cmdParser
 
-program_name = "Tgen-ASAP"
-# if cmdParser.parser.prog:
-#     program_name = cmdParser.parser.prog
-#     pass
 
-bamProcessorCMD = program_name+" bamProcessor" #These are asap commands and thus subject to potential change
-outputCombinerCMD = program_name+" outputCombiner"
+def getBamProcessorCMD(): #These are asap commands and thus subject to potential change
+    return cmdParser.program_name+" bamProcessor"
+def getOutputCombinerCMD(): #These are asap commands and thus subject to potential change
+    return cmdParser.program_name+" outputCombiner"
 
 job_manager = "SLURM"
 job_manager_args = ""
@@ -664,14 +662,14 @@ def processBam(sample_name, json_file, bam_file, xml_dir, dependency, depth, bre
     mark_del_option = " --mark-deletions %s" % fill_del_char if fill_del_char else ""
     if percidlist:
         percidstr = listToString(percidlist, " ")
-        command = bamProcessorCMD + " -j %s -b %s -o %s -d %d --breadth %f -p %f -m %d -i %f%s%s%s%s%s --allele-output-threshold %d --primer-mask %s --primer-wiggle %i --primer-mask-bam %s --primer-only-bam %s --min_base_qual %i --consensus-proportion %f --identitylist %s" % (
+        command = getBamProcessorCMD() + " -j %s -b %s -o %s -d %d --breadth %f -p %f -m %d -i %f%s%s%s%s%s --allele-output-threshold %d --primer-mask %s --primer-wiggle %i --primer-mask-bam %s --primer-only-bam %s --min_base_qual %i --consensus-proportion %f --identitylist %s" % (
          json_file, bam_file, out_file, depth, breadth, proportion, mutdepth,
          percid, smor_option, wholegenome_option, debug_option, fill_gap_option,
          mark_del_option, allele_min_reads, primer_mask_file, wiggle, pmaskbam,
          ponlybam, base_qual, con_prop, percidstr)
         pass
     else:
-        command = bamProcessorCMD + " -j %s -b %s -o %s -d %d --breadth %f -p %f -m %d -i %f%s%s%s%s%s --allele-output-threshold %d --primer-mask %s --primer-wiggle %i --primer-mask-bam %s --primer-only-bam %s --min_base_qual %i --consensus-proportion %f" % (json_file, bam_file, out_file, depth, breadth, proportion, mutdepth, percid, smor_option, wholegenome_option, debug_option, fill_gap_option, mark_del_option, allele_min_reads, primer_mask_file, wiggle, pmaskbam, ponlybam, base_qual, con_prop)
+        command = getBamProcessorCMD() + " -j %s -b %s -o %s -d %d --breadth %f -p %f -m %d -i %f%s%s%s%s%s --allele-output-threshold %d --primer-mask %s --primer-wiggle %i --primer-mask-bam %s --primer-only-bam %s --min_base_qual %i --consensus-proportion %f" % (json_file, bam_file, out_file, depth, breadth, proportion, mutdepth, percid, smor_option, wholegenome_option, debug_option, fill_gap_option, mark_del_option, allele_min_reads, primer_mask_file, wiggle, pmaskbam, ponlybam, base_qual, con_prop)
     jobid = _submit_job(job_manager, command, job_params, (dependency,)) if dependency else _submit_job(job_manager, command, job_params)
     return (out_file, jobid)
 
@@ -682,7 +680,7 @@ def combineOutputFiles(run_name, xml_dir, out_dir, dependencies):
     job_params['work_dir'] = out_dir
     out_file = os.path.join(out_dir, run_name+"_analysis.xml")
     dependency_string = ":".join(dependencies)
-    command = outputCombinerCMD + " -n %s -x %s -o %s" % (run_name, xml_dir, out_file)
+    command = getOutputCombinerCMD() + " -n %s -x %s -o %s" % (run_name, xml_dir, out_file)
     jobid = _submit_job(job_manager, command, job_params, (dependency_string, 'afterany'), notify=True)
     return (out_file, jobid)
 

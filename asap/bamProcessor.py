@@ -77,7 +77,7 @@ def _primer_mask(primer_file, bam_file_name, wiggle, pmaskbam, ponlybam, smor):
           dtype={'names': ('CHROM', 'PrimerName', 'PrimerDirection', 'Start', 'End'),
           'formats': ('<U100', '<U100', 'U1', 'int', 'int')}, skiprows=1)
     except ValueError:
-        logging.info("Incorrect primer file format")
+        logging.error("Incorrect primer file format")
         return samfile
     primers["PrimerDirection"] = np.char.upper(primers["PrimerDirection"])
     primer_stats = []
@@ -270,6 +270,16 @@ def _process_pileup(pileup, amplicon, depth, proportion, mutdepth, offset, whole
 
             column_depth = depth_array[pileupcolumn.pos]
 
+            if column_depth == 0:
+                #consensus_seq += "_" #TODO Temporary, remove this line!
+                continue
+            depth_passed = False
+            if column_depth > 0: #TODO: This is going to end up being specific to these TB assays, maybe have a clever way to make this line optional
+                avg_depth_positions += 1
+                avg_depth_total += column_depth
+            if column_depth >= depth:
+                breadth_positions += 1
+                depth_passed = True
         else: # not smor
             depth_array[pileupcolumn.pos] = pileupcolumn.n
             depth_passed = False
@@ -1222,7 +1232,7 @@ def main(argv=None): # IGNORE:C0111
             args = argv
             pass
         else:
-            args = asapParser.parser.parse_args(argv)
+            args = cmdParser.parser.parse_args(argv)
 
         json_fp = args.json.name
         bam_fp = args.bam

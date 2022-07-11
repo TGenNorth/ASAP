@@ -20,6 +20,8 @@ import sys
 import os
 import argparse
 
+from asap import cmdParser
+
 __all__ = []
 __version__ = 0.6
 __date__ = '2018-04-11'
@@ -57,7 +59,6 @@ def main(argv=None): # IGNORE:C0111
             sys.argv.extend(argv)
             pass
 
-    program_name = os.path.basename(sys.argv[0])
     program_version = "v%s" % __version__
     program_build_date = str(__updated__)
     program_version_message = '%%(prog)s %s (%s)' % (program_version, program_build_date)
@@ -92,7 +93,7 @@ USAGE
             args = argv
             pass
         else:
-            args = asapParser.parser.parse_args(argv)
+            args = cmdParser.parser.parse_args(argv)
 
         tree = ET.parse(args.xml)
         root = tree.getroot()
@@ -156,8 +157,8 @@ USAGE
     except Exception as e:
         if DEBUG or TESTRUN:
             raise(e)
-        indent = len(program_name) * " "
-        sys.stderr.write(program_name + ": " + repr(e) + "\n")
+        indent = len(cmdParser.program_name) * " "
+        sys.stderr.write(cmdParser.program_name + ": " + repr(e) + "\n")
         sys.stderr.write(indent + "  for help use --help")
         return 2
 

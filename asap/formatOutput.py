@@ -24,6 +24,7 @@ import lxml.etree as ET
 
 from asap import dispatcher
 from asap import __version__
+from asap import cmdParser
 
 __all__ = []
 __date__ = '2015-07-29'
@@ -56,7 +57,6 @@ def main(argv=None): # IGNORE:C0111
             sys.argv.extend(argv)
             pass
 
-    program_name = os.path.basename(sys.argv[0])
     program_version = "v%s" % __version__
     program_build_date = str(__updated__)
     program_version_message = '%%(prog)s %s (%s)' % (program_version, program_build_date)
@@ -95,7 +95,7 @@ USAGE
             args = argv
             pass
         else:
-            args = asapParser.parser.parse_args(argv)
+            args = cmdParser.parser.parse_args(argv)
 
         stylesheet = args.stylesheet
         xml_file = args.xml
@@ -136,8 +136,8 @@ USAGE
     except Exception as e:
         if DEBUG or TESTRUN:
             raise(e)
-        indent = len(program_name) * " "
-        sys.stderr.write(program_name + ": " + repr(e) + "\n")
+        indent = len(cmdParser.program_name) * " "
+        sys.stderr.write(cmdParser.program_name + ": " + repr(e) + "\n")
         sys.stderr.write(indent + "  for help use --help")
         return 2
 

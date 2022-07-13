@@ -480,9 +480,9 @@ def _process_roi(roi, samdata, amplicon_ref, smor, amplicon_ref_len, reverse_com
     aa_sequence_counter_temp = Counter()
     nt_sequence_counter = Counter()
     depth = 0
-    for range in range_list:
-        print("Handling position: ", range)
-        range_match = re.search('(\d*)-(\d*)', range)
+    for pos_range in range_list:
+        print("Handling position: ", pos_range)
+        range_match = re.search('(\d*)-(\d*)', pos_range)
         if not range_match:
             continue
         start = int(range_match.group(1)) - 1
@@ -511,7 +511,7 @@ def _process_roi(roi, samdata, amplicon_ref, smor, amplicon_ref_len, reverse_com
         if n == 0:
             # roi_dict['flag'] = "region not found"
             print("WARNING::region not found")
-            roi_dict['errors'][range] = "region not found"
+            roi_dict['errors'][pos_range] = "region not found"
             continue
             # return roi_dict
         elif not smor:#no --smor flag
@@ -525,7 +525,7 @@ def _process_roi(roi, samdata, amplicon_ref, smor, amplicon_ref_len, reverse_com
             if proportion_failed >= .95:
                 #roi_dict['flag'] = "reads are smaller than ROI and cannot merge because --smor"
                 print("WARNING::reads are smaller than ROI and cannot merge because --smor")
-                roi_dict['errors'][range] = "reads are smaller than ROI and cannot merge because --smor"
+                roi_dict['errors'][pos_range] = "reads are smaller than ROI and cannot merge because --smor"
                 continue
                 # return roi_dict
         if not roi.aa_sequence:
@@ -1269,7 +1269,13 @@ def main(argv=None): # IGNORE:C0111
         #if not os.path.exists(out_dir):
         #    os.makedirs(out_dir)
 
-        operation_list = assayInfo.parseOperation(args.json.name)
+        operation_list = []
+        operation_err = ""
+        try:
+            operation_list = assayInfo.parseOperation(args.json.name)
+            pass
+        except Exception as e:
+            operation_err = str(e)
         assay_list = assayInfo.parseJSON(args.json.name)
 
         samdata = pysam.AlignmentFile(bam_fp.name, "rb")
@@ -1325,6 +1331,9 @@ def main(argv=None): # IGNORE:C0111
                                 datefmt='%m/%d/%Y %H:%M:%S',
                                 filename=logfile,
                                 filemode='w')
+        if operation_err != "":
+            logging.info("Operation fetch did not succeed: "+operation_err)
+            pass
         logging.info("----------------------bamProcessor STARTED---------------------------")
         logging.info("JSON: "+str(json_fp))
         logging.info("BAM: "+str(bam_fp.name))

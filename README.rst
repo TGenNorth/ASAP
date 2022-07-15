@@ -13,11 +13,11 @@ USAGE:
 
 Can be generated from Excel spreadsheet template, or for simple cases, directly from multifasta file.
 
-typical usage: ``asap <subfunction>``
+typical usage: ``asap -h``
 
 full usage: ``asap [-h] <subfunction> [-h]``
 
-asap.prepareJSONInput -- Create a JSON input file for ASAP from a multifasta or Excel spreadsheet
+asap.cmdParser -- Handles all the cmd line options for the various parts of asap
 
 optional arguments:
   -h, --help            show this help message and exit

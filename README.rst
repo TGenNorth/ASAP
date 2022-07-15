@@ -9,13 +9,27 @@ The Amplicon Sequencing Analysis Pipeline (ASAP) is a highly customizable, autom
 
 USAGE:
 ------
+**0) ASAP Help**
+
+Can be generated from Excel spreadsheet template, or for simple cases, directly from multifasta file.
+
+typical usage: ``asap <subfunction>``
+
+full usage: ``asap [-h] <subfunction> [-h]``
+
+asap.prepareJSONInput -- Create a JSON input file for ASAP from a multifasta or Excel spreadsheet
+
+optional arguments:
+  -h, --help            show this help message and exit
+  -V, --version         show program's version number and exit
+  
 **1) Generating JSON File**
 
 Can be generated from Excel spreadsheet template, or for simple cases, directly from multifasta file.
 
-typical usage: ``prepareJSONInput -x <EXCEL_FILE> -o <OUTPUT_JSON_FILE>``
+typical usage: ``asap prepareJSONInput -x <EXCEL_FILE> -o <OUTPUT_JSON_FILE>``
 
-full usage: ``prepareJSONInput [-h] (-f FILE | -x FILE) -o FILE [-w WORKSHEET] [-V]``
+full usage: ``asap prepareJSONInput [-h] (-f FILE | -x FILE) -o FILE [-w WORKSHEET] [-V]``
 
 asap.prepareJSONInput -- Create a JSON input file for ASAP from a multifasta or Excel spreadsheet
 
@@ -36,13 +50,13 @@ required arguments:
 
 **2) Running ASAP**
 
-typical usage: ``analyzeAmplicons -n <RUN_NAME> -j <PATH_TO_JSON_FILE> -r <DIRECTORY_OF_READ_FILES> -o <OUTPUT_DIRECTORY> <other options>``
+typical usage: ``asap analyzeAmplicons -n <RUN_NAME> -j <PATH_TO_JSON_FILE> -r <DIRECTORY_OF_READ_FILES> -o <OUTPUT_DIRECTORY> <other options>``
 
 ``<RUN_NAME>`` can be whatever you want, the final output file will be: ``<OUTPUT_DIRECTORY>/<RUN_NAME>_analysis.xml``
 
 You can also change the depth (default 100), proportion (default 0.1), breadth (default 0.8) filters using the ``-d``, ``-p`` and ``-b`` options
 
-full usage: ``analyzeAmplicons [-h] -n NAME -j JSON [-r DIR | --bam-dir DIR] [-o DIR] [-s JOB_MANAGER] [--submitter-args ARGS] [--smor] [--trim | --no-trim] [-s ADAPTERS] [-q [QUAL]] [-m LEN] [-a ALIGNER] [--aligner-args ARGS] [-d DEPTH] [--breadth BREADTH] [-p PROPORTION] [-i PERCID] [-V]``
+full usage: ``asap analyzeAmplicons [-h] -n NAME -j JSON [-r DIR | --bam-dir DIR] [-o DIR] [-s JOB_MANAGER] [--submitter-args ARGS] [--smor] [--trim | --no-trim] [-s ADAPTERS] [-q [QUAL]] [-m LEN] [-a ALIGNER] [--aligner-args ARGS] [-d DEPTH] [--breadth BREADTH] [-p PROPORTION] [-i PERCID] [-V]``
 
 asap.analyzeAmplicons -- Align and interpret amplicon sequencing reads
 
@@ -107,11 +121,11 @@ This command will ultimately generate the xml file. To convert this into more be
 
 **3) Formatting Output**
 
-typical usage ``formatOutput -s <XSLT_FILE> -x <XML_OUTPUT_FILE> -o <MAIN_OUTPUT_FILE_TO_WRITE>``
+typical usage ``asap formatOutput -s <XSLT_FILE> -x <XML_OUTPUT_FILE> -o <MAIN_OUTPUT_FILE_TO_WRITE>``
 
 This will generate all the html files, which you can open directly in your web browser. Some xslt files are available in the ``output_transforms`` directory.
 
-full usage: ``formatOutput [-h] -s FILE -x FILE [-o FILE] [-t] [-V]``
+full usage: ``asap formatOutput [-h] -s FILE -x FILE [-o FILE] [-t] [-V]``
 
 asap.formatOutput -- Apply an XSLT transformation on the XML output to generate a more user-friendly output
 

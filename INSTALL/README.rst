@@ -93,8 +93,8 @@ Setting up ASAP via Anaconda
     Once setup boot up the Linux VM and download ASAP from github via ``git clone`` followed by the url you can grab from this github's *Code* button.
     
     Follow the instructions for installing ASAP on Linux, once done you will be able to boot up the Linux VM and run asap from within.
-    
-    For a VM setup we also recommend aquireing and using task-spooler for handling ASAP job running:
+
+**Stand Alone (No SLURM / Job Manager)**
     
     **Task Spooler** ``sudo apt install task-spooler`` Doc: https://manpages.ubuntu.com/manpages/xenial/man1/tsp.1.html
     

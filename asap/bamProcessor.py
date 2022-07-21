@@ -26,6 +26,7 @@ from collections import Counter
 from xml.etree import ElementTree
 from skbio import DNA
 
+from asap import dispatcher
 from asap import assayInfo
 from asap import __version__
 from asap import cmdParser

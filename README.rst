@@ -79,8 +79,8 @@ optional arguments:
   -o DIR, --out-dir DIR
                         directory to write output files to. [default: `pwd`]
   -s JOB_MANAGER, --submitter JOB_MANAGER
-                        cluster job submitter to use (PBS, SLURM, SGE, none).
-                        [default: PBS]
+                        cluster job submitter to use (PBS, SLURM, SLURM_NO_ARRAY, SGE, TASK, none).
+                        [default: SLURM]
   --submitter-args ARGS
                         additional arguments to pass to the job submitter,
                         enclosed in "".

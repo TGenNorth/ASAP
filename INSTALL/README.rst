@@ -2,9 +2,8 @@ Setting up ASAP via Anaconda
 ----------------------------
 **Linux/MAC**
 
-  **1) Install Anaconda**
+  **1A) Install Anaconda (NOTE: Miniconda will NOT work)**
     https://docs.anaconda.com/anaconda/install/
-
   **1B) Install gcc**
     ``sudo apt install gcc``
     
@@ -32,7 +31,7 @@ Setting up ASAP via Anaconda
     **Navigate to where you installed the ASAP repository
     and run one the following setups:**
       **Quick Setup**
-        ``conda env create --file asap.yml``
+        ``conda env create --file asap.txt``
         
         ``conda activate asap``
 

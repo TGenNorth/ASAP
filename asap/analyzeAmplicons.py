@@ -23,7 +23,6 @@ import skbio
 import pkg_resources
 
 from asap import dispatcher
-from asap import bamProcessor
 from asap import assayInfo
 from asap import __version__
 from asap import cmdParser
@@ -45,8 +44,6 @@ class CLIError(Exception):
 
 def main(argv=None): # IGNORE:C0111
     '''Command line options.'''
-
-    # print("Starting analyzeAmplicons")
 
     if argv is None:
         argv = sys.argv
@@ -103,7 +100,10 @@ def main(argv=None): # IGNORE:C0111
         # optional_group.add_argument("--smor", action="store_true", default=False, help="perform SMOR analysis with overlapping reads. [default: False]")
         # optional_group.add_argument("-w", "--whole-genome", action="store_true", dest="wholegenome", default=False, help="JSON file uses a whole genome reference, so don't write out the consensus, depth, and proportion arrays for each sample")
         # optional_group.add_argument("--allele-output-threshold", dest="allele_min_reads", default=8, type=int, help="cutoff of # of reads below which allels for amino acids and nucleotide alleles will not be output [default: 8]")
-        # optional_group.add_argument("--remove-dups", action="store_true", dest="remove_dups", default=False, help="remove duplicate reads (ony makes sense for WGS or WMTS data. [default: False]")
+        # optional_group.add_argument("--remove-dups", action="store_true", dest="remove_dups", default=False, help="remove duplicate reads (probably only makes sense for WGS or WMTS data. [default: False]")
+        # optional_group.add_argument("--subsample", dest="numreads", type=int, help="Subsample all read files/pairs down to NUMREADS reads/pairs.")
+        # optional_group.add_argument("--min-base-qual", dest="bqual", default=5, type=int, help="what is the minimum base quality score (BQS) to use a position (Phred scale, i.e. 10=90, 20=99, 30=99.9 accuracy")
+        # if min-base-qual=0 and primer-mask=False, then this should behave almost identically to before my edits, there may be some 'negligable' differences
         # trim_group = parser_analyzeAmplicons.add_argument_group("read trimming options")
         # on_off_group = trim_group.add_mutually_exclusive_group()
         # on_off_group.add_argument("--trim", default="bbduk", help="perform adapter trimming on reads. [default: bbduk]. NOTE: cannot trim-primers if not using bbduk")
@@ -117,7 +117,7 @@ def main(argv=None): # IGNORE:C0111
         # align_group.add_argument("--aligner-args", dest="aargs", metavar="ARGS", default='', help="additional arguments to pass to the aligner, enclosed in \"\".")
         # align_group.add_argument("-d", "--depth", default=100, type=int, help="minimum read depth required to consider a position covered. [default: 100]")
         # align_group.add_argument("-b", "--breadth", default=0.8, type=float, help="minimum breadth of coverage required to consider an amplicon as present. [default: 0.8]")
-        # align_group.add_argument("-p", "--proportion", type=float, help="minimum proportion required to call a mutation at a given locus. [default: 0.1]") #Don't explicitly set default because I need to be certain whether user set the value
+        # align_group.add_argument("-p", "--proportion", default=-1, type=float, help="minimum proportion required to call a mutation at a given locus. [default: 0.1]") #Set default to -1 so I can tell if user actually set the value or not
         # align_group.add_argument("-m", "--mutation-depth", dest="mutdepth", default=5, type=int, help="minimum number of reads required to call a mutation at a given locus. [default: 5]")
         # align_group.add_argument("-i", "--identity", dest="percid", default=0, type=float, help="minimum percent identity required to align a read to a reference amplicon sequence. [default: 0]")
         # align_group.add_argument("-il", "--identitylist", dest="percidlist", nargs='+', help="amplicon specific percent identies. Space seperated in amplicon then percentage order.")
@@ -126,8 +126,6 @@ def main(argv=None): # IGNORE:C0111
         # mask_group.add_argument("--primer-wiggle", dest="wiggle", default=9, type=int, help="how many nucleotides outside the primer window should be used to identify primer sequences")
         # mask_group.add_argument("--primer-mask-bam", dest="pmaskbam", default=True, help="should primer sequences in the alignement file be changed to N for easy viewing (otherwise only base qual is set to 0)")
         # # mask_group.add_argument("--primer-only-bam", dest="ponlybam", default=False, help="Should only sequences with primers be considered when calling variants, currently not implemented")
-        # optional_group.add_argument("--min_base_qual", dest="bqual", default=5, type=int, help="what is the minimum base quality score (BQS) to use a position (Phred scale, i.e. 10=90, 20=99, 30=99.9 accuracy")
-        # # if min_base_qual=0 and primer-mask=False, then this should behave almost identically to before my edits, there may be some 'negligable' differences
         # consensus_group = parser_analyzeAmplicons.add_argument_group("consensus calling options")
         # consensus_group.add_argument("--consensus-proportion", default=0.8, type=float, help="minimum proportion required to call at base at that position, else 'N'. [default: 0.8]")
         # consensus_group.add_argument("--fill-gaps", nargs="?", const="n", dest="gap_char", help="fill no coverage gaps in the consensus sequence [default: False], optional parameter is the character to use for filling [defaut: n]")
@@ -181,16 +179,10 @@ def main(argv=None): # IGNORE:C0111
         debug = args.debug
         wholegenome = args.wholegenome
         remove_dups = args.remove_dups
+        subsample = args.numreads
         con_prop = args.consensus_proportion
         fill_gap_char = args.gap_char
         fill_del_char = args.del_char
-        if smor:
-            if proportion:
-                bamProcessor.smartSMOR = False #Turn off smartSMOR if user explicitely sets proportion flag
-            else:
-                proportion = 0.001 #Set SMOR default
-        else:
-            proportion = proportion or 0.1 #Set default if user did not specify
 
         if primer_seqs != False and trim != "bbduk":
             response = input(
@@ -258,9 +250,17 @@ def main(argv=None): # IGNORE:C0111
                     continue
                 if trim != False: #if trimming has not been turned off by --no-trim
                     trimmed_reads = dispatcher.trimAdapters(*read, outdir=out_dir, adapters=adapters, quality=qual, minlen=minlen, dependency=index_job, trimmer=trim, primers=primer_seqs)
-                    (bam_file, job_id) = dispatcher.alignReadsToReference(trimmed_reads.sample, trimmed_reads.reads, ref_fasta, out_dir, jobid=trimmed_reads.jobid, aligner=aligner, args=aligner_args, remove_dups=remove_dups)
+                    if subsample:
+                        subsampled_reads = dispatcher.subsampleReads(trimmed_reads.sample, trimmed_reads.reads, outdir=out_dir, number=subsample, dependency=trimmed_reads.jobid)
+                        (bam_file, job_id) = dispatcher.alignReadsToReference(subsampled_reads.sample, subsampled_reads.reads, ref_fasta, out_dir, jobid=subsampled_reads.jobid, aligner=aligner, args=aligner_args, remove_dups=remove_dups)
+                    else:
+                        (bam_file, job_id) = dispatcher.alignReadsToReference(trimmed_reads.sample, trimmed_reads.reads, ref_fasta, out_dir, jobid=trimmed_reads.jobid, aligner=aligner, args=aligner_args, remove_dups=remove_dups)
                 else: #if trimming has been turned off go straight to aligning
-                    (bam_file, job_id) = dispatcher.alignReadsToReference(read.sample, read.reads, ref_fasta, out_dir, jobid=index_job, aligner=aligner, args=aligner_args, remove_dups=remove_dups)
+                    if subsample:
+                        subsampled_reads = dispatcher.subsampleReads(*read, outdir=out_dir, number=subsample, dependency=index_job)
+                        (bam_file, job_id) = dispatcher.alignReadsToReference(subsampled_reads.sample, subsampled_reads.reads, ref_fasta, out_dir, jobid=subsampled_reads.jobid, aligner=aligner, args=aligner_args, remove_dups=remove_dups)
+                    else:
+                        (bam_file, job_id) = dispatcher.alignReadsToReference(read.sample, read.reads, ref_fasta, out_dir, jobid=index_job, aligner=aligner, args=aligner_args, remove_dups=remove_dups)
                 bam_list.append((read.sample, bam_file, job_id))
             if trim == "bbduk":
                 if not os.path.isdir(out_dir+"/trimmed/STATS/"):

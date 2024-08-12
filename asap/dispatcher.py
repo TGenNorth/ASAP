@@ -23,7 +23,7 @@ mail_to = ""
 slurm_default = """#!/bin/bash
 #SBATCH --output=./slurm_outpath/slurm-%x.%j.out
 #SBATCH --error=./slurm_outpath/slurm-%x.%j.err
-#
+#mail-type
 #depend
 #SBATCH --array=1-1
 
@@ -43,7 +43,7 @@ def _submit_job(job_submitter, command, job_parms, waitfor_id=None, hold=False, 
     # TODO(jtravis): remove unused output variable
     output = jobid = None
     logging.info("\ncommand = %s" % command)
-    args = job_parms["args"] or job_manager_args or ""
+    args = job_manager_args or job_parms["args"] or ""
     if job_submitter == "PBS":
         waitfor = ""
         if waitfor_id and waitfor_id[0]:
@@ -103,8 +103,7 @@ def _submit_job(job_submitter, command, job_parms, waitfor_id=None, hold=False, 
                 queue = "-p %s" % job_parms["queue"]
             if hold:
                 args += " -H"
-            if notify:
-                args += " --mail-type=END"
+            
             last_jobid = ""
             file_list = os.listdir(slurm_outpath)
             file_list.sort()
@@ -124,18 +123,21 @@ def _submit_job(job_submitter, command, job_parms, waitfor_id=None, hold=False, 
                     # If its the last file it should be the final combiner
                     if jobname == file_list[-1]:
                         depend = "#SBATCH --depend=afterok:" + last_jobid
+                        if notify:
+                            sbatch_file = sbatch_file.replace("#mail-type", "#SBATCH --mail-type=END")
                         pass
                     else:
                         depend = "#SBATCH --depend=aftercorr:" + last_jobid
                         pass
                     sbatch_file = sbatch_file.replace("#depend", depend)
+                
                 batch_file_path = file_path+".sh"
                 batch_file = open(batch_file_path, 'w')
                 batch_file.write(sbatch_file)
                 batch_file.close()
                 # Create a command with an array ranging from the first line of the file (1) to the last
-                submit_command = "sbatch -D\'%s\' -c%s --mem=%s000 --mail-type=FAIL %s %s %s" % (
-                    job_parms["work_dir"], job_parms['num_cpus'], job_parms['mem_requested'],
+                submit_command = "sbatch -D\'%s\' -c%s --mem=%s000 --time=%s:00:00 --mail-type=FAIL %s %s %s" % (
+                    job_parms["work_dir"], job_parms['num_cpus'], job_parms['mem_requested'], job_parms["walltime"],
                     queue, args,
                     batch_file_path,)
                 if last_jobid != "":
@@ -168,12 +170,12 @@ def _submit_job(job_submitter, command, job_parms, waitfor_id=None, hold=False, 
             args += " -H"
         if notify:
             args += " --mail-type=END"
-        #submit_command = "sbatch -D \'%s\' -c%s --mem=%s000 --time=%s:00:00 --mail-type=FAIL -J \'%s\' %s %s %s" % (
-        #    job_parms["work_dir"], job_parms['num_cpus'], job_parms['mem_requested'], job_parms['walltime'],
-        #    job_parms['name'], waitfor, queue, args)
-        submit_command = "sbatch -D \'%s\' -c%s --mem=%s000 --mail-type=FAIL -J \'%s\' %s %s %s" % (
-            job_parms["work_dir"], job_parms['num_cpus'], job_parms['mem_requested'],
+        submit_command = "sbatch -D \'%s\' -c%s --mem=%s000 --time=%s:00:00 --mail-type=FAIL -J \'%s\' %s %s %s" % (
+            job_parms["work_dir"], job_parms['num_cpus'], job_parms['mem_requested'], job_parms['walltime'],
             job_parms['name'], waitfor, queue, args)
+        #submit_command = "sbatch -D \'%s\' -c%s --mem=%s000 --mail-type=FAIL -J \'%s\' %s %s %s" % (
+        #    job_parms["work_dir"], job_parms['num_cpus'], job_parms['mem_requested'],
+        #    job_parms['name'], waitfor, queue, args)
         logging.debug("submit_command = %s" % submit_command)
         output = subprocess.getoutput("%s --wrap=\"%s\"" % (submit_command, command))
         logging.debug("output = %s" % output)
@@ -327,7 +329,7 @@ def _run_bwa(sample, reads, reference, outdir='', dependency=None, remove_dups=F
     #samtools 1.3 version
     samsort_command = "%s sort -T %s -o %s -" % (sampath, bam_nickname, final_file)
     if remove_dups:
-        samsort_command = "%s fixmate -m - - | %s sort -O BAM | %s markdup -r - %s.bam" % (sampath, sampath, sampath, bam_nickname)
+        samsort_command = "%s fixmate -m - - | %s sort -O BAM | %s markdup -r - %s" % (sampath, sampath, sampath, final_file)
     samindex_command = "%s index %s" % (sampath, final_file)
     command = "%s | %s | %s ; %s" % (aligner_command, samview_command, samsort_command, samindex_command)
 
@@ -358,7 +360,7 @@ def _run_bowtie2(sample, reads, reference, outdir='', dependency=None, remove_du
     #samtools 1.3 version
     samsort_command = "%s sort -T %s -o %s -" % (sampath, bam_nickname, final_file)
     if remove_dups:
-        samsort_command = "%s fixmate -m - - | %s sort -O BAM | %s markdup -r - %s.bam" % (sampath, sampath, sampath, bam_nickname)
+        samsort_command = "%s fixmate -m - - | %s sort -O BAM | %s markdup -r - %s" % (sampath, sampath, sampath, final_file)
     samindex_command = "%s index %s" % (sampath, final_file)
     command = "%s | %s | %s ; %s" % (aligner_command, samview_command, samsort_command, samindex_command)
 
@@ -388,7 +390,7 @@ def _run_novoalign(sample, reads, reference, outdir='', dependency=None, remove_
     #samtools 1.3 version
     samsort_command = "%s sort -T %s -o %s -" % (sampath, bam_nickname, final_file)
     if remove_dups:
-        samsort_command = "%s fixmate -m - - | %s sort -O BAM | %s markdup -r - %s.bam" % (sampath, sampath, sampath, bam_nickname)
+        samsort_command = "%s fixmate -m - - | %s sort -O BAM | %s markdup -r - %s" % (sampath, sampath, sampath, final_file)
     samindex_command = "%s index %s" % (sampath, final_file)
     command = "%s | %s | %s ; %s" % (aligner_command, samview_command, samsort_command, samindex_command)
 
@@ -487,6 +489,29 @@ def indexFasta(fasta, aligner="bwa"):
     else:
         command = "bwa index %s" % (fasta)
     return _submit_job(job_manager, command, job_params)
+
+def subsampleReads(sample, reads, outdir, number, dependency):
+    from collections import namedtuple
+    import os
+    read1 = reads[0]
+    read2 = reads[1] if len(reads) > 1 else None
+    SubsampledRead = namedtuple('SubsampledRead', ['sample', 'jobid', 'reads'])
+    subsample_dir = os.path.join(outdir, 'subsampled')
+    if not os.path.exists(subsample_dir):
+        os.makedirs(subsample_dir)
+    job_params = {'queue':'', 'mem_requested':8, 'num_cpus':4, 'walltime':8, 'args':''}
+    job_params['name'] = "asap_subsample_%s" % sample
+    job_params['work_dir'] = subsample_dir
+    if read2:
+        out_reads1 = [sample + "_R1_subsampled.fastq.gz"]
+        out_reads2 = [sample + "_R2_subsampled.fastq.gz"]
+        out_reads = [os.path.join(subsample_dir, out_reads1[0]), os.path.join(subsample_dir, out_reads2[0])]
+        command = "reformat.sh -da -Xmx%sg threads=%d in1=%s in2=%s out1=%s out2=%s samplereadstarget=%d" % (job_params['mem_requested'], job_params['num_cpus'], read1, read2, out_reads[0], out_reads[1], number)
+    else:
+        out_reads = [os.path.join(subsample_dir, sample + "_subsampled.fastq.gz")]
+        command = "reformat.sh -da -Xmx%sg threads=%d in=%s out=%s samplereadstarget=%d" % (job_params['mem_requested'], job_params['num_cpus'], read1, out_reads[0], number)
+    jobid = _submit_job(job_manager, command, job_params, (dependency,)) if dependency else _submit_job(job_manager, command, job_params)
+    return SubsampledRead(sample, jobid, out_reads)
 
 def _run_trimmomatic(sample, reads, outdir, quality, adapters, minlen, dependency):
     from collections import namedtuple
@@ -662,14 +687,14 @@ def processBam(sample_name, json_file, bam_file, xml_dir, dependency, depth, bre
     mark_del_option = " --mark-deletions %s" % fill_del_char if fill_del_char else ""
     if percidlist:
         percidstr = listToString(percidlist, " ")
-        command = getBamProcessorCMD() + " -j %s -b %s -o %s -d %d --breadth %f -p %f -m %d -i %f%s%s%s%s%s --allele-output-threshold %d --primer-mask %s --primer-wiggle %i --primer-mask-bam %s --primer-only-bam %s --min_base_qual %i --consensus-proportion %f --identitylist %s" % (
+        command = getBamProcessorCMD() + " -j %s -b %s -o %s -d %d --breadth %f -p %f -m %d -i %f%s%s%s%s%s --allele-output-threshold %d --primer-mask %s --primer-wiggle %i --primer-mask-bam %s --primer-only-bam %s --min-base-qual %i --consensus-proportion %f --identitylist %s" % (
          json_file, bam_file, out_file, depth, breadth, proportion, mutdepth,
          percid, smor_option, wholegenome_option, debug_option, fill_gap_option,
          mark_del_option, allele_min_reads, primer_mask_file, wiggle, pmaskbam,
          ponlybam, base_qual, con_prop, percidstr)
         pass
     else:
-        command = getBamProcessorCMD() + " -j %s -b %s -o %s -d %d --breadth %f -p %f -m %d -i %f%s%s%s%s%s --allele-output-threshold %d --primer-mask %s --primer-wiggle %i --primer-mask-bam %s --primer-only-bam %s --min_base_qual %i --consensus-proportion %f" % (json_file, bam_file, out_file, depth, breadth, proportion, mutdepth, percid, smor_option, wholegenome_option, debug_option, fill_gap_option, mark_del_option, allele_min_reads, primer_mask_file, wiggle, pmaskbam, ponlybam, base_qual, con_prop)
+        command = getBamProcessorCMD() + " -j %s -b %s -o %s -d %d --breadth %f -p %f -m %d -i %f%s%s%s%s%s --allele-output-threshold %d --primer-mask %s --primer-wiggle %i --primer-mask-bam %s --primer-only-bam %s --min-base-qual %i --consensus-proportion %f" % (json_file, bam_file, out_file, depth, breadth, proportion, mutdepth, percid, smor_option, wholegenome_option, debug_option, fill_gap_option, mark_del_option, allele_min_reads, primer_mask_file, wiggle, pmaskbam, ponlybam, base_qual, con_prop)
     jobid = _submit_job(job_manager, command, job_params, (dependency,)) if dependency else _submit_job(job_manager, command, job_params)
     return (out_file, jobid)
 

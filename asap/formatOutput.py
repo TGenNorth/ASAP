@@ -119,16 +119,18 @@ USAGE
         dom = ET.parse(xml_file)
         xslt = ET.parse(stylesheet)
         transform = ET.XSLT(xslt)
-        newdom = transform(dom)
-
-        if out_file:
-            output = open(out_file, 'wb')
-            if text:
-                output.write(newdom)
-            else:
-                output.write(ET.tostring(newdom, pretty_print=True, xml_declaration=True, encoding='UTF-8'))
-            output.close()
-
+        try:
+            newdom = transform(dom)
+            if out_file:
+                with open(out_file, 'wb') as output:
+                    if text:
+                        output.write(newdom)
+                    else:
+                        output.write(ET.tostring(newdom, pretty_print=True, xml_declaration=True, encoding='UTF-8'))
+        except:
+            for error in transform.error_log:
+                print(error.message, error.line)
+        
         return 0
     except KeyboardInterrupt:
         ### handle keyboard interrupt ###

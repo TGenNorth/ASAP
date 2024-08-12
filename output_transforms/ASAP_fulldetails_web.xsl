@@ -1,6 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <xsl:stylesheet version="2.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform" xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:exsl="http://exslt.org/common" xmlns:str="http://exslt.org/strings" extension-element-prefixes="exsl str">
-    <xsl:import href="http://exslt.org/str/functions/replace/str.replace.function.xsl"/>
     <xsl:output method="xhtml" doctype-public="-//W3C//DTD XHTML 1.0 Strict//EN" doctype-system="http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd" omit-xml-declaration="yes" encoding="UTF-8" indent="yes"/>
     <xsl:template match="/analysis">
         <html>
@@ -51,71 +50,104 @@
             <div>
                 <a href="#close" title="Close" class="close">X</a>
                 <h2>Amplicon Graph</h2>
-			<canvas id="{@name}-canvas" height="90vh" class="ampCanvas"></canvas>
-			<script>
-			  function render_<xsl:value-of select="str:replace(str:replace(@name, '+', '_'), '-', '_')"/>() {
-				var ctx_<xsl:value-of select="str:replace(str:replace(@name, '+', '_'), '-', '_')"/> = document.getElementById("<xsl:value-of select="@name"/>-canvas").getContext("2d");
-				var chart_<xsl:value-of select="str:replace(str:replace(@name, '+', '_'), '-', '_')"/> = new Chart(ctx_<xsl:value-of select="str:replace(str:replace(@name, '+', '_'), '-', '_')"/>, {
+                       <canvas id="{@name}-canvas" height="90vh" class="ampCanvas"></canvas>
+                       <script>
+			  function render_<xsl:value-of select="translate(translate(@name, '+', '_'), '-', '_')"/>() {
+				var ctx_<xsl:value-of select="translate(translate(@name, '+', '_'), '-', '_')"/> = document.getElementById("<xsl:value-of select="@name"/>-canvas").getContext("2d");
+				var chart_<xsl:value-of select="translate(translate(@name, '+', '_'), '-', '_')"/> = new Chart(ctx_<xsl:value-of select="translate(translate(@name, '+', '_'), '-', '_')"/>, {
                                     type: 'bar',
-				    data: {
-				        labels: "<xsl:value-of select="amplicon/consensus_sequence"/>".split(""),
-				        datasets: [{
-					    type: 'line',
+                                    data: {
+                                        labels: "<xsl:value-of select="amplicon/consensus_sequence"/>".split(""),
+                                        datasets: [{
+                                            type: 'line',
                                             label: 'Consensus Proportion',
-				            yAxisID: 'proportion',
-				            data: [<xsl:value-of select="amplicon/proportions"/>],
-				            borderColor: "#5F9EA0",
-				            borderWidth: 5,
-				            fill: false,
-				            pointRadius: 0,
-				            pointHoverRadius: 3,
-				            pointHoverBorderColor: "#B22222",
-				        },
-				        {
-					    type: 'bar',
-				            label: 'Read Depth',
-				            yAxisID: 'depth',
-				            data: [<xsl:value-of select="amplicon/depths"/>],
-				            backgroundColor: "#FFDEAD",
-				            borderColor: "#DEB887",
-				            borderWidth: 1,
-				            hoverBorderColor: "#B22222",
-				        }]
-				    },
-				    options: {
-					responsive: true,
-					hover: {
-					    mode: 'label'
-					},
-					tooltips: {
-					    mode: 'label'
-					},
-				        scales: {
-				            yAxes: [{
-				            	id: "depth",
-				            	position: "left",
-				                ticks: {
-				                    beginAtZero: true
-				                },
-				            },
-				            {
-				            	id: "proportion",
-				            	position: "right",
-				                ticks: {
-				                    beginAtZero: true
-				                },
-				            }],
-				            xAxes: [{
-				            	gridLines: {
-					            display: false
-				            	},
-			                        categoryPercentage: 1.0,
-			                    }]
-				        }
-				    }
-				});
-				}
-		    </script>
+                                            yAxisID: 'proportion',
+                                            data: [<xsl:value-of select="amplicon/proportions"/>],
+                                            borderColor: "#5F9EA0",
+                                            borderWidth: 5,
+                                            fill: false,
+                                            pointRadius: 0,
+                                            pointHoverRadius: 3,
+                                            pointHoverBorderColor: "#B22222",
+                                        },
+                                        {
+                                            type: 'bar',
+                                            label: 'Read Depth',
+                                            yAxisID: 'depth',
+                                            data: [<xsl:value-of select="amplicon/depths"/>],
+                                            backgroundColor: "#FFDEAD",
+                                            borderColor: "#DEB887",
+                                            borderWidth: 1,
+                                            hoverBorderColor: "#B22222",
+                                        }]
+                                    },
+                                    options: {
+                                        responsive: true,
+                                        hover: {
+                                            mode: 'label'
+                                        },
+                                        tooltips: {
+                                            mode: 'label'
+                                        },
+                                        scales: {
+                                            yAxes: [{
+                                                id: "depth",
+                                                position: "left",
+                                                ticks: {
+                                                    beginAtZero: true
+                                                },
+                                            },
+                                            {
+                                                id: "proportion",
+                                                position: "right",
+                                                ticks: {
+                                                    beginAtZero: true
+                                                },
+                                            }],
+                                            xAxes: [{
+                                                gridLines: {
+                                                    display: false
+                                                },
+                                                categoryPercentage: 1.0,
+                                            borderColor: "#DEB887",
+                                            borderWidth: 1,
+                                            hoverBorderColor: "#B22222",
+                                        }]
+                                    },
+                                    options: {
+                                        responsive: true,
+                                        hover: {
+                                            mode: 'label'
+                                        },
+                                        tooltips: {
+                                            mode: 'label'
+                                        },
+                                        scales: {
+                                            yAxes: [{
+                                                id: "depth",
+                                                position: "left",
+                                                ticks: {
+                                                    beginAtZero: true
+                                                },
+                                            },
+                                            {
+                                                id: "proportion",
+                                                position: "right",
+                                                ticks: {
+                                                    beginAtZero: true
+                                                },
+                                            }],
+                                            xAxes: [{
+                                                gridLines: {
+                                                    display: false
+                                                },
+                                                categoryPercentage: 1.0,
+                                            }]
+                                        }
+                                    }
+                                });
+                                }
+                    </script>
             </div>
         </div>
     </xsl:template>
@@ -212,9 +244,9 @@
 	    		</tr>
 	    		<xsl:for-each select="assay">
 	    		    <xsl:if test="@type = 'presence/absence' and amplicon/@reads &gt; 0">
-	    		    <xsl:call-template name="amplicon-graph"></xsl:call-template>
+                            <xsl:call-template name="amplicon-graph"></xsl:call-template>
 	    		    <tr>
-	    		        <td><a href="#{@name}-graph" onclick="render_{str:replace(str:replace(@name, '+', '_'), '-', '_')}()"><xsl:value-of select="@name"/></a></td>
+	    		        <td><a href="#{@name}-graph" onclick="render_{translate(translate(@name, '+', '_'), '-', '_')}()"><xsl:value-of select="@name"/></a></td>
 	    		        <td><xsl:value-of select="amplicon/@reads"/></td>
 	    		        <td><xsl:value-of select='format-number(amplicon/breadth, "##.##")'/>%</td>
 	    		        <td><xsl:value-of select="amplicon/significance"/><xsl:if test="amplicon/significance/@flag"> (<xsl:value-of select="amplicon/significance/@flag"/>)</xsl:if></td>
@@ -237,9 +269,9 @@
 	    		</tr>
 	    		<xsl:for-each select="assay">
 	    		    <xsl:if test="@type = 'SNP' or @type = 'mixed'">
-	    		    <xsl:call-template name="amplicon-graph"></xsl:call-template>
+                            <xsl:call-template name="amplicon-graph"></xsl:call-template>
 	    		    <tr>
-	    		        <td><a href="#{@name}-graph" onclick="render_{str:replace(str:replace(@name, '+', '_'), '-', '_')}()"><xsl:value-of select="@name"/></a></td>
+	    		        <td><a href="#{@name}-graph" onclick="render_{translate(translate(@name, '+', '_'), '-', '_')}()"><xsl:value-of select="@name"/></a></td>
 	    		        <td><xsl:value-of select="amplicon/@reads"/></td>
 	    		        <xsl:if test="amplicon/@reads &gt; 0">
 		    		        <td><xsl:value-of select='format-number(amplicon/breadth, "##.##")'/>%</td>
@@ -272,9 +304,9 @@
 	    		</tr>
 	    		<xsl:for-each select="assay">
 	    		    <xsl:if test="@type = 'ROI' or @type = 'mixed' and amplicon/region_of_interest">
-	    		    <xsl:call-template name="amplicon-graph"></xsl:call-template>
+                            <xsl:call-template name="amplicon-graph"></xsl:call-template>
 	    		    <tr>
-	    		        <td><a href="#{@name}-graph" onclick="render_{str:replace(str:replace(@name, '+', '_'), '-', '_')}()"><xsl:value-of select="@name"/></a></td>
+	    		        <td><a href="#{@name}-graph" onclick="render_{translate(translate(@name, '+', '_'), '-', '_')}()"><xsl:value-of select="@name"/></a></td>
 	    		        <td><xsl:value-of select="amplicon/@reads"/></td>
 	    		        <xsl:if test="amplicon/@reads &gt; 0">
 		    		        <td><xsl:value-of select='format-number(amplicon/breadth, "##.##")'/>%</td>

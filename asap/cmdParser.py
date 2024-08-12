@@ -7,7 +7,7 @@ asap.cmdParser
 
 @author:     Darrin Lemmer & Caleb Johnson
 
-@copyright:  2015,2019 TGen North. All rights reserved.
+@copyright:  2015,2024 TGen North. All rights reserved.
 
 @license:    ACADEMIC AND RESEARCH LICENSE -- see ../LICENSE
 
@@ -32,7 +32,7 @@ from asap import prepareJSONInput
 from asap import reformatXML
 
 __all__ = []
-__updated__ = '2020-07-20'
+__updated__ = '2024-08-02'
 __date__ = '2015-06-04'
 
 program_name = "asap"
@@ -47,7 +47,7 @@ else:
 program_license = '''%s
 
 Created by TGen North on %s.
-Copyright 2015 TGen North. All rights reserved.
+Copyright 2015, 2024 TGen North. All rights reserved.
 
 Available for academic and research use only under a license
 from The Translational Genomics Research Institute (TGen)
@@ -84,6 +84,8 @@ def main(argv=None):
         optional_group.add_argument("-w", "--whole-genome", action="store_true", dest="wholegenome", default=False, help="JSON file uses a whole genome reference, so don't write out the consensus, depth, and proportion arrays for each sample")
         optional_group.add_argument("--allele-output-threshold", dest="allele_min_reads", default=8, type=int, help="cutoff of # of reads below which allels for amino acids and nucleotide alleles will not be output [default: 8]")
         optional_group.add_argument("--remove-dups", action="store_true", dest="remove_dups", default=False, help="remove duplicate reads (ony makes sense for WGS or WMTS data. [default: False]")
+        optional_group.add_argument("--subsample", dest="numreads", type=int, help="Subsample all read files/pairs down to NUMREADS reads/pairs.")
+        optional_group.add_argument("--min-base-qual", dest="bqual", default=5, type=int, help="what is the minimum base quality score (BQS) to use a position (Phred scale, i.e. 10=90, 20=99, 30=99.9 accuracy) [default: 5]")
         trim_group = parser_analyzeAmplicons.add_argument_group("read trimming options")
         on_off_group = trim_group.add_mutually_exclusive_group()
         on_off_group.add_argument("--trim", default="bbduk", help="perform adapter trimming on reads. [default: bbduk]. NOTE: cannot trim-primers if not using bbduk")
@@ -97,7 +99,7 @@ def main(argv=None):
         align_group.add_argument("--aligner-args", dest="aargs", metavar="ARGS", default='', help="additional arguments to pass to the aligner, enclosed in \"\".")
         align_group.add_argument("-d", "--depth", default=100, type=int, help="minimum read depth required to consider a position covered. [default: 100]")
         align_group.add_argument("-b", "--breadth", default=0.8, type=float, help="minimum breadth of coverage required to consider an amplicon as present. [default: 0.8]")
-        align_group.add_argument("-p", "--proportion", type=float, help="minimum proportion required to call a mutation at a given locus. [default: 0.1]") #Don't explicitly set default because I need to be certain whether user set the value
+        align_group.add_argument("-p", "--proportion", default=-1, type=float, help="minimum proportion required to call a mutation at a given locus. [default: 0.1]") #Set default to -1 so I can tell if user actually set the value or not
         align_group.add_argument("-m", "--mutation-depth", dest="mutdepth", default=5, type=int, help="minimum number of reads required to call a mutation at a given locus. [default: 5]")
         align_group.add_argument("-i", "--identity", dest="percid", default=0, type=float, help="minimum percent identity required to align a read to a reference amplicon sequence. [default: 0]")
         align_group.add_argument("-il", "--identitylist", dest="percidlist", nargs='+', help="amplicon specific percent identies. Space seperated in amplicon then percentage order.")
@@ -106,8 +108,6 @@ def main(argv=None):
         mask_group.add_argument("--primer-wiggle", dest="wiggle", default=9, type=int, help="how many nucleotides outside the primer window should be used to identify primer sequences")
         mask_group.add_argument("--primer-mask-bam", dest="pmaskbam", default=True, help="should primer sequences in the alignement file be changed to N for easy viewing (otherwise only base qual is set to 0)")
         # mask_group.add_argument("--primer-only-bam", dest="ponlybam", default=False, help="Should only sequences with primers be considered when calling variants, currently not implemented")
-        optional_group.add_argument("--min_base_qual", dest="bqual", default=5, type=int, help="what is the minimum base quality score (BQS) to use a position (Phred scale, i.e. 10=90, 20=99, 30=99.9 accuracy")
-        # if min_base_qual=0 and primer-mask=False, then this should behave almost identically to before my edits, there may be some 'negligable' differences
         consensus_group = parser_analyzeAmplicons.add_argument_group("consensus calling options")
         consensus_group.add_argument("--consensus-proportion", default=0.8, type=float, help="minimum proportion required to call at base at that position, else 'N'. [default: 0.8]")
         consensus_group.add_argument("--fill-gaps", nargs="?", const="n", dest="gap_char", help="fill no coverage gaps in the consensus sequence [default: False], optional parameter is the character to use for filling [defaut: n]")
@@ -127,7 +127,7 @@ def main(argv=None):
         #parser.add_argument("-n", "--name", help="sample name, if not provided it will be derived from BAM file")
         parser_bamProcessor.add_argument("-d", "--depth", default=100, type=int, help="minimum read depth required to consider a position covered. [default: 100]")
         parser_bamProcessor.add_argument("--breadth", default=0.8, type=float, help="minimum breadth of coverage required to consider an amplicon as present. [default: 0.8]")
-        parser_bamProcessor.add_argument("-p", "--proportion", default=0.1, type=float, help="minimum proportion required to call a mutation at a given locus. [default: 0.1]")
+        parser_bamProcessor.add_argument("-p", "--proportion", type=float, help="minimum proportion required to call a mutation at a given locus. [default: 0.1]") #Don't explicitly set default because I need to be certain whether user set the value
         parser_bamProcessor.add_argument("-m", "--mutation-depth", dest="mutdepth", default=5, type=int, help="minimum number of reads required to call a mutation at a given locus. [default: 5]")
         identity_group = parser_bamProcessor.add_argument_group("identity filter options")
         identity_group.add_argument("-i", "--identity", dest="percid", default=0, type=float, help="minimum percent identity required to align a read to a reference amplicon sequence. [default: 0]")
@@ -149,7 +149,7 @@ def main(argv=None):
         parser_bamProcessor.add_argument("--primer-wiggle", dest="wiggle", default=9, type=int, help="How many nucleotides outside the primer window should be used to identify primer sequences")
         parser_bamProcessor.add_argument("--primer-mask-bam", dest="pmaskbam", default=True, help="Should primer sequences in the alignement file be changed to N")
         parser_bamProcessor.add_argument("--primer-only-bam", dest="ponlybam", default=True, help="Should only sequences with primers be considered when calling variants")
-        parser_bamProcessor.add_argument("--min_base_qual", dest="bqual", default=5, type=int, help="What is the minimum base quality score to use a position (phred scale, i.e. 10=90, 20=99, 30=99.9, accuraccy")
+        parser_bamProcessor.add_argument("--min-base-qual", dest="bqual", default=5, type=int, help="What is the minimum base quality score to use a position (phred scale, i.e. 10=90, 20=99, 30=99.9, accuracy) [default: 5]")
         parser_bamProcessor.add_argument("--consensus-proportion", default=0.8, type=float, help="minimum proportion required to call at base at that position, else 'N'. [default: 0.8]")
         parser_bamProcessor.add_argument("--fill-gaps", nargs="?", const="n", dest="gap_char", help="fill no coverage gaps in the consensus sequence [default: False], optional parameter is the character to use for filling [defaut: n]")
         parser_bamProcessor.add_argument("--mark-deletions", nargs="?", const="_", dest="del_char", help="fill deletions in the consensus sequence [default: False], optional parameter is the character to use for filling [defaut: _]")

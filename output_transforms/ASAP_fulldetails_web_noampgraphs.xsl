@@ -45,173 +45,11 @@
         </html>
     </xsl:template>
     
-    <xsl:template name="amplicon-graph">
-        <div id="{@name}-graph" class="ampGraph">
-            <div>
-                <a href="#close" title="Close" class="close">X</a>
-                <h2>Amplicon Graph</h2>
-                       <canvas id="{@name}-canvas" height="90vh" class="ampCanvas"></canvas>
-                       <script>
-			  function render_<xsl:value-of select="translate(translate(@name, '+', '_'), '-', '_')"/>() {
-				var ctx_<xsl:value-of select="translate(translate(@name, '+', '_'), '-', '_')"/> = document.getElementById("<xsl:value-of select="@name"/>-canvas").getContext("2d");
-				var chart_<xsl:value-of select="translate(translate(@name, '+', '_'), '-', '_')"/> = new Chart(ctx_<xsl:value-of select="translate(translate(@name, '+', '_'), '-', '_')"/>, {
-                                    type: 'bar',
-                                    data: {
-                                        labels: "<xsl:value-of select="amplicon/consensus_sequence"/>".split(""),
-                                        datasets: [{
-                                            type: 'line',
-                                            label: 'Consensus Proportion',
-                                            yAxisID: 'proportion',
-                                            data: [<xsl:value-of select="amplicon/proportions"/>],
-                                            borderColor: "#5F9EA0",
-                                            borderWidth: 5,
-                                            fill: false,
-                                            pointRadius: 0,
-                                            pointHoverRadius: 3,
-                                            pointHoverBorderColor: "#B22222",
-                                        },
-                                        {
-                                            type: 'bar',
-                                            label: 'Read Depth',
-                                            yAxisID: 'depth',
-                                            data: [<xsl:value-of select="amplicon/depths"/>],
-                                            backgroundColor: "#FFDEAD",
-                                            borderColor: "#DEB887",
-                                            borderWidth: 1,
-                                            hoverBorderColor: "#B22222",
-                                        }]
-                                    },
-                                    options: {
-                                        responsive: true,
-                                        hover: {
-                                            mode: 'label'
-                                        },
-                                        tooltips: {
-                                            mode: 'label'
-                                        },
-                                        scales: {
-                                            yAxes: [{
-                                                id: "depth",
-                                                position: "left",
-                                                ticks: {
-                                                    beginAtZero: true
-                                                },
-                                            },
-                                            {
-                                                id: "proportion",
-                                                position: "right",
-                                                ticks: {
-                                                    beginAtZero: true
-                                                },
-                                            }],
-                                            xAxes: [{
-                                                gridLines: {
-                                                    display: false
-                                                },
-                                                categoryPercentage: 1.0,
-                                            borderColor: "#DEB887",
-                                            borderWidth: 1,
-                                            hoverBorderColor: "#B22222",
-                                        }]
-                                    },
-                                    options: {
-                                        responsive: true,
-                                        hover: {
-                                            mode: 'label'
-                                        },
-                                        tooltips: {
-                                            mode: 'label'
-                                        },
-                                        scales: {
-                                            yAxes: [{
-                                                id: "depth",
-                                                position: "left",
-                                                ticks: {
-                                                    beginAtZero: true
-                                                },
-                                            },
-                                            {
-                                                id: "proportion",
-                                                position: "right",
-                                                ticks: {
-                                                    beginAtZero: true
-                                                },
-                                            }],
-                                            xAxes: [{
-                                                gridLines: {
-                                                    display: false
-                                                },
-                                                categoryPercentage: 1.0,
-                                            }]
-                                        }
-                                    }
-                                });
-                                }
-                    </script>
-            </div>
-        </div>
-    </xsl:template>
-    
     <xsl:template match="sample">
 	<exsl:document method="html" href="{/analysis/@run_name}/{@name}.html">
 	    <html>
 	    <head>
 	    	<title>ASAP Results for Sample: <xsl:value-of select="@name"/></title>
-            <xsl:text disable-output-escaping="yes"><![CDATA[<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.1.0/Chart.min.js"></script>]]></xsl:text>
-	    	<style>
-	    	    .ampGraph {
-	    	        position: fixed;
-	    	        top: 0;
-	    	        right: 0;
-	    	        bottom: 0;
-	    	        left: 0;
-	    	        background: rgba(80,80,80,0.8);
-	    	        z-index: 99999;
-	    	        opacity: 0;
-	    	        -webkit-transition: opacity 400ms ease-in;
-	                -moz-transition: opacity 400ms ease-in;
-	                transition: opacity 400ms ease-in;
-	                pointer-events: none;
-	    	    }
-	    	    .ampGraph:target {
-			opacity:1;
-			pointer-events: auto;
-		    }
-		    .ampGraph <xsl:text disable-output-escaping="yes"><![CDATA[>]]></xsl:text> div {
-			width: 95vw;
-			height: 60vh;
-			position: relative;
-			margin: 10% auto;
-			padding: 5px 20px 13px 20px;
-			border-radius: 10px;
-			background: #fff;
-			background: -moz-linear-gradient(#fff, #999);
-			background: -webkit-linear-gradient(#fff, #999);
-			background: -o-linear-gradient(#fff, #999);
-	            }
-		    .close {
-			background: #606061;
-			color: #FFFFFF;
-			line-height: 25px;
-			position: absolute;
-			right: -12px;
-			text-align: center;
-			top: -10px;
-			width: 24px;
-		        text-decoration: none;
-			font-weight: bold;
-			-webkit-border-radius: 12px;
-			-moz-border-radius: 12px;
-			border-radius: 12px;
-			-moz-box-shadow: 1px 1px 3px #000;
-			-webkit-box-shadow: 1px 1px 3px #000;
-			box-shadow: 1px 1px 3px #000;
-		    }
-		    .close:hover { background: #00d9ff; }
-		    .ampCanvas {
-		        overflow-x: auto;
-		    }
-	    	</style>
 	    </head>
 	    <body>
 	        <center><h1>ASAP Results for Sample: <xsl:value-of select="@name"/></h1></center>
@@ -244,9 +82,8 @@
 	    		</tr>
 	    		<xsl:for-each select="assay">
 	    		    <xsl:if test="@type = 'presence/absence' and amplicon/@reads &gt; 0">
-                            <xsl:call-template name="amplicon-graph"></xsl:call-template>
 	    		    <tr>
-	    		        <td><a href="#{@name}-graph" onclick="render_{translate(translate(@name, '+', '_'), '-', '_')}()"><xsl:value-of select="@name"/></a></td>
+	    		        <td><xsl:value-of select="@name"/></td>
 	    		        <td><xsl:value-of select="amplicon/@reads"/></td>
 	    		        <td><xsl:value-of select='format-number(amplicon/breadth, "##.##")'/>%</td>
 	    		        <td><xsl:value-of select="amplicon/significance"/><xsl:if test="amplicon/significance/@flag"> (<xsl:value-of select="amplicon/significance/@flag"/>)</xsl:if></td>
@@ -269,9 +106,8 @@
 	    		</tr>
 	    		<xsl:for-each select="assay">
 	    		    <xsl:if test="@type = 'SNP' or @type = 'mixed'">
-                            <xsl:call-template name="amplicon-graph"></xsl:call-template>
 	    		    <tr>
-	    		        <td><a href="#{@name}-graph" onclick="render_{translate(translate(@name, '+', '_'), '-', '_')}()"><xsl:value-of select="@name"/></a></td>
+	    		        <td><xsl:value-of select="@name"/></td>
 	    		        <td><xsl:value-of select="amplicon/@reads"/></td>
 	    		        <xsl:if test="amplicon/@reads &gt; 0">
 		    		        <td><xsl:value-of select='format-number(amplicon/breadth, "##.##")'/>%</td>
@@ -304,9 +140,8 @@
 	    		</tr>
 	    		<xsl:for-each select="assay">
 	    		    <xsl:if test="@type = 'ROI' or @type = 'mixed' and amplicon/region_of_interest">
-                            <xsl:call-template name="amplicon-graph"></xsl:call-template>
 	    		    <tr>
-	    		        <td><a href="#{@name}-graph" onclick="render_{translate(translate(@name, '+', '_'), '-', '_')}()"><xsl:value-of select="@name"/></a></td>
+	    		        <td><xsl:value-of select="@name"/></td>
 	    		        <td><xsl:value-of select="amplicon/@reads"/></td>
 	    		        <xsl:if test="amplicon/@reads &gt; 0">
 		    		        <td><xsl:value-of select='format-number(amplicon/breadth, "##.##")'/>%</td>

@@ -6,7 +6,7 @@
     <xsl:template match="/analysis">
         <html>
         <head>
-            <title>SMOR Run Summary for: <xsl:value-of select="@run_name"/></title>
+            <title>Run Summary for: <xsl:value-of select="@run_name"/></title>
             <style type="text/css">
 				.table-header-rotated {
 				  border-collapse: collapse;
@@ -81,87 +81,9 @@
                 <xsl:otherwise>0</xsl:otherwise>
             </xsl:choose>
         </xsl:variable>
-        	<center><h1>TB Clinical SMOR ASAP Run Summary for: <xsl:value-of select="@run_name"/></h1></center>
+        	<center><h1>ASAP Run Summary for: <xsl:value-of select="@run_name"/></h1></center>
 	        <br />
 	        <br />
-            <table class="table-header-rotated">
-	    		<tr>
-	    		<th class="norotate">Sample</th>
-	    		<th class="rotate"><div><span><em>M. tubercolosis</em> Confirmed</span></div></th>
-	    		<th class="rotate"><div><span>Rifampin Resistance</span></div></th>
-	    		<th class="rotate"><div><span>Isoniazid Resistance</span></div></th>
-	    		<th class="rotate"><div><span>Quinolone Resistance</span></div></th>
-	    		<th class="rotate"><div><span>Kanamycin Resistance</span></div></th>
-	    		<th class="rotate"><div><span>Capreomycin Resistance</span></div></th>
-	    		<th class="rotate"><div><span>Amikacin Resistance</span></div></th>
-	    		<th class="rotate"><div><span>Pyrazinamide Resistance</span></div></th>
-	    		<th class="rotate"><div><span>Ethambutal Resistance</span></div></th>
-	    		</tr>
-                <xsl:for-each select="sample">
-                    <tr>
-                        <td class="norotate"><a href="{/analysis/@run_name}/{./@name}.html"><xsl:value-of select="@name"/></a></td>
-                        <td class="rotate" align="center"><xsl:choose><xsl:when test=".//significance[not(@flag)]='Mycobacterium tuberculosis confirmed'"><img src="check.png" style="width:30px;height:30px;"/></xsl:when><xsl:otherwise><img src="cross.png" style="width:30px;height:30px;"/></xsl:otherwise></xsl:choose></td>
-                        <td class="rotate" align="center"><xsl:choose>
-                        	<xsl:when test=".//significance[not(@flag) and contains(@resistance, 'Rifampin') and contains(@level, 'high')]"><font color="red">R</font></xsl:when>
-                        	<xsl:when test=".//significance[not(@flag) and contains(@resistance, 'Rifampin') and not(@level='low')]"><font color="red">HR</font></xsl:when>
-                        	<xsl:when test=".//significance[not(@flag) and contains(@resistance, 'Rifampin')]"><font color="red">LHR</font></xsl:when>
-                        	<xsl:when test=".//significance[@flag and contains(@resistance, 'Rifampin')]">Ind.</xsl:when>
-                        	<xsl:otherwise>S</xsl:otherwise>
-                        </xsl:choose></td>
-                        <td class="rotate" align="center"><xsl:choose>
-                        	<xsl:when test=".//significance[not(@flag) and contains(@resistance, 'Isoniazid') and contains(@level, 'high')]"><font color="red">R</font></xsl:when>
-                        	<xsl:when test=".//significance[not(@flag) and contains(@resistance, 'Isoniazid') and not(@level='low')]"><font color="red">HR</font></xsl:when>
-                        	<xsl:when test=".//significance[not(@flag) and contains(@resistance, 'Isoniazid')]"><font color="red">LHR</font></xsl:when>
-                        	<xsl:when test=".//significance[@flag and contains(@resistance, 'Isoniazid')]">Ind.</xsl:when>
-                        	<xsl:otherwise>S</xsl:otherwise>
-                        </xsl:choose></td>
-                        <td class="rotate" align="center"><xsl:choose>
-                        	<xsl:when test=".//significance[not(@flag) and contains(@resistance, 'Quinolones') and contains(@level, 'high')]"><font color="red">R</font></xsl:when>
-                        	<xsl:when test=".//significance[not(@flag) and contains(@resistance, 'Quinolones') and not(@level='low')]"><font color="red">HR</font></xsl:when>
-                        	<xsl:when test=".//significance[not(@flag) and contains(@resistance, 'Quinolones')]"><font color="red">LHR</font></xsl:when>
-                        	<xsl:when test=".//significance[@flag and contains(@resistance, 'Quinolones')]">Ind.</xsl:when>
-                        	<xsl:otherwise>S</xsl:otherwise>
-                        </xsl:choose></td>
-                        <td class="rotate" align="center"><xsl:choose>
-                          <xsl:when test=".//significance[not(@flag) and contains(@resistance, 'Kanamycin') and contains(@level, 'high')]"><font color="red">R</font></xsl:when>
-                        	<xsl:when test=".//significance[not(@flag) and contains(@resistance, 'Kanamycin') and not(@level='low')]"><font color="red">HR</font></xsl:when>
-                        	<xsl:when test=".//significance[not(@flag) and contains(@resistance, 'Kanamycin')]"><font color="red">LHR</font></xsl:when>
-                        	<xsl:when test=".//significance[@flag and contains(@resistance, 'Kanamycin')]">Ind.</xsl:when>
-                        	<xsl:otherwise>S</xsl:otherwise>
-                        </xsl:choose></td>
-                        <td class="rotate" align="center"><xsl:choose>
-                        	<xsl:when test=".//significance[not(@flag) and contains(@resistance, 'Capreomycin') and contains(@level, 'high')]"><font color="red">R</font></xsl:when>
-                        	<xsl:when test=".//significance[not(@flag) and contains(@resistance, 'Capreomycin') and not(@level='low')]"><font color="red">HR</font></xsl:when>
-                        	<xsl:when test=".//significance[not(@flag) and contains(@resistance, 'Capreomycin')]"><font color="red">LHR</font></xsl:when>
-                        	<xsl:when test=".//significance[@flag and contains(@resistance, 'Capreomycin')]">Ind.</xsl:when>
-                        	<xsl:otherwise>S</xsl:otherwise>
-                        </xsl:choose></td>
-                        <td class="rotate" align="center"><xsl:choose>
-                        	<xsl:when test=".//significance[not(@flag) and contains(@resistance, 'Amikacin') and contains(@level, 'high')]"><font color="red">R</font></xsl:when>
-                        	<xsl:when test=".//significance[not(@flag) and contains(@resistance, 'Amikacin') and not(@level='low')]"><font color="red">HR</font></xsl:when>
-                        	<xsl:when test=".//significance[not(@flag) and contains(@resistance, 'Amikacin')]"><font color="red">LHR</font></xsl:when>
-                        	<xsl:when test=".//significance[@flag and contains(@resistance, 'Amikacin')]">Ind.</xsl:when>
-                        	<xsl:otherwise>S</xsl:otherwise>
-                        </xsl:choose></td>
-                        <td class="rotate" align="center"><xsl:choose>
-                        	<xsl:when test=".//significance[not(@flag) and contains(@resistance, 'Pyrazinamide') and contains(@level, 'high')]"><font color="red">R</font></xsl:when>
-                        	<xsl:when test=".//significance[not(@flag) and contains(@resistance, 'Pyrazinamide') and not(@level='low')]"><font color="red">HR</font></xsl:when>
-                        	<xsl:when test=".//significance[not(@flag) and contains(@resistance, 'Pyrazinamide')]"><font color="red">LHR</font></xsl:when>
-                        	<xsl:when test=".//significance[@flag and contains(@resistance, 'Pyrazinamide')]">Ind.</xsl:when>
-                        	<xsl:otherwise>S</xsl:otherwise>
-                        </xsl:choose></td>
-                        <td class="rotate" align="center"><xsl:choose>
-                        	<xsl:when test=".//significance[not(@flag) and contains(@resistance, 'Ethambutal') and contains(@level, 'high')]"><font color="red">R</font></xsl:when>
-                        	<xsl:when test=".//significance[not(@flag) and contains(@resistance, 'Ethambutal') and not(@level='low')]"><font color="red">HR</font></xsl:when>
-                        	<xsl:when test=".//significance[not(@flag) and contains(@resistance, 'Ethambutal')]"><font color="red">LHR</font></xsl:when>
-                        	<xsl:when test=".//significance[@flag and contains(@resistance, 'Ethambutal')]">Ind.</xsl:when>
-                        	<xsl:otherwise>S</xsl:otherwise>
-                        </xsl:choose></td>
-                    </tr>
-                </xsl:for-each>
-            </table>
-            <br />
-            <br />
             <div class="div-table-column-locked"><table class="table-column-locked">
 	    		<tr>
 	    		<th class="headcol">Mutation</th>
@@ -173,24 +95,31 @@
 	    		</tr>
 	    		<xsl:for-each select="sample[1]/assay[not(@type='presence/absence')]">
 	    		    <xsl:variable name="current_assay" select="./@name"/>
-                    <xsl:text disable-output-escaping="yes"><![CDATA[<tr>]]></xsl:text>
+                            <xsl:text disable-output-escaping="yes"><![CDATA[<tr>]]></xsl:text>
 	    		    <xsl:if test="@type = 'SNP' or @type = 'mixed'">
                             <xsl:for-each select="asap:distinct-values(//assay[@name=current()/@name]//amplicon//snp/@name[. != 'unknown' and . != 'position of interest'])">
                             <xsl:sort select="."/>
 	    		            <xsl:variable name="current_snp" select="."/>
-	                            <th class="headcol"><xsl:value-of select="$current_assay"/>-SMOR <xsl:value-of select="."/></th>
+	                            <th class="headcol"><xsl:value-of select="."/></th>
 	                            <xsl:for-each select="//sample">
 	                                <td nowrap="true">
 	                                <xsl:if test="not(.//assay[@name=$current_assay]//amplicon//snp[@name=$current_snp])"><!-- assay not present --><em>no coverage</em></xsl:if>
 	                                <xsl:for-each select=".//assay[@name=$current_assay]//amplicon//snp[@name=$current_snp]">
+                                            <xsl:if test="position()=1">
 		                            <xsl:choose>
 		                            <xsl:when test="../significance/@flag"><em><xsl:value-of select="../significance/@flag"/></em></xsl:when>
 		                            <xsl:when test="./significance/@flag"><em><xsl:value-of select="./significance/@flag"/></em></xsl:when>
-		                            <xsl:when test="./significance[not(@flag)]">
-		                                <xsl:value-of select="snp_call/@count"/>/<xsl:value-of select="@depth"/>(<xsl:value-of select='format-number(snp_call/@percent, "##.##")'/>%)
-		                            </xsl:when>
-		                            <xsl:otherwise><!-- SNP not present --><xsl:value-of select="snp_call/@count"/>/<xsl:value-of select="@depth"/>(<xsl:value-of select='format-number(snp_call/@percent, "##.##")'/>%)</xsl:otherwise>
+		                            <xsl:otherwise>
+                                                <xsl:variable name="DEPTH" select="@depth"/>
+                                                <xsl:variable name="REF" select="@reference"/>
+                                                <xsl:for-each select="base_distribution/@*">
+                                                <xsl:if test="name() = $REF"><xsl:text disable-output-escaping="yes"><![CDATA[<em>]]></xsl:text></xsl:if>
+                                                    <xsl:value-of select="concat(name(), ':', .,'/')"/><xsl:value-of select="$DEPTH"/>(<xsl:value-of select='format-number(. div $DEPTH * 100, "##.###")'/>%)
+                                                <xsl:if test="name() = $REF"><xsl:text disable-output-escaping="yes"><![CDATA[</em>]]></xsl:text></xsl:if>
+                                                </xsl:for-each>
+                                            </xsl:otherwise>
 		                            </xsl:choose>
+                                            </xsl:if>
 	                                </xsl:for-each>
 	                                </td>
 	                            </xsl:for-each>
@@ -224,7 +153,7 @@
 	    		<!--<xsl:apply-templates select="."/>  -->
                 </xsl:for-each>
             </table></div>
-	    	<em>Values indicate the number of reads in that sample containing that mutation, out of the total number of reads at that position. A value of '0' indicates that that particular mutation wasn't present in that sample.</em>
+	    	<em>Values indicate the number of reads in that sample containing that mutation.</em>
 	    	<br />
 	    	<br />
 	    	<a href="{@run_name}_details.html">Click here for more details</a>
@@ -238,7 +167,7 @@
             <title>Run Summary for: <xsl:value-of select="@run_name"/></title>
         </head>
         <body>
-        	<center><h1>TB Detailed ASAP Run Summary for: <xsl:value-of select="@run_name"/></h1></center>
+        	<center><h1>ASAP Run Summary for: <xsl:value-of select="@run_name"/></h1></center>
 	        <br/>
 	    	<em>Number of reads aligning to each assay</em>
             <table border="1" cellpadding="3">
@@ -562,9 +491,8 @@
 	    		</tr>
 	    		<xsl:for-each select="assay">
 	    		    <xsl:if test="@name = 'IS6110'">
-	    		    <xsl:call-template name="amplicon-graph"></xsl:call-template>
 	    		    <tr>
-	    		        <td><a href="#{@name}-graph" onclick="render_{translate(translate(@name, '+', '_'), '-', '_')}()"><xsl:value-of select="@name"/></a></td>
+	    		        <td><xsl:value-of select="@name"/></td>
 	    		        <td><xsl:value-of select='format-number(amplicon/average_depth, "#.##")'/></td>
 	    		        <td><xsl:value-of select='format-number(amplicon/breadth, "##.##")'/>%</td>
 	    		        <td><xsl:value-of select="amplicon/significance"/><xsl:if test="amplicon/significance/@flag"> (<xsl:value-of select="amplicon/significance/@flag"/>)</xsl:if></td>
@@ -586,9 +514,8 @@
 	    		</tr>
 	    		<xsl:for-each select="assay">
 	    		    <xsl:if test="@type = 'SNP' or @type = 'ROI' or @type = 'mixed'">
-	    		    <xsl:call-template name="amplicon-graph"></xsl:call-template>
 	    		    <tr>
-	    		        <td><a href="#{@name}-graph" onclick="render_{translate(translate(@name, '+', '_'), '-', '_')}()"><xsl:value-of select="@name"/></a></td>
+	    		        <td><xsl:value-of select="@name"/></td>
 	    		        <td><xsl:value-of select='format-number(amplicon/average_depth, "#.##")'/></td>
 	    		        <xsl:if test="amplicon/@reads &gt; 0">
 		    		        <td>
@@ -634,78 +561,4 @@
 	</exsl:document>
     </xsl:template>
     
-    <xsl:template name="amplicon-graph">
-        <div id="{@name}-graph" class="ampGraph">
-            <div>
-                <a href="#close" title="Close" class="close">X</a>
-                <h2>Amplicon Graph</h2>
-			<canvas id="{@name}-canvas" height="90vh" class="ampCanvas"></canvas>
-			<script>
-			  function render_<xsl:value-of select="translate(translate(@name, '+', '_'), '-', '_')"/>() {
-				var ctx_<xsl:value-of select="translate(translate(@name, '+', '_'), '-', '_')"/> = document.getElementById("<xsl:value-of select="@name"/>-canvas").getContext("2d");
-				var chart_<xsl:value-of select="translate(translate(@name, '+', '_'), '-', '_')"/> = new Chart(ctx_<xsl:value-of select="translate(translate(@name, '+', '_'), '-', '_')"/>, {
-                                    type: 'bar',
-				    data: {
-				        labels: "<xsl:value-of select="amplicon/consensus_sequence"/>".split(""),
-				        datasets: [{
-					    type: 'line',
-                                            label: 'Consensus Proportion',
-				            yAxisID: 'proportion',
-				            data: [<xsl:value-of select="amplicon/proportions"/>],
-				            borderColor: "#5F9EA0",
-				            borderWidth: 5,
-				            fill: false,
-				            pointRadius: 0,
-				            pointHoverRadius: 3,
-				            pointHoverBorderColor: "#B22222",
-				        },
-				        {
-					    type: 'bar',
-				            label: 'Read Depth',
-				            yAxisID: 'depth',
-				            data: [<xsl:value-of select="amplicon/depths"/>],
-				            backgroundColor: "#FFDEAD",
-				            borderColor: "#DEB887",
-				            borderWidth: 1,
-				            hoverBorderColor: "#B22222",
-				        }]
-				    },
-				    options: {
-					responsive: true,
-					hover: {
-					    mode: 'label'
-					},
-					tooltips: {
-					    mode: 'label'
-					},
-				        scales: {
-				            yAxes: [{
-				            	id: "depth",
-				            	position: "left",
-				                ticks: {
-				                    beginAtZero: true
-				                },
-				            },
-				            {
-				            	id: "proportion",
-				            	position: "right",
-				                ticks: {
-				                    beginAtZero: true
-				                },
-				            }],
-				            xAxes: [{
-				            	gridLines: {
-					            display: false
-				            	},
-			                        categoryPercentage: 1.0,
-			                    }]
-				        }
-				    }
-				});
-				}
-		    </script>
-            </div>
-        </div>
-    </xsl:template>
-
 </xsl:stylesheet>

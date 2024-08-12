@@ -7,7 +7,7 @@ asap.bamProcessor
 
 @author:     Darrin Lemmer
 
-@copyright:  2015,2019 TGen North. All rights reserved.
+@copyright:  2015,2024 TGen North. All rights reserved.
 
 @license:    ACADEMIC AND RESEARCH LICENSE -- see ../LICENSE
 
@@ -24,9 +24,9 @@ import math
 import pysam
 from collections import Counter
 from xml.etree import ElementTree
-from skbio import DNA
+from skbio import TabularMSA, DNA
+from skbio.alignment import local_pairwise_align_ssw
 
-from asap import dispatcher
 from asap import assayInfo
 from asap import __version__
 from asap import cmdParser
@@ -38,7 +38,7 @@ import array as arr
 
 
 __all__ = []
-__updated__ = '2020-07-20'
+__updated__ = '2024-08-02'
 __date__ = '2015-07-16'
 
 DEBUG = 1
@@ -49,6 +49,7 @@ REMOVE_TEMP = True
 
 low_level_cutoff = 0.01
 high_level_cutoff = 0.50
+proportion = 0.1
 smartSMOR = True
 
 def pairwise(iterable):
@@ -69,6 +70,7 @@ def _primer_mask(primer_file, bam_file_name, wiggle, pmaskbam, ponlybam, smor):
     # assumptions
     # you know that primerF is on read 1 and primer R is for read 2 (as you added the adapters like this)
     # you want to keep singletons (these could be easily removed later)
+    logging.info("Starting primer_mask function")
     samfile = pysam.AlignmentFile(bam_file_name, "rb")
     bam_file_out = os.path.splitext(bam_file_name)[0] + '_primerMasked.bam'
     bamout = pysam.AlignmentFile(bam_file_out, "wb", template=samfile)
@@ -153,7 +155,7 @@ def _primer_mask(primer_file, bam_file_name, wiggle, pmaskbam, ponlybam, smor):
                         # deal with if more than one is true using the min
                         # mask_start = int(reverse_primer_set_strt[tmp_boo2].min()) - align_start + read.query_alignment_start
                         mask_start = (align_start if int(reverse_primer_set_strt[tmp_boo2].min()) < align_start else int(reverse_primer_set_strt[tmp_boo2].min())) - align_start + read.query_alignment_start
-                        read.query_qualities[mask_start:read.query_length] = arr.array("B", [0] * len(read.query_qualities[mask_start:read.query_length])) #arr.array("B", [0] * (read.query_length-mask_start))
+                        read.query_qualities[mask_start:read.query_length] = arr.array("B", [0] * len(read.query_qualities[mask_start:read.query_length])) #arr.array("B", [0] * (read.query_length-mask_start)) 
                         if mask_bases:
                             qual_store = read.query_qualities
                             read.query_sequence = read.query_sequence[:mask_start] + "N" * len(read.query_sequence[mask_start:])
@@ -165,7 +167,7 @@ def _primer_mask(primer_file, bam_file_name, wiggle, pmaskbam, ponlybam, smor):
                     else:
                         no_primer += 1
                 else:
-                    logging.debug("Abbarant read: %s" % read.query_name)
+                    logging.debug("Aberrant read: %s" % read.query_name)
                 bamout.write(read)
             primer_stats.append([chrom, primer_found, no_primer])
         else:
@@ -181,8 +183,8 @@ def _primer_mask(primer_file, bam_file_name, wiggle, pmaskbam, ponlybam, smor):
         pysam.sort("-o", bam_file_out_sorted, bam_file_out)
         bam_file_out = bam_file_out_sorted
     pysam.index(bam_file_out)
-    logging.info("Wrote primer masking alignemnt only file: ", bam_file_out)
-    return pysam.AlignmentFile(bam_file_out, "rb")
+    logging.info("Wrote primer masking alignment only file: %s" % bam_file_out)
+    return bam_file_out
 
 def _process_pileup(pileup, amplicon, depth, proportion, mutdepth, offset, wholegenome, smor, base_qual, con_prop, fill_gap_char, fill_del_char):
     global low_level_cutoff, high_level_cutoff
@@ -197,7 +199,10 @@ def _process_pileup(pileup, amplicon, depth, proportion, mutdepth, offset, whole
     avg_depth_total = avg_depth_positions = 0
     amplicon_length = len(amplicon.sequence)
     depth_array = [0] * amplicon_length
-    discard_array = [0] * amplicon_length
+    quality_discard_array = [0] * amplicon_length
+    if smor:
+        smor_discard_array = [0] * amplicon_length
+        overlap_discard_array = [0] * amplicon_length
     prop_array = ["0"] * amplicon_length
     previous_position = 0
     # for each position in alignment/pileup
@@ -208,6 +213,7 @@ def _process_pileup(pileup, amplicon, depth, proportion, mutdepth, offset, whole
         # This fills gaps in the alignment with n's or user defined char
         if fill_gap_char:
             if previous_position+1 < position: #We've skipped some positions in the alignment
+                #print("%i, %i" % (previous_position, position))
                 for i in range(previous_position+1, position):
                     gapfilled_consensus_seq += fill_gap_char #Fill in the gap
         previous_position = position
@@ -219,6 +225,7 @@ def _process_pileup(pileup, amplicon, depth, proportion, mutdepth, offset, whole
             reads = iter(sorted(pileupcolumn.pileups, key=attrgetter('alignment.query_name')))
             for read, pair in pairwise(reads):
                 if read.alignment.query_name != pair.alignment.query_name:#keep pairs together
+                    overlap_discard_array[pileupcolumn.pos] += 1
                     continue
                 end_count = end_count + 1
                 alignment = read.alignment
@@ -234,7 +241,7 @@ def _process_pileup(pileup, amplicon, depth, proportion, mutdepth, offset, whole
                             depth_array[pileupcolumn.pos] += 1
                             base_counter.update({"_": 1})
                         else:
-                            discard_array[pileupcolumn.pos] += 1
+                            quality_discard_array[pileupcolumn.pos] += 1
                     elif read.alignment.query_qualities[read.query_position] >= base_qual and pair.alignment.query_qualities[pair.query_position] >= base_qual: # check here
                         # Id prefer if the BSQ were recalibrated already by ddbuk
                         # bbmerge.sh in1=reads.F.fq in2=read.R.fq out1=corrected.F.fq out2=corrected.R.fq ecco mix
@@ -250,18 +257,18 @@ def _process_pileup(pileup, amplicon, depth, proportion, mutdepth, offset, whole
                                 depth_array[pileupcolumn.pos] += 1
                                 base_counter.update({alignment.query_sequence[start:end]: 1})
                             else:
-                                discard_array[pileupcolumn.pos] += 1
+                                smor_discard_array[pileupcolumn.pos] += 1
                         elif read.query_position and pair.query_position:
                             if pair.alignment.query_sequence[pair.query_position] == alignment.query_sequence[read.query_position]:
                                 depth_array[pileupcolumn.pos] += 1
                                 base_counter.update(alignment.query_sequence[read.query_position])
                             else:
-                                discard_array[pileupcolumn.pos] += 1
+                                smor_discard_array[pileupcolumn.pos] += 1
                     else:
-                        discard_array[pileupcolumn.pos] += 1
+                        quality_discard_array[pileupcolumn.pos] += 1
                 except Exception:
                     # print("Unexpected error:", sys.exc_info()[0])
-                    discard_array[pileupcolumn.pos] += 1 #check here
+                    quality_discard_array[pileupcolumn.pos] += 1 #check here
                     pass
             # Don't think we need this section here anymore, being handled above.
             # Process any deletions at this position
@@ -296,6 +303,8 @@ def _process_pileup(pileup, amplicon, depth, proportion, mutdepth, offset, whole
                         if qscore >= base_qual:
                             passed_Qual_filter += 1
                             base_counter.update({"_" : 1})
+                        else:
+                            quality_discard_array[pileupcolumn.pos]
                     elif pileupread.alignment.query_qualities[pileupread.query_position] >= base_qual: # check here
                         passed_Qual_filter += 1
                         if pileupread.indel < 0: #This means the next position is a deletion, we'll process later
@@ -308,12 +317,12 @@ def _process_pileup(pileup, amplicon, depth, proportion, mutdepth, offset, whole
                         else:
                             base_counter.update(pileupread.alignment.query_sequence[pileupread.query_position])
                     else:
-                        discard_array[pileupcolumn.pos] += 1
+                        quality_discard_array[pileupcolumn.pos] += 1
                 except Exception as e:
                     if str(e.__class__.__name__) != "TypeError":
                         print("Unexpected error:", sys.exc_info()[0])
                         pass
-                    discard_array[pileupcolumn.pos] += 1 #check here
+                    quality_discard_array[pileupcolumn.pos] += 1 #check here
                     pass
             # Don't think we need this section here anymore, being handled above.
             # Process any deletions at this position
@@ -324,7 +333,8 @@ def _process_pileup(pileup, amplicon, depth, proportion, mutdepth, offset, whole
         if column_depth == None: # this means did not do smor, so set column_depth to whole depth
             pileupcolumn.n = passed_Qual_filter # check this, changing to the reads that possed BQS filter, doing it like this as I think pileupcolumn.n is called later
             column_depth = pileupcolumn.n #- failed_Qual_filter # check this, this will count bases that have been filtered out by quality?
-        if column_depth > 0: #TODO: This is going to end up being specific to these TB assays, maybe have a clever way to make this line optional
+            depth_array[pileupcolumn.pos] = pileupcolumn.n #reset to depth that passed qual filter
+        if column_depth > 0: #TODO: This is going to end up being specific to these TB assays (with flanking sequence), maybe have a clever way to make this line optional
             avg_depth_positions += 1
             avg_depth_total += column_depth
         if column_depth >= depth:
@@ -354,6 +364,7 @@ def _process_pileup(pileup, amplicon, depth, proportion, mutdepth, offset, whole
             snp_call = snp_count = snp_call_proportion = None
         if smor:
             (proportion, low_level_cutoff, high_level_cutoff) = _compute_thresholds_SMOR(column_depth)
+            #print("smartSMOR =",smartSMOR,", depth =",column_depth,", proportion =",proportion,"\n")
 
         #Generate consensus call at this pos
         #consensus_seq += alignment_call if alignment_call_proportion >= consensus_proportion else "N"
@@ -425,7 +436,9 @@ def _process_pileup(pileup, amplicon, depth, proportion, mutdepth, offset, whole
         pileup_dict['proportions'] = ",".join(prop_array)
     pileup_dict['breadth'] = str(breadth_positions/amplicon_length * 100)
     if smor:
-        pileup_dict['discards'] = ",".join(str(n) for n in discard_array)
+        pileup_dict['smor_discards'] = ",".join(str(n) for n in smor_discard_array)
+        pileup_dict['nonoverlap_discards'] = ",".join(str(n) for n in overlap_discard_array)
+    pileup_dict['quality_discards'] = ",".join(str(n) for n in quality_discard_array)
     pileup_dict['SNPs'] = snp_list
     pileup_dict['average_depth'] = str(avg_depth_total/avg_depth_positions) if avg_depth_positions else "0"
     return pileup_dict
@@ -505,10 +518,8 @@ def _process_roi(roi, samdata, amplicon_ref, smor, amplicon_ref_len, reverse_com
             if read.reference_end == None or read.reference_start == None:
                 continue
             n += 1
-            if read.reference_end - read.reference_start < expected_length:
+            if read.reference_end - read.reference_start < (expected_length * 0.9):
                 failed +=1
-            if n >= 100:
-                break
         if n == 0:
             # roi_dict['flag'] = "region not found"
             print("WARNING::region not found")
@@ -536,6 +547,7 @@ def _process_roi(roi, samdata, amplicon_ref, smor, amplicon_ref_len, reverse_com
                 nt_sequence = DNA(read)
                 if reverse_comp:
                     nt_sequence = nt_sequence.reverse_complement()
+                #scikit-bio doesn't support translating degenerate bases currently, so we will just throw out reads with degenerates for now
                 if nt_sequence.has_degenerates():
                     continue
                 aa_sequence = nt_sequence.translate()
@@ -548,9 +560,13 @@ def _process_roi(roi, samdata, amplicon_ref, smor, amplicon_ref_len, reverse_com
             aligned_reads = samdata.fetch(amplicon_ref, start, end)
             for read in aligned_reads:
                 rstart = read.reference_start
-                alignment_length = read.get_overlap(start, end)
+                rend = read.reference_end
+                #alignment_length = read.get_overlap(start, end)
                 #throw out reads that either have gaps in the ROI or don't cover the whole ROI
-                if alignment_length != expected_length:
+                #if alignment_length != expected_length:
+                #    continue
+                #Keep reads with indels, but do throw out reads that don't cover whole ROI
+                if not rend or rstart > start or rend < end:
                     continue
                 if rstart <= start:
                     if not use_query_alignment_seq:
@@ -583,10 +599,15 @@ def _process_roi(roi, samdata, amplicon_ref, smor, amplicon_ref_len, reverse_com
                 nt_sequence = nt_sequence2 = None
                 rstart1 = read.reference_start
                 rstart2 = pair.reference_start
+                rend1 = read.reference_end
+                rend2 = pair.reference_end
                 alignment_length1 = read.get_overlap(start, end)
                 alignment_length2 = pair.get_overlap(start, end)
-                #throw out reads that are not the same length as their pair
+                #Throw out reads that are not the same length as their pair
                 if alignment_length1 != alignment_length2:
+                    continue
+                #Throw out reads that don't cover the whole ROI
+                if not rend1 or not rend2 or rstart1 > start or rstart2 > start or rend1 < end or rend2 < end:
                     continue
                 if rstart1 <= start:
                     if not use_query_alignment_seq:
@@ -684,6 +705,12 @@ def _add_roi_node(parent, roi, roi_dict, depth, proportion, mutdepth, smor, offs
     reporting_threshold = max(mutdepth, math.ceil(int(roi_dict['depth']) * proportion))
     #print(proportion, low_level_cutoff, high_level_cutoff, int(roi_dict['depth']), reporting_threshold)
     cutOff = int(roi_dict['depth']) * .02
+    range_match = re.search('(\d*)-(\d*)', roi.position_range)
+    start = int(range_match.group(1)) - 1
+    end = int(range_match.group(2))
+    if end < start:
+        reverse_comp = True
+        start,end = end,start
     dominant_count = 0; #Number of reads containing the most common amino acid sequence
     aa_seq_counter = roi_dict['aa_sequence_distribution']
     aa_allele_count = 0
@@ -753,12 +780,76 @@ def _add_roi_node(parent, roi, roi_dict, depth, proportion, mutdepth, smor, offs
             break #Since they are returned in order by count, as soon as one is below the threshold the rest will be as well
 
     nt_seq_counter = roi_dict['nt_sequence_distribution']
+    skbio_reference = None
+    if roi.nt_sequence:
+        skbio_reference = DNA(roi.nt_sequence)
     for (seq, count) in nt_seq_counter.most_common():
         if count >= reporting_threshold:
             nt_seq_node = ElementTree.SubElement(roi_node, "nucleotide_sequence", {'count':str(count), 'percent':str(count/int(roi_dict['depth'])*100)})
             nt_seq_node.text = seq
+            if skbio_reference:
+                #align to reference
+                alignment, score, start_end_positions = local_pairwise_align_ssw(skbio_reference,DNA(seq))
+                #get string of the nt changes
+                changes = []
+                all_changes = []
+                i=1
+                for aligned_seq_pos in alignment.iter_positions():
+                    if str(aligned_seq_pos[1]) == '-' :
+                        change = [i+start, str(aligned_seq_pos[0]), "_"]
+                        all_changes.append(change)
+                        changes.append(change)
+                        i = i+1
+                    elif str(aligned_seq_pos[0]) == '-':
+                        change = [i+start, "_", str(aligned_seq_pos[1])]
+                        all_changes.append(change)
+                        changes.append(change)
+                        #Don't advance the counter for gaps in the reference
+                    elif aligned_seq_pos[0] != aligned_seq_pos[1]:
+                        change = [i+start, str(aligned_seq_pos[0]), str(aligned_seq_pos[1])]
+                        all_changes.append(change)
+                        changes.append(change)
+                        i = i+1
+                    else:
+                        i = i+1
+                shift = 0
+                #create change string with '1' and '2' that will be replaced by <b><u> and </u></b> in post-processing
+                for change in all_changes:
+                    loc = change[0] - start - 1 + shift
+                    temp = seq
+                    if change[2] == '_':
+                        temp = seq[0:loc] + '1' + '_' + '2' + seq[loc:]
+                    elif change[1] == '_':
+                        #What do we do with insertions
+                        continue
+                    else:
+                        temp = seq[0:loc] + '1' + seq[loc] + '2' + seq[loc + 1:]
+                    shift += 2
+                    seq = temp
+                nt_seq_node.set('underline_seq', seq)
+                #create changes strings, adjusting the nt coordinates to be gene-relative
+                if all_changes != []:
+                    change_string = ""
+                    for all_change in all_changes:
+                        if all_change[0] >= abs(offset) and offset < 0: #if the offset is negative, ie. amplicon starts before beginning of the gene, then when converting to gene-based coordinates need to make offset 1 unit more positive to account for there being no 0-base in gene-coordinates
+                            all_change[0] = all_change[0] + (offset + 1)
+                        else:
+                            all_change[0] = all_change[0] + offset #normal case where gene encompasses the amplicon
+                        change_string += ', ' + all_change[1] + str(all_change[0]) + all_change[2]
+                    nt_seq_node.set('nt_changes_specific_all', change_string)
+                    change_string = ""
+                    for change in changes:
+                        #don't need to shift the nt coordinates here again because all_changes and changes are filled with same, shallow copied, lists
+                        if change[0] < 0:
+                            continue
+                        else:
+                            change_string += change[1] + str(change[0]) + change[2] + ', '
+                    nt_seq_node.set('nt_changes_specific', change_string)
+            else:
+                continue #If we don't have a reference NT sequence, then we can't display the changes
         else:
             break #Since they are returned in order by count, as soon as one is below the threshold the rest will be as well
+
     allele_count = 0
     for (seq, count) in nt_seq_counter.most_common():
         #get most frequent alleles that have a freq of > 2% (this is an arbitrary cut-off)
@@ -843,6 +934,7 @@ def _add_dummy_roi_node(parent, roi):
     return roi_node
 
 def _compute_thresholds_SMOR(smor_count):
+    global smartSMOR, proportion, low_level_cutoff, high_level_cutoff
     if not smartSMOR:
         return (proportion, low_level_cutoff, high_level_cutoff) # Use user-specified proportion and default cutoff values
     #else use smartSMOR
@@ -1156,6 +1248,8 @@ def evaluateOperation(operation, sample_node):
 def main(argv=None): # IGNORE:C0111
     '''Command line options.'''
 
+    global smartSMOR, proportion
+
     if argv is None:
         argv = sys.argv
     else:
@@ -1189,7 +1283,7 @@ def main(argv=None): # IGNORE:C0111
 
     try:
         # Setup argument parser
-        # parser = argparse.ArgumentParser(prog='Tgen-ASAP', description=program_license, formatter_class=argparse.RawTextHelpFormatter)
+        # parser = argparse.ArgumentParser(prog='TGen-ASAP', description=program_license, formatter_class=argparse.RawTextHelpFormatter)
         # subparsers = parser.add_subparsers(help='sub-command help')
         # parser_bamProcessor = subparsers.add_parser('bamProcessor', help='bamProcessor help')
         # required_group = parser_bamProcessor.add_argument_group("required arguments")
@@ -1201,7 +1295,7 @@ def main(argv=None): # IGNORE:C0111
         # #parser.add_argument("-n", "--name", help="sample name, if not provided it will be derived from BAM file")
         # parser_bamProcessor.add_argument("-d", "--depth", default=100, type=int, help="minimum read depth required to consider a position covered. [default: 100]")
         # parser_bamProcessor.add_argument("--breadth", default=0.8, type=float, help="minimum breadth of coverage required to consider an amplicon as present. [default: 0.8]")
-        # parser_bamProcessor.add_argument("-p", "--proportion", default=0.1, type=float, help="minimum proportion required to call a mutation at a given locus. [default: 0.1]")
+        # parser_bamProcessor.add_argument("-p", "--proportion", type=float, help="minimum proportion required to call a mutation at a given locus. [default: 0.1]") #Don't explicitly set default because I need to be certain whether user set the value
         # parser_bamProcessor.add_argument("-m", "--mutation-depth", dest="mutdepth", default=5, type=int, help="minimum number of reads required to call a mutation at a given locus. [default: 5]")
         # identity_group = parser_bamProcessor.add_argument_group("identity filter options")
         # identity_group.add_argument("-i", "--identity", dest="percid", default=0, type=float, help="minimum percent identity required to align a read to a reference amplicon sequence. [default: 0]")
@@ -1223,7 +1317,7 @@ def main(argv=None): # IGNORE:C0111
         # parser_bamProcessor.add_argument("--primer-wiggle", dest="wiggle", default=9, type=int, help="How many nucleotides outside the primer window should be used to identify primer sequences")
         # parser_bamProcessor.add_argument("--primer-mask-bam", dest="pmaskbam", default=True, help="Should primer sequences in the alignement file be changed to N")
         # parser_bamProcessor.add_argument("--primer-only-bam", dest="ponlybam", default=True, help="Should only sequences with primers be considered when calling variants")
-        # parser_bamProcessor.add_argument("--min_base_qual", dest="bqual", default=5, type=int, help="What is the minimum base quality score to use a position (phred scale, i.e. 10=90, 20=99, 30=99.9, accuraccy")
+        # parser_bamProcessor.add_argument("--min-base-qual", dest="bqual", default=5, type=int, help="What is the minimum base quality score to use a position (phred scale, i.e. 10=90, 20=99, 30=99.9 accuracy) [default: 5]")
         # parser_bamProcessor.add_argument("--consensus-proportion", default=0.8, type=float, help="minimum proportion required to call at base at that position, else 'N'. [default: 0.8]")
         # parser_bamProcessor.add_argument("--fill-gaps", nargs="?", const="n", dest="gap_char", help="fill no coverage gaps in the consensus sequence [default: False], optional parameter is the character to use for filling [defaut: n]")
         # parser_bamProcessor.add_argument("--mark-deletions", nargs="?", const="_", dest="del_char", help="fill deletions in the consensus sequence [default: False], optional parameter is the character to use for filling [defaut: _]")
@@ -1235,8 +1329,9 @@ def main(argv=None): # IGNORE:C0111
         else:
             args = cmdParser.parser.parse_args(argv)
 
-        json_fp = args.json.name
+        json_fp = args.json
         bam_fp = args.bam
+        bam_file = bam_fp.name
         depth = args.depth
         breadth = args.breadth
         proportion = args.proportion
@@ -1261,6 +1356,16 @@ def main(argv=None): # IGNORE:C0111
         fill_gap_char = args.gap_char
         fill_del_char = args.del_char
 
+        if smor:
+            if proportion > 0.0:
+                smartSMOR = False #Turn off smartSMOR if user explicitely sets proportion flag
+            else:
+                proportion = 0.001 #Set SMOR default
+        else:
+            if proportion <= 0.0:
+                proportion = 0.1 #Set default if user did not specify
+
+ 
         #ref_fp = args.ref
         #out_dir = args.odir
         #if not out_dir:
@@ -1304,22 +1409,23 @@ def main(argv=None): # IGNORE:C0111
         # minidom.parseString will raise xml.parsers.expat.ExpatError: not well-formed (invalid token)
         # if json_file or bam_file contain the python string representation of a file-like object.
         # e.g. bam_file="<_io.BufferedReader name=\'/shared/Targeted_sequence_fastqs/ASAP/COD-10-24_S302.bam\'>"
-        sample_dict['json_file'] = json_fp
+        sample_dict['json_file'] = json_fp.name
         sample_dict['bam_file'] = bam_fp.name
         sample_node = ElementTree.Element("sample", sample_dict)
 
         if primer_mask_file != 'False' and not wholegenome: #its been converted to a string from the analyzeAmplicons input
-            samdata = _primer_mask(primer_file=primer_mask_file, bam_file_name=str(bam_fp.name), wiggle=wiggle, pmaskbam=pmaskbam, ponlybam=ponlybam, smor=smor)
-
+            masked_bam_file = _primer_mask(primer_file=primer_mask_file, bam_file_name=str(bam_fp.name), wiggle=wiggle, pmaskbam=pmaskbam, ponlybam=ponlybam, smor=smor)
+            samdata = pysam.AlignmentFile(masked_bam_file, "rb")
+            bam_file = masked_bam_file #Make sure we use the new bam from this point forward
 
         if INFO or debug:
             if not os.path.isdir("./bamProcessorLogs"):
                 os.mkdir("./bamProcessorLogs")
                 pass
+            logfile = "./bamProcessorLogs/%s.log" % sample_dict['name']
             pass
 
         if INFO:
-            logfile = "./bamProcessorLogs/%s.log" % sample_dict['name']
             logging.basicConfig(level=logging.INFO,
                                 format='%(asctime)s %(levelname)-8s %(message)s',
                                 datefmt='%m/%d/%Y %H:%M:%S',
@@ -1344,19 +1450,27 @@ def main(argv=None): # IGNORE:C0111
             assay_dict['type'] = assay.assay_type
             assay_dict['function'] = assay.target.function or ""
             assay_dict['gene'] = assay.target.gene_name or ""
+            assay_dict['start'] = assay.target.start_position or ""
+            assay_dict['end'] = assay.target.end_position or ""
             logging.info("Assay: "+str(assay.name))
             #offset is where the amplicon sits relative to a reference, subtract 1 to make 0-based position
             #report the lesser of start and end in case amplicon is on reverse strand
             try:
                 offset = min(int(assay.target.start_position), int(assay.target.end_position))-1
+                ref_positions = list(range(min(int(assay.target.start_position), int(assay.target.end_position)),max(int(assay.target.start_position), int(assay.target.end_position))+1))
+                #remove the zero if present
+                if 0 in ref_positions:
+                    ref_positions.remove(0)
             except:
                 offset = 0
+                ref_positions = None
             assay_node = ElementTree.SubElement(sample_node, "assay", assay_dict)
             ref_name = assay.name
             reverse_comp = assay.target.reverse_comp
-            # logging.info("Checking target amplicons: "+str(assay.target.amplicons))
             for amplicon in assay.target.amplicons:
                 logging.info("+++AMPLICON+++")
+                if not ref_positions:
+                    ref_positions = list(range(1, len(amplicon.sequence)+1))
                 temp_file = None
                 ref_name = assay.name + "_%s" % amplicon.variant_name if amplicon.variant_name else assay.name
                 logging.info("Now Checking Amplicon: "+str(ref_name))
@@ -1399,7 +1513,7 @@ def main(argv=None): # IGNORE:C0111
                     pass
                     logging.info("===PERCID END===")
                 elif samdata.closed:
-                    samdata = pysam.AlignmentFile(bam_fp, "rb")
+                    samdata = pysam.AlignmentFile(bam_file, "rb")
                 amplicon_dict['reads'] = str(samdata.count(ref_name))
                 if amplicon.variant_name:
                     amplicon_dict['variant'] = amplicon.variant_name
@@ -1445,7 +1559,7 @@ def main(argv=None): # IGNORE:C0111
                                     resistances.add(roi.significance.resistance)
                             if resistances:
                                 significance_node.set("resistance", ",".join(resistances))
-                    pileup = samdata.pileup(ref_name, max_depth=1000000, ignore_orphans=False, ignore_overlaps=False)
+                    pileup = samdata.pileup(ref_name, max_depth=10000000, ignore_orphans=False, ignore_overlaps=False)
                     amplicon_data = _process_pileup(pileup, amplicon, depth, proportion, mutdepth, offset, wholegenome, smor, base_qual, con_prop, fill_gap_char, fill_del_char)
                     if float(amplicon_data['breadth']) < breadth*100:
                         significance_node = amplicon_node.find("significance")
@@ -1460,7 +1574,9 @@ def main(argv=None): # IGNORE:C0111
                         # print(samdata.count_coverage(ref_name, snp.position-1, snp.position))
                     del amplicon_data['SNPs']
                     _write_parameters(amplicon_node, amplicon_data)
-
+                    if not wholegenome:
+                        ref_positions_node = ElementTree.SubElement(amplicon_node, "ref_positions")
+                        ref_positions_node.text = ",".join(str(n) for n in ref_positions)
                     # Handle ROIs
                     for roi in amplicon.ROIs:
                         roi_dict = _process_roi(roi, samdata, ref_name, smor, len(amplicon.sequence), reverse_comp)
@@ -1470,7 +1586,7 @@ def main(argv=None): # IGNORE:C0111
                     samdata.close()
                     os.remove(temp_file)
                     os.remove(temp_file+".bai")
-                    samdata = pysam.AlignmentFile(bam_fp.name, "rb")
+                    samdata = pysam.AlignmentFile(bam_file, "rb")
 
         # Close File
         if samdata.is_open():
@@ -1482,7 +1598,7 @@ def main(argv=None): # IGNORE:C0111
             if evaluateOperation(operation, sample_node):
                 significance_node = ElementTree.SubElement(sample_node, "operation")
                 significance_node.set("flag", str(operation))
-                significance_node.set("message", str(operation["message"]))
+                significance_node.set("message", str(operation.message))
                 pass
             pass
 

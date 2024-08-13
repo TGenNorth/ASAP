@@ -31,7 +31,7 @@ Setting up ASAP via Anaconda
     **Navigate to where you installed the ASAP repository
     and run one the following setups:**
       **Quick Setup**
-        ``conda env create --file asap.txt``
+        ``conda create --file asap.txt --name asap``
         
         ``conda activate asap``
 

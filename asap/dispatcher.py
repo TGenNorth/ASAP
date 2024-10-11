@@ -147,7 +147,7 @@ def _submit_job(job_submitter, command, job_parms, waitfor_id=None, hold=False, 
                 logging.debug("\nfull command = \n\t%s \n" % submit_command)
                 output = subprocess.getoutput(submit_command)
                 logging.debug("output = %s" % output)
-                job_match = re.search('^Submitted batch job (\d+)$', output)
+                job_match = re.search('^Submitted batch job (\d+)$', output, flag=re.MULTILINE)
                 if job_match:
                     last_jobid = job_match.group(1)
                     jobid = job_match.group(1)

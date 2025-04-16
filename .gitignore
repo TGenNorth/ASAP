@@ -1,5 +1,7 @@
 build
+dist
 ASAP.egg-info
+asap.egg-info
 .*
 !.gitignnore
 __pycache__

@@ -42,17 +42,6 @@ def pairwise(iterable):
     next(b, None)
     return zip(a, b)
 
-def _find_overlap_region(reads):
-    start_list = []
-    end_list = []
-    for read in reads:
-        start_list.append(read.reference_start)
-        end_list.append(read.reference_end)
-    if start_list and end_list:
-        return (mode(start_list), mode(end_list))
-    else:
-        return (None, None)
-
 def _merge_reads(read, pair):
     from copy import deepcopy
     rstart = read.query_alignment_start
@@ -82,61 +71,54 @@ def _mark_read_unaligned(read):
 def _identity_filter(samdata, ref_names, percid, merge, out_fp):
     outdata = pysam.AlignmentFile(out_fp, "wb", template=samdata)
     discarded_reads = 0
-    seq_counter = Counter()
+    #seq_counter = Counter()
     aligned_reads = []
     
     # if user didn't specify any specific refs, apply percid filter to all
-    if ref_names = None:
+    if ref_names == None:
         ref_names = samdata.references
     
     # Iterate through all the references that need to be filtered
-    for ref_name in ref_names:
-        logging.info("verify_percent_identity :: Checking %s for amplicon %s" % (samdata.filename, ref_name))
-        if merge:
-            from operator import attrgetter
-            reads = iter(sorted(samdata.fetch(ref_name), key=attrgetter('query_name')))
-            for read, pair in pairwise(reads):
-                if read.alignment.query_name != pair.alignment.query_name:
-                    continue
-                aligned_reads.append(_merge_reads(read, pair))
-        else:
-            aligned_reads = samdata.fetch(ref_name)
-        for read in aligned_reads:
-            if read.is_unmapped:
-                logging.info("\tRead is unmapped, mark it unaligned and move it over....");
-                outdata.write(_mark_read_unaligned(read))
-                continue
+    for read in samdata.fetch(until_eof=True):
+        if read.is_unmapped:
+            logging.info("Read %s is unmapped -- copying it over, as is...." % read.query_name);
+            outdata.write(read)
+            continue
+        if read.reference_name in ref_names:    
             length = read.infer_query_length(False)
-            logging.info("Read %s, aligned length %i, total read length %i" % (read.query_name, read.query_alignment_length or -1, length or -1))
+            logging.info("Checking %s against reference %s" % (read.query_name, read.reference_name))
+            logging.info("\tAligned length %i, total read length %i" % (read.query_alignment_length or -1, length or -1))
             if read.query_alignment_length / length >= percid: #Quick check that the aligned length even passes threshold
                 matches = 0
                 for (qpos, rpos, seq) in read.get_aligned_pairs(with_seq=True):
                     query = read.query_sequence[qpos] if qpos else "None"
-                    logging.info("\tqpos: %i\trpos: %i\tseq: %s\tquery[qpos]: %s" % (qpos or -1, rpos or -1, seq, query))
+                    #logging.info("\tqpos: %i\trpos: %i\tseq: %s\tquery[qpos]: %s" % (qpos or -1, rpos or -1, seq, query))
                     #if there is a gap in the alignment, extend the length of the query or reference accordingly
                     if rpos is None:
-                        #amp_length += 1
+                        pass #amp_length += 1
                     elif qpos is None:
                         length += 1
                     else:
                         if read.query_sequence[qpos].upper() == seq.upper():
                             matches += 1
                 if matches / length >= percid: #Using length instead of amp_length to compare to query instead of reference
-                    logging.info("\t\tFound %i matches, keeping..." % matches)
+                    logging.info("\t\tFound %i matches out of %i, keeping..." % (matches, length))
                     outdata.write(read)
                 else:
-                    logging.info("\t\tFound %i matches, discarding..." % matches)
+                    logging.info("\t\tFound %i matches out of %i, marking as unaligned..." % (matches, length))
                     discarded_reads += 1
-                    seq_counter.update([read.query_sequence])
+                    #seq_counter.update([read.query_sequence])
                     outdata.write(_mark_read_unaligned(read))
             else: #aligned proportion below threshold
-                logging.info("\t\tToo short, discarding...")
+                logging.info("\t\tAlignment too short, marking as unaligned...")
                 discarded_reads += 1
-                seq_counter.update([read.query_sequence])
+                #seq_counter.update([read.query_sequence])
                 outdata.write(_mark_read_unaligned(read))
+        else: # Read is not aligned to a reference we are verifying, let it go
+            logging.info("Read %s is aligned to a reference we aren't checking -- copying it over, as is...." % read.query_name);
+            outdata.write(read)
     outdata.close()
-    pysam.index(out_fp)
-    return (out_fp, discarded_reads, seq_counter)
+    return (outdata, discarded_reads)
 
 class CLIError(Exception):
     '''Generic exception to raise and log different fatal errors.'''
@@ -184,7 +166,7 @@ USAGE
         parser = argparse.ArgumentParser(description=program_license, formatter_class=argparse.RawTextHelpFormatter)
         parser.add_argument("-b", "--bam", metavar="FILE", required=True, type=argparse.FileType('rb'), help="bam file to process. [REQUIRED]")
         parser.add_argument("-i", "--identity", metavar="float", dest = "percid", required=True, help="minimum percent identity required to keep aligned read. [REQUIRED]")
-        parser.add_argument("-r", "--ref", dest="ref_names", action="extend", nargs="+", help="name of the reference contig(s) for which identity is calculated; if omitted, apply to all contigs. May be specified multiple times")
+        parser.add_argument("-r", "--ref", dest="ref_names", action="append", nargs="+", help="name of the reference contig(s) for which identity is calculated; if omitted, apply to all contigs. May be specified multiple times")
         #parser.add_argument("-m", "--merge", action="store_true", default=False, help="merge paired reads before calculating identity. [default: False]")
         parser.add_argument("-o", "--out", metavar="FILE", help="new bam file to write. [default: ./{orig_bam}_identityFiltered.bam]")
         parser.add_argument('-V', '--version', action='version', version=program_version_message)
@@ -194,8 +176,8 @@ USAGE
 
         bam_fp = args.bam
         out_fp = args.out
-        percid = args.percid
-        ref_names = arg.ref_names
+        percid = float(args.percid)
+        ref_names = args.ref_names
         merge = False #args.merge
 
         logfile = "identity_filtering.log"
@@ -209,8 +191,13 @@ USAGE
 
         if not out_fp:
             out_fp = "%s_identityFiltered.bam" % (os.path.splitext(os.path.basename(samdata.filename.decode("utf-8")))[0])
-            
-        samout = _identity_filter(samdata, ref_names, percid, merge, out_fp)
+     
+        (samout, discarded_reads) = _identity_filter(samdata, ref_names, percid, merge, out_fp)
+                
+        bam_file_out_sorted = "%s_sorted.bam" % (os.path.splitext(os.path.basename(samout.filename.decode("utf-8")))[0])
+        
+        pysam.sort("-o", bam_file_out_sorted, out_fp)
+        pysam.index(bam_file_out_sorted)
 
         return 0
     except KeyboardInterrupt:

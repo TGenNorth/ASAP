@@ -53,28 +53,26 @@ def _find_overlap_region(reads):
     else:
         return (None, None)
 
-def _primer_mask(primer_file, samfile, outfile, wiggle, mask_bases, ponlybam):
+def _primer_mask(samdata, primer_file, wiggle, mask_bases, ponlybam, outfile):
     # TODO: Ideally for smor it should use the same primer pair, so will have to match reads and then search, will at this at some stage
     # assumptions
     # you know that primerF is on read 1 and primerR is for read 2 (as you added the adapters like this)
     # you want to keep singletons (these could be easily removed later)
     logging.info("Starting primer_mask function")
-    bamout = pysam.AlignmentFile(outfile, "wb", template=samfile)
-    # process file - add some error handling here
+    outdata = pysam.AlignmentFile(outfile, "wb", template=samdata)
+    # process primer file - add some error handling here
     try:
         primers = np.loadtxt(str(primer_file), delimiter="\t",
           dtype={'names': ('CHROM', 'PrimerName', 'PrimerDirection', 'Start', 'End'),
           'formats': ('<U100', '<U100', 'U1', 'int', 'int')}, skiprows=1)
     except ValueError:
         logging.error("Incorrect primer file format")
-        return samfile
+        return samdata
     primers["PrimerDirection"] = np.char.upper(primers["PrimerDirection"])
     primer_stats = []
-    #mask_bases = pmaskbam != 'False' #its been converted to a string from the analyzeAmplicons input
-    #ponlybam = ponlybam != 'False' #its been converted to a string from the analyzeAmplicons input
     # TODO add ponlybam option to only emit reads with primer sequence, will need to deal with pairs in this case
     # for each ref in bam
-    for chrom in samfile.references:
+    for chrom in samdata.references:
         # check that all chroms are accounted for in input file
         if chrom in primers["CHROM"]:
             # For each primer set
@@ -90,15 +88,15 @@ def _primer_mask(primer_file, samfile, outfile, wiggle, mask_bases, ponlybam):
             # make sure no negative
             forward_primer_set_strt[forward_primer_set_strt < 0] = 0
             #make sure not longer than reference
-            ref_len = samfile.get_reference_length(chrom)
+            ref_len = samdata.get_reference_length(chrom)
             forward_primer_set_end[forward_primer_set_end > ref_len] = ref_len
             reverse_primer_set_end[reverse_primer_set_end > ref_len] = ref_len
             # # check if any sequences are aligned there
-            # samfile.count_coverage(contig='rpoB', start=p_forward_s-wiggle, stop=p_reverse_e+wiggle)
+            # samdata.count_coverage(contig='rpoB', start=p_forward_s-wiggle, stop=p_reverse_e+wiggle)
             # if none skip
             no_primer = 0
             primer_found = 0
-            for read in samfile.fetch(chrom, until_eof=True):
+            for read in samdata.fetch(chrom, until_eof=True):
                 try: # It seems this happens when only one read in the pair is aligned, then the mate is still associated with the CHROM but has no alignemnt position, causing min() to fail as no value in it
                     # read.query_alignment_start (ead.query_alignment_end) is what base of the read is the first thats aligned to the reference
                     align_start = min(read.get_reference_positions()) #+ read.query_alignment_start #first base of read that is aligned, might be useful if we consider that adapters have been remove, not using now
@@ -107,7 +105,7 @@ def _primer_mask(primer_file, samfile, outfile, wiggle, mask_bases, ponlybam):
                     no_primer += 1
                     # read.query_qualities = arr.array("B", [0] * len(read.query_qualities))
                     # read.query_sequence = "N" * len(read.query_sequence)
-                    bamout.write(read) # this is here as to keep pairs, the above should probably be added?
+                    outdata.write(read) # this is here as to keep pairs, the above should probably be added?
                     pass
                 if read.is_read1:
                     # If read aligns within 'wiggle' nts of primer sequence
@@ -154,18 +152,18 @@ def _primer_mask(primer_file, samfile, outfile, wiggle, mask_bases, ponlybam):
                         no_primer += 1
                 else:
                     logging.debug("Aberrant read: %s" % read.query_name)
-                bamout.write(read)
+                outdata.write(read)
             primer_stats.append([chrom, primer_found, no_primer])
         else:
             logging.info("No primers found for: %s" % chrom)
-            for read in samfile.fetch(chrom, until_eof=True):
-                bamout.write(read)
+            for read in samdata.fetch(chrom, until_eof=True):
+                outdata.write(read)
     logging.info("CHROM, Primer Found, Primer Missing")
     logging.info(primer_stats)
-    bamout.close() #only aligned reads
-    samfile.close()
+    outdata.close() #only aligned reads
+    samdata.close()
     if mask_bases: # need to sort as trimming may have changed coordinates
-        bam_file_out_sorted = "%s_primerMasked_sorted.bam" % (os.path.splitext(os.path.basename(samfile.filename.decode("utf-8")))[0])
+        bam_file_out_sorted = "%s_primerMasked_sorted.bam" % (os.path.splitext(os.path.basename(samdata.filename.decode("utf-8")))[0])
         pysam.sort("-o", bam_file_out_sorted, outfile)
         outfile = bam_file_out_sorted
     pysam.index(outfile)
@@ -220,8 +218,10 @@ USAGE
         parser.add_argument("-p", "--primer-file", metavar="FILE", dest = "primers", help="primer file to use for primer masking. [REQUIRED]")
         parser.add_argument("-o", "--out", metavar="FILE", help="new bam file to write. [default: ./{orig_bam}_primerMasked.bam]")
         parser.add_argument("--wiggle", dest="wiggle", default=9, type=int, help="How many nucleotides outside the primer window should be used to identify primer sequences [default: 9]")
-        parser.add_argument("--mask-bam", dest="maskbam", default=True, help="change primer sequences in the alignement file to 'Ns' [default: True]")
-        parser.add_argument("--primer-only", dest="primeronly", default=True, help="only keep sequences with primers [default: True]")
+        parser.add_argument("--mask-bam", dest="maskbam", action="store_true", default=True, help="change primer sequences in the alignment file to 'Ns' [default]")
+        parser.add_argument("--no-mask-bam", dest="maskbam", action="store_false", help="don't modify primer sequences in the alignment file")
+        parser.add_argument("--primer-only", dest="primeronly", action="store_true", default=False, help="only keep sequences with primers")
+        parser.add_argument("--no-primer-only", dest="primeronly", action="store_false", default=True, help="keep all sequences [default]")
         parser.add_argument('-V', '--version', action='version', version=program_version_message)
 
         # Process arguments
@@ -246,7 +246,7 @@ USAGE
         if not out_fp:
             out_fp = "%s_primerMasked.bam" % (os.path.splitext(os.path.basename(samdata.filename.decode("utf-8")))[0])
             
-        samout = _primer_mask(primer_fp, samdata, out_fp, wiggle, maskbam, primeronly)
+        samout = _primer_mask(samdata, primer_fp, wiggle, maskbam, primeronly, out_fp)
 
         return 0
     except KeyboardInterrupt:

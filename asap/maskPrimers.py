@@ -60,6 +60,9 @@ def _primer_mask(samdata, primer_file, wiggle, mask_bases, ponlybam, outfile):
     # you want to keep singletons (these could be easily removed later)
     logging.info("Starting primer_mask function")
     outdata = pysam.AlignmentFile(outfile, "wb", template=samdata)
+    out = open('primer_masking.tsv', 'w')
+    out.write('refname\tread_id\tprimer_name\tprimer_region\tmasked_sequence\n')
+    
     # process primer file - add some error handling here
     try:
         primers = np.loadtxt(str(primer_file), delimiter="\t",
@@ -91,9 +94,6 @@ def _primer_mask(samdata, primer_file, wiggle, mask_bases, ponlybam, outfile):
             ref_len = samdata.get_reference_length(chrom)
             forward_primer_set_end[forward_primer_set_end > ref_len] = ref_len
             reverse_primer_set_end[reverse_primer_set_end > ref_len] = ref_len
-            # # check if any sequences are aligned there
-            # samdata.count_coverage(contig='rpoB', start=p_forward_s-wiggle, stop=p_reverse_e+wiggle)
-            # if none skip
             no_primer = 0
             primer_found = 0
             for read in samdata.fetch(chrom, until_eof=True):
@@ -101,55 +101,81 @@ def _primer_mask(samdata, primer_file, wiggle, mask_bases, ponlybam, outfile):
                     # read.query_alignment_start (ead.query_alignment_end) is what base of the read is the first thats aligned to the reference
                     align_start = min(read.get_reference_positions()) #+ read.query_alignment_start #first base of read that is aligned, might be useful if we consider that adapters have been remove, not using now
                     align_end = max(read.get_reference_positions())
-                except Exception:
+                except Exception as e:
                     no_primer += 1
                     # read.query_qualities = arr.array("B", [0] * len(read.query_qualities))
                     # read.query_sequence = "N" * len(read.query_sequence)
                     outdata.write(read) # this is here as to keep pairs, the above should probably be added?
-                    pass
+                    out.write(f'{chrom}\t{read.query_name}\tNone\t\t{read.query_sequence}\n')
+                    continue
                 if read.is_read1:
                     # If read aligns within 'wiggle' nts of primer sequence
-                    tmp_boo = np.multiply(align_start >= forward_primer_set_strt, align_start <= forward_primer_set_end)
-                    if any(tmp_boo):
+                    read_start_in_primer = np.multiply(align_start >= forward_primer_set_strt, align_start <= forward_primer_set_end)
+                    if any(read_start_in_primer):
                         primer_found += 1
                         # deal with if more than one is true using the max
                         # to deal with if whole read in in the primer section, this can happen if short reads not filtered or if incorrect primer file, and not removing as then need to remove mate; TODO should output stats to log
                         # (align_end if int(forward_primer_set_end[tmp_boo].max()) > align_end else int(forward_primer_set_end[tmp_boo].max())) - align_start + read.query_alignment_start
-                        mask_end = int(forward_primer_set_end[tmp_boo].max()) - align_start + read.query_alignment_start # ref pos where primer ends - first ref pos where sequence alignes + unaligned leading bases
+                        # need to get the rightmost query position aligned to the primer area
+                        primer_end_ref_pos = int(forward_primer_set_end[read_start_in_primer].max())
+
+                        # Find the index where reference position equals the end of the primer, to get the corresponding query position
+                        # if there is in indel there (read position = None), we may need to adjust the position
+                        aligned_pairs = read.get_aligned_pairs()
+                        target_idx = next((i for i, align in enumerate(aligned_pairs) if align[1] == primer_end_ref_pos), None)
+
+                        if target_idx is not None:
+                            # Work backwards from that index to find first non-None query position
+                            mask_end = next(
+                                (aligned_pairs[i][0] for i in range(target_idx, -1, -1) if aligned_pairs[i][0] is not None), align_end
+                            )
+                        else: # read doesn't align all the way to end of primer, so just go to the end of the read alignment
+                            mask_end = align_end
+
                         mask_end = len(read.query_sequence) if mask_end > len(read.query_sequence) else mask_end
-                        # print("found one")
                         # This will work if using qual later for calling
                         read.query_qualities[:mask_end] = arr.array("B", [0] * mask_end)
                         if mask_bases:
                             qual_store = read.query_qualities
                             read.query_sequence = "N" * len(read.query_sequence[:mask_end]) + read.query_sequence[mask_end:]
                             read.query_qualities = qual_store
-                            # read.query_sequence = read.query_sequence[:mask_start]
-                            # read.query_qualities = qual_store[:mask_start]
-                            # read.cigarstring = ""
-                            # read.cigartuples = ""
+                        out.write(f'{chrom}\t{read.query_name}\tPrimerName\t0:{mask_end}\t{read.query_sequence}\n')
                     else:
                         # TODO
                         # else, mark as a fail. If fails > X% of reads then retry with larger wiggle?
                         no_primer += 1
+                        out.write(f'{chrom}\t{read.query_name}\tNone\t\t{read.query_sequence}\n')
                 elif read.is_read2:
-                    tmp_boo2 = np.multiply(align_end >= reverse_primer_set_strt, align_end <= reverse_primer_set_end)
-                    if any(tmp_boo2):
+                    read_end_in_primer = np.multiply(align_end >= reverse_primer_set_strt, align_end <= reverse_primer_set_end)
+                    if any(read_end_in_primer):
                         primer_found += 1
                         # deal with if more than one is true using the min
-                        # mask_start = int(reverse_primer_set_strt[tmp_boo2].min()) - align_start + read.query_alignment_start
-                        mask_start = (align_start if int(reverse_primer_set_strt[tmp_boo2].min()) < align_start else int(reverse_primer_set_strt[tmp_boo2].min())) - align_start + read.query_alignment_start
-                        read.query_qualities[mask_start:read.query_length] = arr.array("B", [0] * len(read.query_qualities[mask_start:read.query_length])) #arr.array("B", [0] * (read.query_length-mask_start)) 
+                        primer_start_ref_pos = int(reverse_primer_set_strt[read_end_in_primer].min())
+                        
+                        # Find the index where reference position equals the start of the primer, to get the corresponding query position
+                        # if there is in indel there (read position = None), we may need to adjust the position
+                        aligned_pairs = read.get_aligned_pairs()
+                        target_idx = next((i for i, align in enumerate(aligned_pairs) if align[1] == primer_start_ref_pos), None)
+
+                        if target_idx is not None:
+                            # Work forwards from that index to find first non-None query position
+                            mask_start = next(
+                                (aligned_pairs[i][0] for i in range(target_idx, len(aligned_pairs)) if aligned_pairs[i][0] is not None), align_start
+                            )
+                        else: # read doesn't align all the way to start of primer, so just go to the start of the read alignment
+                            mask_start = align_start
+
+                        read.query_qualities[mask_start:read.query_length] = arr.array("B", [0] * len(read.query_qualities[mask_start:read.query_length]))
                         if mask_bases:
                             qual_store = read.query_qualities
                             read.query_sequence = read.query_sequence[:mask_start] + "N" * len(read.query_sequence[mask_start:])
-                            read.query_qualities = qual_store
-                            # read.query_sequence = read.query_sequence[:mask_start]
-                            # read.query_qualities = qual_store[:mask_start]
-                            # read.cigarstring = ""
-                            # read.cigartuples = ""
+                            try:
+                                read.query_qualities = qual_store
+                            except ValueError as e:
+                        out.write(f'{chrom}\t{read.query_name}\tPrimerName\t{mask_start}:{read.query_length}\t{read.query_sequence}\n')
                     else:
                         no_primer += 1
+                        out.write(f'{chrom}\t{read.query_name}\tNone\t\t{read.query_sequence}\n')
                 else:
                     logging.debug("Aberrant read: %s" % read.query_name)
                 outdata.write(read)
@@ -240,6 +266,8 @@ USAGE
                             datefmt='%m/%d/%Y %H:%M:%S',
                             filename=logfile,
                             filemode='w')
+
+        output = "primer_masking.tsv"
 
         samdata = pysam.AlignmentFile(bam_fp.name, "rb")
 

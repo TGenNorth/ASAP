@@ -299,7 +299,7 @@ def _process_roi(roi, samdata, amplicon_ref, amplicon_ref_len, reverse_comp=Fals
         use_query_alignment_seq = False
         if end == amplicon_ref_len and start == 0:
             use_query_alignment_seq = True
-        aligned_reads = samdata.fetch(amplicon_ref, start, end)
+        aligned_reads = sorted(samdata.fetch(amplicon_ref, start, end), key=attrgetter('query_name'))
         big_reads = []
         #check if reads are long enough, if not then merge
         n = failed = 0

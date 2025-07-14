@@ -57,6 +57,7 @@ def main(argv=None): # IGNORE:C0111
             sys.argv.extend(argv)
             pass
 
+    program_name = os.path.basename(sys.argv[0])
     program_version = "v%s" % __version__
     program_build_date = str(__updated__)
     program_version_message = '%%(prog)s %s (%s)' % (program_version, program_build_date)
@@ -81,19 +82,21 @@ USAGE
 
     try:
         # Setup argument parser
-        # parser = argparse.ArgumentParser(description=program_license, formatter_class=argparse.RawDescriptionHelpFormatter)
-        # required_group = parser.add_argument_group("required arguments")
-        # required_group.add_argument("-s", "--stylesheet", metavar="FILE", required=True, help="XSLT stylesheet to use for transforming the output. [REQUIRED]")
-        # required_group.add_argument("-x", "--xml", metavar="FILE", required=True, help="XML output file to transform. [REQUIRED]")
-        # parser.add_argument("-o", "--out", dest="out", metavar="FILE", help="output file to write.")
-        # parser.add_argument("-d", "--outdir", dest="out_dir", metavar="DIR", help="output directory to write files to.")
-        # parser.add_argument("-t", "--text", action="store_true", default=False, help="output plain text.")
-        # parser.add_argument('-V', '--version', action='version', version=program_version_message)
+        parser = argparse.ArgumentParser(description=program_license, formatter_class=argparse.RawDescriptionHelpFormatter)
+        required_group = parser.add_argument_group("required arguments")
+        required_group.add_argument("-s", "--stylesheet", metavar="FILE", required=True, help="XSLT stylesheet to use for transforming the output. [REQUIRED]")
+        required_group.add_argument("-x", "--xml", metavar="FILE", required=True, help="XML output file to transform. [REQUIRED]")
+        parser.add_argument("-o", "--out", dest="out", metavar="FILE", help="output file to write.")
+        parser.add_argument("-d", "--outdir", dest="out_dir", metavar="DIR", help="output directory to write files to.")
+        parser.add_argument("-t", "--text", action="store_true", default=False, help="output plain text.")
+        parser.add_argument('-V', '--version', action='version', version=program_version_message)
 
         # Process arguments
         if isinstance(argv, argparse.Namespace):
             args = argv
             pass
+        elif program_name != "asap":
+            args = parser.parse_args()
         else:
             args = cmdParser.parser.parse_args(argv)
 
@@ -152,7 +155,7 @@ if __name__ == "__main__":
     if PROFILE:
         import cProfile
         import pstats
-        profile_filename = 'asap.outputCombiner_profile.txt'
+        profile_filename = 'asap.formatOutput_profile.txt'
         cProfile.run('main()', profile_filename)
         statsfile = open("profile_stats.txt", "wb")
         p = pstats.Stats(profile_filename, stream=statsfile)

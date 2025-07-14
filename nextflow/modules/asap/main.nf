@@ -1,0 +1,120 @@
+#! /usr/bin/env nextflow
+
+process GENERATE_REFERENCE_FASTA {
+    tag "generate_reference"
+    publishDir "${params.outdir}/reference", mode: 'copy'
+
+    input:
+    path assay_json
+
+    output:
+    path "reference.fasta", emit: ref_fasta
+
+    script:
+    """
+    assayInfo.py ${assay_json} > reference.fasta
+    """
+}
+
+process MASK_PRIMERS {
+    tag "mask_primers"
+    publishDir "${params.outdir}/mask_primers", mode: 'copy'
+
+    input:
+    tuple val(sample_id), path(bamfile), path(bamindex), path(primer_file)
+
+    output:
+    tuple val(sample_id), path("${bamfile.getBaseName()}_primerMasked.bam"), path("${bamfile.getBaseName()}_primerMasked.bam.bai"), emit: mask_primers_output
+
+    def mask_bam_string = params.mask_bam ? "--mask-bam" : "--no-mask-bam"
+    def ponly_string = params.primer_only ? "--primer-only" : "--no-primer-only"
+
+    script:
+    """
+    maskPrimers.py -b ${bamfile} -p ${primer_file} --wiggle ${params.wiggle} ${mask_bam_string} ${ponly_string} 
+    """
+}
+
+process IDENTITY_FILTER {
+    tag "identity_filter"
+    publishDir "${params.outdir}/identity_filter", mode: 'copy'
+
+    input:
+    tuple val(sample_id), path(bamfile), path(bamindex)
+    
+    output:
+    tuple val(sample_id), path("${bamfile.getBaseName()}_identityFiltered.bam"), path("${bamfile.getBaseName()}_identityFiltered.bam.bai"), emit: identity_filter_output
+
+    script:
+    """
+    identityFilter.py -b ${bamfile} -i ${params.identity} -r ${params.ref_names} 
+    """
+}
+
+process SMOR {
+    tag "smor"
+    publishDir "${params.outdir}/smor", mode: 'copy'
+
+    input:
+    tuple val(sample_id), path(bamfile), path(bamindex)
+    
+    output:
+    tuple val(sample_id), path("${bamfile.getBaseName()}_SMOR.bam"), path("${bamfile.getBaseName()}_SMOR.bam.bai"), emit: smor_output
+
+    script:
+    """
+    generateSMORbam.py -b ${bamfile} -c ${params.fill_character} 
+    """
+}
+
+process PROCESS_BAM {
+    tag "bam_processor"
+    publishDir "${params.outdir}/xml", mode: 'copy'
+
+    input:
+    tuple val(sample_id), path(bamfile), path(bamindex), path(assay_json)
+
+    output:
+    tuple val(sample_id), path("${sample_id}.xml"), emit: xml_output
+
+    script:
+    """
+    newBamProcessor.py -j ${assay_json} -b ${bamfile} -d ${params.depth} --breadth ${params.breadth} -p ${params.proportion} -m ${params.mutation_depth} --min-base-qual ${params.min_base_qual} --consensus-proportion ${params.consensus_proportion} --fill-gaps ${params.fill_gaps} --mark-deletions ${params.mark_deletions} -o ${sample_id}.xml
+    """
+}
+
+process OUTPUT_COMBINER {
+    tag "output_combiner"
+    publishDir "${params.outdir}/", mode: 'copy'
+
+    input:
+    path xml_files
+    
+    output:
+    path("${params.name}_analysis.xml"), emit: final_xml
+
+    script:
+    """
+    outputCombiner.py -x . -n ${params.name} 
+    """
+}
+
+process FORMAT_OUTPUT {
+    tag "format_output"
+    publishDir "${params.outdir}/", mode: 'copy'
+
+    def out_file = params.out_file ? params.out_file : "${params.name}.html"
+
+    input:
+    path final_xml
+    path stylesheet
+    
+    output:
+    path("*.html"), emit: asap_output
+    path("${params.name}/"), emit : extra_output
+
+    script:
+    """
+    formatOutput.py -x ${final_xml} -s ${stylesheet} -o ${out_file} 
+    """
+}

@@ -61,44 +61,46 @@ def main(argv=None): # IGNORE:C0111
             sys.argv.extend(argv)
             pass
 
-#     program_name = os.path.basename(sys.argv[0])
-#     program_version = "v%s" % __version__
-#     program_build_date = str(__updated__)
-#     program_version_message = '%%(prog)s %s (%s)' % (program_version, program_build_date)
-#     if __name__ == '__main__':
-#         program_shortdesc = __import__('__main__').__doc__.split("\n")[1]
-#     else:
-#         program_shortdesc = __doc__.split("\n")[1]
-#     program_license = '''%s
-#
-#   Created by TGen North on %s.
-#   Copyright 2015 TGen North. All rights reserved.
-#
-#   Available for academic and research use only under a license
-#   from The Translational Genomics Research Institute (TGen)
-#   that is free for non-commercial use.
-#
-#   Distributed on an "AS IS" basis without warranties
-#   or conditions of any kind, either express or implied.
-#
-# USAGE
-# ''' % (program_shortdesc, str(__date__))
+    program_name = os.path.basename(sys.argv[0])
+    program_version = "v%s" % __version__
+    program_build_date = str(__updated__)
+    program_version_message = '%%(prog)s %s (%s)' % (program_version, program_build_date)
+    if __name__ == '__main__':
+        program_shortdesc = __import__('__main__').__doc__.split("\n")[1]
+    else:
+        program_shortdesc = __doc__.split("\n")[1]
+    program_license = '''%s
+
+  Created by TGen North on %s.
+  Copyright 2015 TGen North. All rights reserved.
+
+  Available for academic and research use only under a license
+  from The Translational Genomics Research Institute (TGen)
+  that is free for non-commercial use.
+
+  Distributed on an "AS IS" basis without warranties
+  or conditions of any kind, either express or implied.
+
+USAGE
+''' % (program_shortdesc, str(__date__))
 
     try:
         # Setup argument parser
-        # parser = argparse.ArgumentParser(description=program_license, formatter_class=argparse.RawDescriptionHelpFormatter)
-        # subparsers = parser.add_subparsers(help='sub-command help')
-        # parser_outputCombiner = subparsers.add_parser('outputCombiner', help='outputCombiner help')
-        # required_group = parser_outputCombiner.add_argument_group("required arguments")
-        # required_group.add_argument("-n", "--name", required=True, help="name for this run. [REQUIRED]")
-        # required_group.add_argument("-x", "--xml-dir", dest="xdir", metavar="DIR", required=True, help="directory containing XML files to combine. [REQUIRED]")
-        # parser_outputCombiner.add_argument("-o", "--out", metavar="FILE", help="file to write final output to. [default: ./{name}_analysis.xml]")
-        # parser_outputCombiner.add_argument('-V', '--version', action='version', version=program_version_message)
+        parser = argparse.ArgumentParser(description=program_license, formatter_class=argparse.RawDescriptionHelpFormatter)
+        #subparsers = parser.add_subparsers(help='sub-command help')
+        #parser_outputCombiner = subparsers.add_parser('outputCombiner', help='outputCombiner help')
+        required_group = parser.add_argument_group("required arguments")
+        required_group.add_argument("-n", "--name", required=True, help="name for this run. [REQUIRED]")
+        required_group.add_argument("-x", "--xml-dir", dest="xdir", metavar="DIR", required=True, help="directory containing XML files to combine. [REQUIRED]")
+        parser.add_argument("-o", "--out", metavar="FILE", help="file to write final output to. [default: ./{name}_analysis.xml]")
+        parser.add_argument('-V', '--version', action='version', version=program_version_message)
 
         # Process arguments
         if isinstance(argv, argparse.Namespace):
             args = argv
             pass
+        elif program_name != "asap":
+            args = parser.parse_args()
         else:
             args = cmdParser.parser.parse_args(argv)
 

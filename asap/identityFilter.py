@@ -194,10 +194,10 @@ USAGE
      
         (samout, discarded_reads) = _identity_filter(samdata, ref_names, percid, merge, out_fp)
                 
-        bam_file_out_sorted = "%s_sorted.bam" % (os.path.splitext(os.path.basename(samout.filename.decode("utf-8")))[0])
+        #bam_file_out_sorted = "%s_sorted.bam" % (os.path.splitext(os.path.basename(samout.filename.decode("utf-8")))[0])
         
-        pysam.sort("-o", bam_file_out_sorted, out_fp)
-        pysam.index(bam_file_out_sorted)
+        pysam.sort("-o", out_fp, out_fp)
+        pysam.index(out_fp)
 
         return 0
     except KeyboardInterrupt:

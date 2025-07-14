@@ -169,9 +169,7 @@ def _primer_mask(samdata, primer_file, wiggle, mask_bases, ponlybam, outfile):
                         if mask_bases:
                             qual_store = read.query_qualities
                             read.query_sequence = read.query_sequence[:mask_start] + "N" * len(read.query_sequence[mask_start:])
-                            try:
-                                read.query_qualities = qual_store
-                            except ValueError as e:
+                            read.query_qualities = qual_store
                         out.write(f'{chrom}\t{read.query_name}\tPrimerName\t{mask_start}:{read.query_length}\t{read.query_sequence}\n')
                     else:
                         no_primer += 1
@@ -189,9 +187,9 @@ def _primer_mask(samdata, primer_file, wiggle, mask_bases, ponlybam, outfile):
     outdata.close() #only aligned reads
     samdata.close()
     if mask_bases: # need to sort as trimming may have changed coordinates
-        bam_file_out_sorted = "%s_primerMasked_sorted.bam" % (os.path.splitext(os.path.basename(samdata.filename.decode("utf-8")))[0])
-        pysam.sort("-o", bam_file_out_sorted, outfile)
-        outfile = bam_file_out_sorted
+        #bam_file_out_sorted = "%s_primerMasked_sorted.bam" % (os.path.splitext(os.path.basename(samdata.filename.decode("utf-8")))[0])
+        pysam.sort("-o", outfile, outfile)
+        #outfile = bam_file_out_sorted
     pysam.index(outfile)
     logging.info("Wrote primer masking alignment only file: %s" % outfile)
     return outfile

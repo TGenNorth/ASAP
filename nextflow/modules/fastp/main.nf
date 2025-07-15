@@ -2,7 +2,7 @@
 
 process RUN_FASTP {
     tag "$sample_id"
-    publishDir "${params.outdir}/fastp", mode: 'copy'
+    publishDir "${params.outdir}/${sample_id}/fastp", mode: 'copy'
 
     input:
     tuple val(sample_id), path(reads)

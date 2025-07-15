@@ -20,7 +20,7 @@ process BUILD_BOWTIE2_INDEX {
 
 process ALIGN_BOWTIE2 {
     tag "$sample_id"
-    publishDir "${params.outdir}/bowtie2", mode: 'copy'
+    publishDir "${params.outdir}/${sample_id}/bowtie2", mode: 'copy'
 
     input:
     tuple val(sample_id), path(read1), path(read2), path(index_dir)

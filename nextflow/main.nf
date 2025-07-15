@@ -68,8 +68,9 @@ workflow {
 
     // Optionally run primer masking
     if(params.primer_file) {
+        def mask_primers_logging
         Channel.of(file(params.primer_file).toAbsolutePath()).set { primer_file_ch }
-        aligned_bams = MASK_PRIMERS(aligned_bams.combine(primer_file_ch))
+        (aligned_bams,mask_primers_logging) = MASK_PRIMERS(aligned_bams.combine(primer_file_ch))
     }
 
     // Optionally run identity filtering

@@ -17,14 +17,15 @@ process GENERATE_REFERENCE_FASTA {
 }
 
 process MASK_PRIMERS {
-    tag "mask_primers"
-    publishDir "${params.outdir}/mask_primers", mode: 'copy'
+    tag "$sample_id"
+    publishDir "${params.outdir}/${sample_id}/mask_primers", mode: 'copy'
 
     input:
     tuple val(sample_id), path(bamfile), path(bamindex), path(primer_file)
 
     output:
     tuple val(sample_id), path("${bamfile.getBaseName()}_primerMasked.bam"), path("${bamfile.getBaseName()}_primerMasked.bam.bai"), emit: mask_primers_output
+    tuple val(sample_id), path("primer_masking.tsv"), path("primer_masking.log"), emit: mask_primers_logging
 
     def mask_bam_string = params.mask_bam ? "--mask-bam" : "--no-mask-bam"
     def ponly_string = params.primer_only ? "--primer-only" : "--no-primer-only"
@@ -36,8 +37,8 @@ process MASK_PRIMERS {
 }
 
 process IDENTITY_FILTER {
-    tag "identity_filter"
-    publishDir "${params.outdir}/identity_filter", mode: 'copy'
+    tag "$sample_id"
+    publishDir "${params.outdir}/${sample_id}/identity_filter", mode: 'copy'
 
     input:
     tuple val(sample_id), path(bamfile), path(bamindex)
@@ -52,8 +53,8 @@ process IDENTITY_FILTER {
 }
 
 process SMOR {
-    tag "smor"
-    publishDir "${params.outdir}/smor", mode: 'copy'
+    tag "$sample_id"
+    publishDir "${params.outdir}/${sample_id}/smor", mode: 'copy'
 
     input:
     tuple val(sample_id), path(bamfile), path(bamindex)
@@ -68,7 +69,7 @@ process SMOR {
 }
 
 process PROCESS_BAM {
-    tag "bam_processor"
+    tag "$sample_id"
     publishDir "${params.outdir}/xml", mode: 'copy'
 
     input:

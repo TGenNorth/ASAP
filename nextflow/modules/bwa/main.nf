@@ -22,7 +22,7 @@ process BUILD_BWA_INDEX {
 // Align read pairs using BWA index
 process ALIGN_BWA {
     tag { sample_id }
-    publishDir "${params.outdir}/bwa", mode: 'copy'
+    publishDir "${params.outdir}/${sample_id}/bwa", mode: 'copy'
 
     input:
     tuple val(sample_id), path(read1), path(read2), path(index_dir)

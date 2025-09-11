@@ -96,7 +96,7 @@ process OUTPUT_COMBINER {
 
     script:
     """
-    outputCombiner.py -x . -n ${params.name} 
+    outputCombiner.py -x . -n ${params.name}
     """
 }
 
@@ -104,7 +104,7 @@ process FORMAT_OUTPUT {
     tag "format_output"
     publishDir "${params.outdir}/", mode: 'copy'
 
-    def out_file = params.out_file ? params.out_file : "${params.name}.html"
+    def out_file = params.out_file ? params.out_file : "ASAP_Report_${params.name}.html"
 
     input:
     path final_xml

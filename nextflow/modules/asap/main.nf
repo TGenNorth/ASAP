@@ -48,7 +48,7 @@ process IDENTITY_FILTER {
 
     script:
     """
-    identityFilter.py -b ${bamfile} -i ${params.identity} -r ${params.ref_names} 
+    identityFilter.py -b ${bamfile} -i ${params.identity}
     """
 }
 

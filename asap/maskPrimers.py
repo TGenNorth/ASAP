@@ -81,19 +81,12 @@ def _primer_mask(samdata, primer_file, wiggle, mask_bases, ponlybam, outfile):
     for chrom in samdata.references:
         # check that all chroms are accounted for in input file
         if chrom in primers["CHROM"]:
-            # For each primer set
-            forward_primer_set_strt = primers["Start"][np.multiply(primers["CHROM"] == chrom, primers["PrimerDirection"] == "F")]
-            forward_primer_set_end = primers["End"][np.multiply(primers["CHROM"] == chrom, primers["PrimerDirection"] == "F")]
-            reverse_primer_set_strt = primers["Start"][np.multiply(primers["CHROM"] == chrom, primers["PrimerDirection"] == "R")]
-            reverse_primer_set_end = primers["End"][np.multiply(primers["CHROM"] == chrom, primers["PrimerDirection"] == "R")]
+            # For each primer set, filter by chromosome
+            primers_for_chrom = primers[primers["CHROM"] == chrom]
             
-            # Apply wiggle and handle boundaries
-            forward_primer_set_strt = forward_primer_set_strt - wiggle
-            reverse_primer_set_end = reverse_primer_set_end + wiggle
-            forward_primer_set_strt[forward_primer_set_strt < 0] = 0
-            ref_len = samdata.get_reference_length(chrom)
-            forward_primer_set_end[forward_primer_set_end > ref_len] = ref_len
-            reverse_primer_set_end[reverse_primer_set_end > ref_len] = ref_len
+            # Separate forward and reverse primers for the current chromosome
+            forward_primers = primers_for_chrom[primers_for_chrom["PrimerDirection"] == "F"]
+            reverse_primers = primers_for_chrom[primers_for_chrom["PrimerDirection"] == "R"]
 
             no_primer = 0
             primer_found = 0
@@ -111,11 +104,13 @@ def _primer_mask(samdata, primer_file, wiggle, mask_bases, ponlybam, outfile):
                 primer_masked = False
 
                 # Check for and mask the forward primer
-                read_start_in_forward_primer = np.multiply(align_start >= forward_primer_set_strt, align_start <= forward_primer_set_end)
+                read_start_in_forward_primer = np.multiply(align_start >= forward_primers["Start"] - wiggle, align_start <= forward_primers["End"] + wiggle)
                 if any(read_start_in_forward_primer):
                     primer_found += 1
                     primer_masked = True
-                    primer_end_ref_pos = int(forward_primer_set_end[read_start_in_forward_primer].max())
+                    # Get the specific primer name
+                    primer_name = forward_primers["PrimerName"][read_start_in_forward_primer][0]
+                    primer_end_ref_pos = int(forward_primers["End"][read_start_in_forward_primer].max())
                     aligned_pairs = read.get_aligned_pairs()
                     target_idx = next((i for i, align in enumerate(aligned_pairs) if align[1] == primer_end_ref_pos), None)
                     if target_idx is not None:
@@ -131,14 +126,16 @@ def _primer_mask(samdata, primer_file, wiggle, mask_bases, ponlybam, outfile):
                         qual_store = read.query_qualities
                         read.query_sequence = "N" * len(read.query_sequence[:mask_end]) + read.query_sequence[mask_end:]
                         read.query_qualities = qual_store
-                    out.write(f'{chrom}\t{read.query_name}\tForwardPrimer\t0:{mask_end}\t{read.query_sequence}\n')
+                    out.write(f'{chrom}\t{read.query_name}\t{primer_name}\t0:{mask_end}\t{read.query_sequence}\n')
 
                 # Check for and mask the reverse primer
-                read_end_in_reverse_primer = np.multiply(align_end >= reverse_primer_set_strt, align_end <= reverse_primer_set_end)
+                read_end_in_reverse_primer = np.multiply(align_end >= reverse_primers["Start"] - wiggle, align_end <= reverse_primers["End"] + wiggle)
                 if any(read_end_in_reverse_primer):
                     primer_found += 1
                     primer_masked = True
-                    primer_start_ref_pos = int(reverse_primer_set_strt[read_end_in_reverse_primer].min())
+                    # Get the specific primer name
+                    primer_name = reverse_primers["PrimerName"][read_end_in_reverse_primer][0]
+                    primer_start_ref_pos = int(reverse_primers["Start"][read_end_in_reverse_primer].min())
                     aligned_pairs = read.get_aligned_pairs()
                     target_idx = next((i for i, align in enumerate(aligned_pairs) if align[1] == primer_start_ref_pos), None)
                     if target_idx is not None:
@@ -153,7 +150,7 @@ def _primer_mask(samdata, primer_file, wiggle, mask_bases, ponlybam, outfile):
                         qual_store = read.query_qualities
                         read.query_sequence = read.query_sequence[:mask_start] + "N" * len(read.query_sequence[mask_start:])
                         read.query_qualities = qual_store
-                    out.write(f'{chrom}\t{read.query_name}\tReversePrimer\t{mask_start}:{read.query_length}\t{read.query_sequence}\n')
+                    out.write(f'{chrom}\t{read.query_name}\t{primer_name}\t{mask_start}:{read.query_length}\t{read.query_sequence}\n')
 
                 if not primer_masked:
                     no_primer += 1

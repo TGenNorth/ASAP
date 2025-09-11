@@ -51,24 +51,6 @@ def _find_overlap_region(reads):
     else:
         return (None, None)
 
-#Not used
-def _get_consensus2(seq1, seq2, qual1, qual2, fill_char, base_qual):
-    consensus = ""
-    quals = []
-
-    for i in range(min(len(seq1), len(seq2))):
-        b1 = seq1[i]
-        b2 = seq2[i]
-        q1 = qual1[i]
-        q2 = qual2[i]
-        if b1 == b2 and q1 >= base_qual and q2 >= base_qual:
-            consensus = consensus + b1
-        else:
-            consensus = consensus + fill_char
-        quals.append(min(q1, q2))
-                    
-    return (consensus, quals)
-
 def _get_consensus(read, pair, start, end, fill_char):
     consensus = ""
     quals = []
@@ -82,10 +64,23 @@ def _get_consensus(read, pair, start, end, fill_char):
     read2_iter = iter(read2_alignment)
     read1_ptr = next(read1_iter)
     read2_ptr = next(read2_iter)
-    while read1_ptr[1] == None or read1_ptr[1] < start or read1_ptr[1] < read2_ptr[1]:
+    #If read2 starts (technically ends) with an insertion, advance to the first aligned base before trying to compare
+    while (read2_ptr[1] == None):
+        read2_ptr = next(read2_iter)
+    #Get the first position in read1's alignment that is covered by read2
+    while (read1_ptr and read2_ptr and (read1_ptr[1] == None or read1_ptr[1] < start or read1_ptr[1] < read2_ptr[1])):
         read1_ptr = next(read1_iter, None)
-    while read2_ptr[1] == None or read2_ptr[1] < start or read2_ptr[1] < read1_ptr[1]:
+    #Get the first position in read2's alignment that is covered by read1
+    while (read1_ptr and read2_ptr and (read2_ptr[1] == None or read2_ptr[1] < start or read2_ptr[1] < read1_ptr[1])):
         read2_ptr = next(read2_iter, None)
+
+    #There is no overlap between the two reads, abort
+    if (read1_ptr is None or read2_ptr is None):
+        return (consensus, quals, cigar)
+
+    #The overlap is outside of start-end, abort
+    #if (read1_ptr[1] > end or read2_ptr[1] > end):
+    #    return (consensus, quals, cigar)
 
     if read1_ptr[1] > start or read2_ptr[1] > start: #We are starting with a deletion
         cigar_op = 2
@@ -195,13 +190,19 @@ def _generate_cigar(offset, length, orig_cigar):
             break
     return (new_cigar)   
 
-def _write_bam(samdata, out_file, fill_char, base_qual):
+def _write_bam(samdata, out_file, fill_char, base_qual, whole_genome):
     outdata = pysam.AlignmentFile(out_file, "wb", template=samdata)
     
     for ref_name in samdata.references:
-        (start, end) = _find_overlap_region(samdata.fetch(ref_name))
+        logging.info("Starting SMOR Processing for ref: %s" % ref_name)
+        #(start, end) = _find_overlap_region(samdata.fetch(ref_name))
+        #if (start == None or end == None):
+        #   logging.info("No Overlap region: %s - %s; skipping" % (start, end))
+        #   continue
+        #logging.info("Overlap region: %i - %i" % (start, end))
         reads = iter(sorted(samdata.fetch(ref_name), key=attrgetter('query_name')))
         for read, pair in pairwise(reads):
+            logging.debug("Read:%s, ref_start:%s, ref_end:%s -- Pair:%s, ref_start:%s, ref_end:%s" % (read.query_name, read.reference_start, read.reference_end, pair.query_name, pair.reference_start, pair.reference_end))
             if read.query_name != pair.query_name:
                 continue
             if read.reference_end == None or pair.reference_end == None:
@@ -212,40 +213,43 @@ def _write_bam(samdata, out_file, fill_char, base_qual):
             read2_alignment = pair.get_aligned_pairs(True)
             if not read1_alignment or not read2_alignment:
                 continue
-            read1_start = 0
-            read1_end = 0
-            read2_start = 0
-            read2_end = 0
-            for match in read1_alignment:
-                if match[1] == start:
-                    read1_start = match[0]
-                if match[1] == end-1:
-                    read1_end = match[0]
-            for match in read2_alignment:
-                if match[1] == start:
-                    read2_start = match[0]
-                if match[1] == end-1:
-                    read2_end = match[0]
-            read_seq = read.query_sequence[read1_start:read1_end]
-            pair_seq = pair.query_sequence[read2_start:read2_end]
-            read_qual = read.query_qualities[read1_start:read1_end]
-            pair_qual = pair.query_qualities[read2_start:read2_end]
+
+            start = max(read.reference_start, pair.reference_start)
+            end = min(read.reference_end, pair.reference_end)
+            #read1_start = 0
+            #read1_end = 0
+            #read2_start = 0
+            #read2_end = 0
+            #for match in read1_alignment:
+            #    if match[1] == start:
+            #        read1_start = match[0]
+            #    if match[1] == end-1:
+            #        read1_end = match[0]
+            #for match in read2_alignment:
+            #    if match[1] == start:
+            #        read2_start = match[0]
+            #    if match[1] == end-1:
+            #        read2_end = match[0]
+            #read_seq = read.query_sequence[read1_start:read1_end]
+            #pair_seq = pair.query_sequence[read2_start:read2_end]
+            #read_qual = read.query_qualities[read1_start:read1_end]
+            #pair_qual = pair.query_qualities[read2_start:read2_end]
+            #logging.debug("Read_seq:%s -- Pair_seq:%s" % (read_seq, pair_seq))
 
             (consensus, quals, cigar) = _get_consensus(read, pair, start, end, fill_char)
-            #(consensus, quals) = _get_consensus2(read_seq, pair_seq, read_qual, pair_qual, fill_char, base_qual)
-            #if read.query_length + read.get_cigar_stats()[0][2] <= pair.query_length + pair.get_cigar_stats()[0][2]:
-            #    new_cigar = _generate_cigar(read1_start, len(consensus), read.cigartuples)
-            #else:
-            #    new_cigar = _generate_cigar(read2_start, len(consensus), pair.cigartuples)
-            new_read = pysam.AlignedSegment()
-            new_read.is_paired = False
-            new_read.query_name = read.query_name
-            new_read.reference_id = read.reference_id
-            new_read.reference_start = start
-            new_read.query_sequence = consensus
-            new_read.cigartuples = cigar
-            new_read.query_qualities = quals
-            outdata.write(new_read)
+            logging.debug("Consensus:%s" % consensus)
+            #logging.debug("Quals:%s" % quals)
+            #logging.debug("Cigar:%s" % cigar)
+            if consensus:
+                new_read = pysam.AlignedSegment()
+                new_read.is_paired = False
+                new_read.query_name = read.query_name
+                new_read.reference_id = read.reference_id
+                new_read.reference_start = start
+                new_read.query_sequence = consensus
+                new_read.cigartuples = cigar
+                new_read.query_qualities = quals
+                outdata.write(new_read)
     outdata.close()
     pysam.sort("-o", out_file, out_file)
     pysam.index(out_file)
@@ -273,10 +277,10 @@ def main(argv=None): # IGNORE:C0111
     program_version = "v%s" % __version__
     program_build_date = str(__updated__)
     program_version_message = '%%(prog)s %s (%s)' % (program_version, program_build_date)
-    if __name__ == '__main__':
-        program_shortdesc = __import__('__main__').__doc__.split("\n")[1]
-    else:
-        program_shortdesc = __doc__.split("\n")[1]    
+    #if __name__ == '__main__':
+    #    program_shortdesc = __import__('__main__').__doc__.split("\n")[1]
+    #else:
+    program_shortdesc = __doc__.split("\n")[1]    
     program_license = '''%s
 
   Created by TGen North on %s.
@@ -297,6 +301,7 @@ USAGE
         parser = argparse.ArgumentParser(description=program_license, formatter_class=argparse.RawTextHelpFormatter)
         parser.add_argument("-b", "--bam", metavar="FILE", required=True, type=argparse.FileType('rb'), help="bam file to process. [REQUIRED]")
         parser.add_argument("-o", "--out", metavar="FILE", help="new bam file to write. [default: ./{orig_bam}_SMOR.bam]")
+        parser.add_argument("-w", "--whole-genome", dest="genome", default=False, help="do not assume specific SMOR targets and instead process each read pair independently. {default: False}")
         parser.add_argument("-c", "--fill-character", default="N", type=str, dest="fill", help="character to use for overlap positions that don't match [default: N]")
         parser.add_argument("-q", "--min-base-qual", dest="bqual", default=0, type=int, help="minimum base quality score to use a position in each read (Phred scale, i.e. 10=90, 20=99, 30=99.9 percent accuracy) [default: 0]")
         
@@ -307,15 +312,23 @@ USAGE
 
         bam_fp = args.bam
         out_file = args.out
+        whole_genome = args.genome
         fill_char = args.fill
         base_qual = args.bqual
+
+        logfile = "smor_processing.log"
+        logging.basicConfig(level=logging.DEBUG,
+                            format='%(asctime)s %(levelname)-8s %(message)s',
+                            datefmt='%m/%d/%Y %H:%M:%S',
+                            filename=logfile,
+                            filemode='w')
 
         samdata = pysam.AlignmentFile(bam_fp.name, "rb")
 
         if not out_file:
             out_file = "%s_SMOR.bam" % (os.path.splitext(os.path.basename(samdata.filename.decode("utf-8")))[0])
             
-        _write_bam(samdata, out_file, fill_char, base_qual)
+        _write_bam(samdata, out_file, fill_char, base_qual, whole_genome)
 
         return 0
     except KeyboardInterrupt:

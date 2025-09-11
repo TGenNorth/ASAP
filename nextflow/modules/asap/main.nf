@@ -45,6 +45,7 @@ process IDENTITY_FILTER {
     
     output:
     tuple val(sample_id), path("${bamfile.getBaseName()}_identityFiltered.bam"), path("${bamfile.getBaseName()}_identityFiltered.bam.bai"), emit: identity_filter_output
+    tuple val(sample_id), path("identity_filtering.log"), emit: identity_filter_logging
 
     script:
     """
@@ -61,6 +62,7 @@ process SMOR {
     
     output:
     tuple val(sample_id), path("${bamfile.getBaseName()}_SMOR.bam"), path("${bamfile.getBaseName()}_SMOR.bam.bai"), emit: smor_output
+    tuple val(sample_id), path("smor_processing.log"), emit: smor_logging
 
     script:
     """

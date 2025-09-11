@@ -75,12 +75,14 @@ workflow {
 
     // Optionally run identity filtering
     if(params.identity) {
-        aligned_bams = IDENTITY_FILTER(aligned_bams)
+        def identity_filter_logging
+        (aligned_bams, identity_filter_logging) = IDENTITY_FILTER(aligned_bams)
     }
 
     // Optionally run SMOR
     if(params.smor) {
-        aligned_bams = SMOR(aligned_bams)
+        def smor_logging
+        (aligned_bams, smor_logging) = SMOR(aligned_bams)
     }
 
     // Run bam processor

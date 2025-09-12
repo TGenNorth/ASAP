@@ -106,7 +106,7 @@ def _process_pileup(pileup, amplicon, depth, proportion, mutdepth, offset, whole
                         passed_Qual_filter += 1
                         base_counter.update({"_" : 1})
                     else:
-                        quality_discard_array[pileupcolumn.pos]
+                        quality_discard_array[pileupcolumn.pos] += 1 # TP Updated: previous quality_discard_array[pileupcolumn.pos] 
                 elif pileupread.alignment.query_qualities[pileupread.query_position] >= base_qual: # check here
                     passed_Qual_filter += 1
                     if pileupread.indel < 0: #This means the next position is a deletion, we'll process later

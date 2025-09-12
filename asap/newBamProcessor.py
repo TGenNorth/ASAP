@@ -148,17 +148,29 @@ def _process_pileup(pileup, amplicon, depth, proportion, mutdepth, offset, whole
         reference_call = amplicon.sequence[pileupcolumn.pos]
         if reference_call == '-':
             reference_call = '_' #Need to use '_' instead of '-' for gaps because of XSLT
-        if alignment_call != reference_call:
-            snp_call = alignment_call
-            snp_count = ordered_list[0][1]
-            snp_call_proportion = alignment_call_proportion
-        elif len(ordered_list) > 1:
-            snp_call = ordered_list[1][0]
-            snp_count = ordered_list[1][1]
-            snp_call_proportion = ordered_list[1][1] / column_depth
+        #if alignment_call != reference_call:
+        #    snp_call = alignment_call
+        #    snp_count = ordered_list[0][1]
+        #    snp_call_proportion = alignment_call_proportion
+        #elif len(ordered_list) > 1:
+        #    snp_call = ordered_list[1][0]
+        #    snp_count = ordered_list[1][1]
+        #    snp_call_proportion = ordered_list[1][1] / column_depth
+        # Initialize SNP variables TP added 2025 ########
+        snp_call = None
+        snp_count = None
+        snp_call_proportion = None
+        # Find the first valid SNP candidate (a non-reference, non-ambiguous base)
+        for base, count in ordered_list:
+            if base != reference_call and base.upper() in {'A', 'C', 'G', 'T'}:
+                snp_call = base
+                snp_count = count
+                snp_call_proportion = count / column_depth
+                break # Exit the loop once a valid SNP is found
         else:
+        #    snp_call = snp_count = snp_call_proportion = None
+        # This 'else' block executes if the loop completes without finding a valid SNP
             snp_call = snp_count = snp_call_proportion = None
-
         #Generate consensus call at this pos
         #consensus_seq += alignment_call if alignment_call_proportion >= consensus_proportion else "N"
         # unless the alignment_call is a deletion, and >50% -- don't ever replace deletions with Ns

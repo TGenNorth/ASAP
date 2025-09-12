@@ -79,6 +79,7 @@ def _process_pileup(pileup, amplicon, depth, proportion, mutdepth, offset, whole
     depth_array = [0] * amplicon_length
     quality_discard_array = [0] * amplicon_length
     prop_array = ["0"] * amplicon_length
+    n_read_array = [0] * amplicon_length # New array to count 'N' reads
     previous_position = 0
     # for each position in alignment/pileup
     for pileupcolumn in pileup:
@@ -97,6 +98,10 @@ def _process_pileup(pileup, amplicon, depth, proportion, mutdepth, offset, whole
         for pileupread in pileupcolumn.pileups:
             #print("processing read, qual=%i" % pileupread.alignment.query_qualities[pileupread.query_position])
             try:
+                # Tanner: Check for 'N' bases first
+                if pileupread.query_position is not None and pileupread.alignment.query_sequence[pileupread.query_position].upper() == 'N':
+                    n_read_array[pileupcolumn.pos] += 1
+                    continue
                 if pileupread.is_del:
                     #This position in the alignment is a deletion in the query sequence, therefore it has no quality score
                     # Let's use the average of the quality scores of the two aligned bases flanking the deletion
@@ -238,6 +243,7 @@ def _process_pileup(pileup, amplicon, depth, proportion, mutdepth, offset, whole
             pileup_dict['gapfilled_consensus_sequence'] = gapfilled_consensus_seq
         pileup_dict['depths'] = ",".join(str(n) for n in depth_array)
         pileup_dict['proportions'] = ",".join(prop_array)
+        pileup_dict['n_reads'] = ",".join(str(n) for n in n_read_array) # New: Add the 'N' read counts
     pileup_dict['breadth'] = str(breadth_positions/amplicon_length * 100)
     pileup_dict['quality_discards'] = ",".join(str(n) for n in quality_discard_array)
     pileup_dict['SNPs'] = snp_list

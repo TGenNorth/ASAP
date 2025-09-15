@@ -29,17 +29,18 @@ process ALIGN_BOWTIE2 {
     tuple val(sample_id), path("${sample_id}-bt2.bam"), path("${sample_id}-bt2.bam.bai"), emit: bam_output
 
     script:
+    def extra_args = params.aligner_extra_args ? params.aligner_extra_args : ""
+
     """
     # Copy all index files to local working dir
     cp ${index_dir}/* .
     
     # Run bowtie2 on the paired reads
-    bowtie2 -x bt2_index --rg-id '${sample_id}' --rg 'SM:${sample_id}' -1 ${read1} -2 ${read2} -p ${task.cpus} \
-    | samtools view -Sbh - \
+    bowtie2 -x bt2_index --rg-id '${sample_id}' --rg 'SM:${sample_id}' -1 ${read1} -2 ${read2} -p ${task.cpus} ${extra_args} \\
+    | samtools view -Sbh - \\
     | samtools sort -T ${sample_id}-bt2 -o ${sample_id}-bt2.bam -
 
     # Index the bam file
     samtools index ${sample_id}-bt2.bam
     """
 }
-

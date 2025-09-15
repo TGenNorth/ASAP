@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # encoding: utf-8
 '''
-asap.identityFilter -- Generate a new bam file just like the old one, but with primer sequences masked
+asap.identityFilter -- Generate a new bam file just like the old one, but with reads removed < specified identity.
 
 asap.identityFilter 
 

@@ -64,7 +64,72 @@ def _write_parameters(node, data):
         subnode.text = str(v)
     return node
 
-def _process_pileup(pileup, amplicon, depth, proportion, mutdepth, offset, wholegenome, base_qual, con_prop, fill_gap_char, fill_del_char):
+def _get_n_counts(pileup_iterator, amplicon_length):
+    """
+    Calculates and returns an array of N-base counts for each position
+    in the amplicon, ensuring each unique alignment is only processed once.
+    
+    This function uses a hybrid approach to count N-bases in both aligned and 
+    soft-clipped primer regions.
+    
+    Args:
+        pileup_iterator: An iterator for the pileup data.
+        amplicon_length: The length of the amplicon sequence.
+
+    Returns:
+        A list of integers representing the count of N-bases at each position.
+    """
+    n_read_array = [0] * amplicon_length
+    processed_alignments = set()
+
+    for pileupcolumn in pileup_iterator:
+        for pileupread in pileupcolumn.pileups:
+            try:
+                alignment = pileupread.alignment
+                alignment_id = (alignment.query_name, alignment.reference_start, alignment.query_length)
+
+                if alignment_id in processed_alignments:
+                    continue
+                
+                current_read_sequence = alignment.query_sequence.upper()
+                
+                # --- HYBRID APPROACH START ---
+                
+                # 1. Count Ns in soft-clipped/unaligned regions at the start
+                first_aligned_pos_in_query = alignment.get_aligned_pairs()[0][0]
+                if first_aligned_pos_in_query is not None and first_aligned_pos_in_query > 0:
+                    for i in range(first_aligned_pos_in_query):
+                        if current_read_sequence[i] == 'N':
+                            ref_pos_with_n = alignment.reference_start - (first_aligned_pos_in_query - i)
+                            if 0 <= ref_pos_with_n < amplicon_length:
+                                n_read_array[ref_pos_with_n] += 1
+
+                # 2. Count Ns in soft-clipped/unaligned regions at the end
+                last_aligned_pos_in_query = alignment.get_aligned_pairs()[-1][0]
+                read_length = len(current_read_sequence)
+                if last_aligned_pos_in_query is not None and last_aligned_pos_in_query < read_length - 1:
+                    for i in range(last_aligned_pos_in_query + 1, read_length):
+                        if current_read_sequence[i] == 'N':
+                            ref_pos_with_n = alignment.reference_end + (i - last_aligned_pos_in_query -1)
+                            if 0 <= ref_pos_with_n < amplicon_length:
+                                n_read_array[ref_pos_with_n] += 1
+                                
+                # 3. Count Ns in the aligned regions
+                for query_pos, ref_pos in alignment.get_aligned_pairs():
+                    if query_pos is not None and ref_pos is not None:
+                        if current_read_sequence[query_pos] == 'N' and 0 <= ref_pos < amplicon_length:
+                            n_read_array[ref_pos] += 1
+                
+                # --- HYBRID APPROACH END ---
+                
+                processed_alignments.add(alignment_id)
+
+            except Exception:
+                pass
+
+    return n_read_array
+
+def _process_pileup(pileup, amplicon, depth, proportion, mutdepth, offset, wholegenome, base_qual, con_prop, fill_gap_char, fill_del_char, n_read_array):
     global low_level_cutoff, high_level_cutoff
     pileup_dict = {}
     snp_dict = _create_snp_dict(amplicon)
@@ -79,7 +144,6 @@ def _process_pileup(pileup, amplicon, depth, proportion, mutdepth, offset, whole
     depth_array = [0] * amplicon_length
     quality_discard_array = [0] * amplicon_length
     prop_array = ["0"] * amplicon_length
-    n_read_array = [0] * amplicon_length # New array to count 'N' reads
     previous_position = 0
     # for each position in alignment/pileup
     for pileupcolumn in pileup:
@@ -98,10 +162,6 @@ def _process_pileup(pileup, amplicon, depth, proportion, mutdepth, offset, whole
         for pileupread in pileupcolumn.pileups:
             #print("processing read, qual=%i" % pileupread.alignment.query_qualities[pileupread.query_position])
             try:
-                # Tanner: Check for 'N' bases first
-                if pileupread.query_position is not None and pileupread.alignment.query_sequence[pileupread.query_position].upper() == 'N':
-                    n_read_array[pileupcolumn.pos] += 1
-                    continue
                 if pileupread.is_del:
                     #This position in the alignment is a deletion in the query sequence, therefore it has no quality score
                     # Let's use the average of the quality scores of the two aligned bases flanking the deletion
@@ -111,7 +171,7 @@ def _process_pileup(pileup, amplicon, depth, proportion, mutdepth, offset, whole
                         passed_Qual_filter += 1
                         base_counter.update({"_" : 1})
                     else:
-                        quality_discard_array[pileupcolumn.pos] += 1 # TP Updated: previous quality_discard_array[pileupcolumn.pos] 
+                        quality_discard_array[pileupcolumn.pos]
                 elif pileupread.alignment.query_qualities[pileupread.query_position] >= base_qual: # check here
                     passed_Qual_filter += 1
                     if pileupread.indel < 0: #This means the next position is a deletion, we'll process later
@@ -243,7 +303,7 @@ def _process_pileup(pileup, amplicon, depth, proportion, mutdepth, offset, whole
             pileup_dict['gapfilled_consensus_sequence'] = gapfilled_consensus_seq
         pileup_dict['depths'] = ",".join(str(n) for n in depth_array)
         pileup_dict['proportions'] = ",".join(prop_array)
-        pileup_dict['n_reads'] = ",".join(str(n) for n in n_read_array) # New: Add the 'N' read counts
+        pileup_dict['n_reads'] = ",".join(str(n) for n in n_read_array)
     pileup_dict['breadth'] = str(breadth_positions/amplicon_length * 100)
     pileup_dict['quality_discards'] = ",".join(str(n) for n in quality_discard_array)
     pileup_dict['SNPs'] = snp_list
@@ -1112,8 +1172,13 @@ USAGE
                             if resistances:
                                 significance_node.set("resistance", ",".join(resistances))
                     # Warning: not designed to handle greater than 10 million X coverage
+                    pileup_for_n_counting = samdata.pileup(ref_name, max_depth=10000000, ignore_orphans=False, ignore_overlaps=False)
+                    amplicon_length = len(amplicon.sequence)
+
+                    # First, run the N-counting function to get the N-read array.
+                    n_read_array = _get_n_counts(pileup_for_n_counting, amplicon_length)
                     pileup = samdata.pileup(ref_name, max_depth=10000000, ignore_orphans=False, ignore_overlaps=False)
-                    amplicon_data = _process_pileup(pileup, amplicon, depth, proportion, mutdepth, offset, wholegenome, base_qual, con_prop, fill_gap_char, fill_del_char)
+                    amplicon_data = _process_pileup(pileup, amplicon, depth, proportion, mutdepth, offset, wholegenome, base_qual, con_prop, fill_gap_char, fill_del_char, n_read_array)
                     if float(amplicon_data['breadth']) < breadth*100:
                         significance_node = amplicon_node.find("significance")
                         if significance_node is None:

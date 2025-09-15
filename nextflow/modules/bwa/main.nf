@@ -31,13 +31,15 @@ process ALIGN_BWA {
     tuple val(sample_id), path("${sample_id}-bwa.bam"), path("${sample_id}-bwa.bam.bai"), emit: bam_output
 
     script:
+    def extra_args = params.aligner_extra_args ? params.aligner_extra_args : ""
+
     """
     # Copy all the index files to local working dir
     cp ${index_dir}/* .
 
     # Run bwa mem on the paired reads
-    bwa mem -t ${task.cpus} -R '@RG\\tID:${sample_id}\\tSM:${sample_id}' bwa_index ${read1} ${read2} \
-    | samtools view -Sbh - \
+    bwa mem -t ${task.cpus} -R '@RG\\tID:${sample_id}\\tSM:${sample_id}' ${extra_args} bwa_index ${read1} ${read2} \\
+    | samtools view -Sbh - \\
     | samtools sort -T ${sample_id}-bwa -o ${sample_id}-bwa.bam - 
 
     # Index the bam

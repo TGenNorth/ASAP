@@ -12,18 +12,20 @@ process RUN_FASTP {
     tuple val(sample_id), path("${sample_id}.cleaned_R1.fastq.gz"), path("${sample_id}.cleaned_R2.fastq.gz"), path("${sample_id}.fastp.html"), path("${sample_id}.fastp.json"), emit: trimmed_reads
 
     script:
+    def extra_args = params.fastp_extra_args ? params.fastp_extra_args : ""
     """
     ls -l ${adapter_fasta}
     head -n 3 ${adapter_fasta}
-    fastp \
-        -i ${reads[0]} \
-        -I ${reads[1]} \
-        -o ${sample_id}.cleaned_R1.fastq.gz \
-        -O ${sample_id}.cleaned_R2.fastq.gz \
-        --adapter_fasta ${adapter_fasta} \
-        --html ${sample_id}.fastp.html \
-        --json ${sample_id}.fastp.json \
-        --thread ${task.cpus}
+    fastp \\
+        -i ${reads[0]} \\
+        -I ${reads[1]} \\
+        -o ${sample_id}.cleaned_R1.fastq.gz \\
+        -O ${sample_id}.cleaned_R2.fastq.gz \\
+        --adapter_fasta ${adapter_fasta} \\
+        --html ${sample_id}.fastp.html \\
+        --json ${sample_id}.fastp.json \\
+        --thread ${task.cpus} \\
+        ${extra_args}
     """
 }
 

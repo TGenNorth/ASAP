@@ -1,0 +1,162 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "id": "https://raw.githubusercontent.com/tgennorth/ASAP/main/nextflow_schema.json",
+  "title": "ASAP Pipeline Parameters",
+  "description": "Amplicon Sequencing Analysis Pipeline.",
+  "type": "object",
+  "properties": {
+    "read_dir": {
+      "description": "Directory containing input FASTQ files.",
+      "type": ["string", "null"]
+    },
+    "json": {
+      "description": "Path to a JSON file with sample information.",
+      "type": ["string", "null"]
+    },
+    "outdir": {
+      "description": "Output directory for pipeline results.",
+      "type": "string",
+      "default": "ASAP_Results"
+    },
+    "name": {
+      "description": "A meaningful name for the output files and reports.",
+      "type": "string",
+      "default": "ASAP_Output"
+    },
+    "adapter_fasta": {
+      "description": "FASTA file containing adapter sequences for trimming.",
+      "type": ["string", "null"],
+      "default": "../asap/illumina_adapters_all.fasta"
+    },
+    "fastp_extra_args": {
+      "description": "String of additional arguments for fastp.",
+      "type": "string",
+      "default": ""
+    },
+    "aligner": {
+      "description": "Read alignment tool to use.",
+      "type": "string",
+      "enum": ["bowtie2", "bwa"],
+      "default": "bowtie2"
+    },
+    "aligner_extra_args": {
+      "description": "String of additional arguments for the aligner.",
+      "type": "string",
+      "default": ""
+    },
+    "primer_file": {
+      "description": "Path to a primer file for masking.",
+      "type": ["string", "null"]
+    },
+    "wiggle": {
+      "description": "Wiggle distance for primer masking.",
+      "type": "integer",
+      "default": 9
+    },
+    "mask_bam": {
+      "description": "Whether to mask primers in the BAM file.",
+      "type": "boolean",
+      "default": true
+    },
+    "primer_only": {
+      "description": "Only perform primer masking.",
+      "type": "boolean",
+      "default": false
+    },
+    "identity": {
+      "description": "Identity threshold for filtering.",
+      "type": ["number", "null"]
+    },
+    "ref_names": {
+      "description": "Names of reference sequences.",
+      "type": ["string", "array", "null"]
+    },
+    "smor": {
+      "description": "Enable SMOR analysis.",
+      "type": "boolean",
+      "default": false
+    },
+    "fill_character": {
+      "description": "Character to use for filling gaps.",
+      "type": "string",
+      "default": "N"
+    },
+    "min_base_qual": {
+      "description": "Minimum base quality for BAM processing.",
+      "type": "integer",
+      "default": 5
+    },
+    "depth": {
+      "description": "Minimum depth for variant calling.",
+      "type": "integer",
+      "default": 100
+    },
+    "breadth": {
+      "description": "Minimum breadth for variant calling.",
+      "type": "number",
+      "default": 0.8
+    },
+    "proportion": {
+      "description": "Minimum proportion for variant calling.",
+      "type": "number",
+      "default": 0.1
+    },
+    "mutation_depth": {
+      "description": "Minimum depth for mutation calling.",
+      "type": "integer",
+      "default": 5
+    },
+    "consensus_proportion": {
+      "description": "Minimum proportion for consensus calling.",
+      "type": "number",
+      "default": 0.8
+    },
+    "fill_gaps": {
+      "description": "Whether to fill gaps in BAM processing.",
+      "type": "boolean",
+      "default": false
+    },
+    "mark_deletions": {
+      "description": "Whether to mark deletions in BAM processing.",
+      "type": "boolean",
+      "default": false
+    },
+    "combine_output": {
+      "description": "Whether to combine output files.",
+      "type": "boolean",
+      "default": true
+    },
+    "stylesheet": {
+      "description": "XSLT stylesheet for transforming output.",
+      "type": ["string", "null"],
+      "default": "../output_transforms/ASAP_fulldetails_web.xsl"
+    },
+    "out_file": {
+      "description": "Name of the output HTML file.",
+      "type": ["string", "null"],
+      "default": "<name>.html"
+    },
+    "fastp_container": {
+      "description": "Container image for fastp.",
+      "type": "string",
+      "default": "quay.io/biocontainers/fastp"
+    },
+    "bwa_container": {
+      "description": "Container image for bwa.",
+      "type": "string",
+      "default": "biocontainers/bwa"
+    },
+    "bowtie2_container": {
+      "description": "Container image for bowtie2.",
+      "type": "string",
+      "default": "biocontainers/bowtie2"
+    }
+  },
+  "required": [
+    "read_dir",
+    "json",
+    "outdir",
+    "name"
+  ],
+  "definitions": {}
+}

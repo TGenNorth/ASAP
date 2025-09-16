@@ -2,7 +2,10 @@
 
 nextflow.enable.dsl=2
 
-// Import processes
+// Import nf-schema functions
+include { validateParameters; paramsSummaryLog } from 'plugin/nf-schema'
+
+// Import all processes
 include { RUN_FASTP } from './modules/fastp'
 include { 
     BUILD_BWA_INDEX
@@ -22,7 +25,13 @@ include {
     FORMAT_OUTPUT
 } from './modules/asap'
 
+// Call validation in the global scope. The plugin handles the --help flag.
+validateParameters()
+
 workflow {
+    
+    // Everything else goes inside the workflow block
+    log.info paramsSummaryLog(workflow)
 
     // Grap the assay description json file and genereate reference fasta
     def assay_json = file(params.json).toAbsolutePath()
@@ -30,9 +39,6 @@ workflow {
     def ref_fasta = GENERATE_REFERENCE_FASTA(json_ch)
 
     // Find and pair the read files for processing
-    if (!params.read_dir) {
-        error "Please specify the readfile location with: --read_dir <path>"
-    }
     def reads_dir_abs = file(params.read_dir).toAbsolutePath()
     def pattern = "${reads_dir_abs}/*_R{1,2}_001.fastq.gz"
     Channel
@@ -102,4 +108,3 @@ workflow {
         def transformation = FORMAT_OUTPUT(final_xml, stylesheet_ch)
     }
 }
-

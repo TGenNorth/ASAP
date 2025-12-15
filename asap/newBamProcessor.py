@@ -227,15 +227,15 @@ def _process_pileup(pileup, amplicon, depth, proportion, mutdepth, offset, whole
         snp_call_proportion = None
         # Find the first valid SNP candidate (a non-reference, non-ambiguous base)
         for base, count in ordered_list:
-            if base != reference_call and base.upper() in {'A', 'C', 'G', 'T'}:
+            if base != reference_call and base.upper() != "N":
                 snp_call = base
                 snp_count = count
                 snp_call_proportion = count / column_depth
                 break # Exit the loop once a valid SNP is found
-        else:
+        #else:
         #    snp_call = snp_count = snp_call_proportion = None
         # This 'else' block executes if the loop completes without finding a valid SNP
-            snp_call = snp_count = snp_call_proportion = None
+        #    snp_call = snp_count = snp_call_proportion = None
         #Generate consensus call at this pos
         #consensus_seq += alignment_call if alignment_call_proportion >= consensus_proportion else "N"
         # unless the alignment_call is a deletion, and >50% -- don't ever replace deletions with Ns

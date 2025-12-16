@@ -135,8 +135,11 @@ def _process_pileup(pileup, amplicon, depth, proportion, mutdepth, offset, whole
     snp_dict = _create_snp_dict(amplicon)
     deletion_counter = Counter() #keep track of deletions by read name
     consensus_seq = ""
-    if fill_gap_char:
-        gapfilled_consensus_seq = ""
+    if fill_gap_char != "false": # If the flag was actually passed (i.e., fill_gap_char is 'n' or a custom char)
+        gapfilled_consensus_seq = "" # For calculating the actual sequence
+    else:
+        # If the flag was NOT passed, initialize to the final string we want in the XML
+        gapfilled_consensus_seq = "fill_gaps was not provided... consider using --fill_gaps n"
     snp_list = []
     breadth_positions = 0
     avg_depth_total = avg_depth_positions = 0
@@ -150,7 +153,7 @@ def _process_pileup(pileup, amplicon, depth, proportion, mutdepth, offset, whole
         base_counter = Counter()
         position = pileupcolumn.pos+1
         # This fills gaps in the alignment with n's or user defined char
-        if fill_gap_char:
+        if fill_gap_char != "false":
             if previous_position+1 < position: #We've skipped some positions in the alignment
                 #print("%i, %i" % (previous_position, position))
                 for i in range(previous_position+1, position):
@@ -171,7 +174,7 @@ def _process_pileup(pileup, amplicon, depth, proportion, mutdepth, offset, whole
                         passed_Qual_filter += 1
                         base_counter.update({"_" : 1})
                     else:
-                        quality_discard_array[pileupcolumn.pos]
+                        quality_discard_array[pileupcolumn.pos] += 1
                 elif pileupread.alignment.query_qualities[pileupread.query_position] >= base_qual: # check here
                     passed_Qual_filter += 1
                     if pileupread.indel < 0: #This means the next position is a deletion, we'll process later
@@ -204,7 +207,7 @@ def _process_pileup(pileup, amplicon, depth, proportion, mutdepth, offset, whole
         ordered_list = base_counter.most_common()
         if not ordered_list: #No coverage, should only happen here if all reads were thrown out because of quality
             consensus_seq += "N"
-            if fill_gap_char:
+            if fill_gap_char != "false":
                 gapfilled_consensus_seq += "N"
             continue
         alignment_call = ordered_list[0][0]
@@ -232,36 +235,33 @@ def _process_pileup(pileup, amplicon, depth, proportion, mutdepth, offset, whole
                 snp_count = count
                 snp_call_proportion = count / column_depth
                 break # Exit the loop once a valid SNP is found
-        #else:
-        #    snp_call = snp_count = snp_call_proportion = None
-        # This 'else' block executes if the loop completes without finding a valid SNP
-        #    snp_call = snp_count = snp_call_proportion = None
+
         #Generate consensus call at this pos
         #consensus_seq += alignment_call if alignment_call_proportion >= consensus_proportion else "N"
         # unless the alignment_call is a deletion, and >50% -- don't ever replace deletions with Ns
         # or if coverage is less than the depth threshold, then always call N
         if not depth_passed: # N's if we don't have enough coverage
             consensus_seq += "N"
-            if fill_gap_char:
+            if fill_gap_char != "false":
                 gapfilled_consensus_seq += "N"
         elif alignment_call != "_":
             if alignment_call_proportion >= con_prop:
                 consensus_seq += alignment_call
-                if fill_gap_char:
+                if fill_gap_char != "false":
                     gapfilled_consensus_seq += alignment_call
             else: #Consensus proportion not high enough
                 consensus_seq += "N"
-                if fill_gap_char:
+                if fill_gap_char != "false":
                     gapfilled_consensus_seq += "N"
         else:
             if alignment_call_proportion <= 0.5: #Verify that the gap call is truly greater than 50%
                 consensus_seq += "N"
-                if fill_gap_char:
+                if fill_gap_char != "false":
                     gapfilled_consensus_seq += "N"
             else:
                 if fill_del_char: #Put in gaps if user requested them
                     consensus_seq += fill_del_char
-                    if fill_gap_char:
+                    if fill_gap_char != "false":
                         gapfilled_consensus_seq += fill_del_char
 
         if position >= abs(offset) and offset < 0: #if the offset is negative, ie. amplicon starts before beginning of the gene, then when converting to gene-based coordinates need to make offset 1 unit more positive to account for there being no 0-base in gene-coordinates
@@ -299,8 +299,9 @@ def _process_pileup(pileup, amplicon, depth, proportion, mutdepth, offset, whole
             snp_list.append(snp)
     if not wholegenome: #If reference is whole genome, none of these are going to make sense, and they will make the output too large
         pileup_dict['consensus_sequence'] = consensus_seq
-        if fill_gap_char:
-            pileup_dict['gapfilled_consensus_sequence'] = gapfilled_consensus_seq
+        pileup_dict['gapfilled_consensus_sequence'] = gapfilled_consensus_seq #TP added
+        # if fill_gap_char: #TP removed...
+        #     pileup_dict['gapfilled_consensus_sequence'] = gapfilled_consensus_seq
         pileup_dict['depths'] = ",".join(str(n) for n in depth_array)
         pileup_dict['proportions'] = ",".join(prop_array)
         pileup_dict['n_reads'] = ",".join(str(n) for n in n_read_array)
@@ -1008,7 +1009,8 @@ USAGE
         parser.add_argument("--output-format", type=str.lower, choices=('xml', 'json'), default='xml', help="output format [default: xml]")
         parser.add_argument("--min-base-qual", dest="bqual", default=5, type=int, help="What is the minimum base quality score to use a position (phred scale, i.e. 10=90, 20=99, 30=99.9 accuracy) [default: 5]")
         parser.add_argument("--consensus-proportion", default=0.8, type=float, help="minimum proportion required to call at base at that position, else 'N'. [default: 0.8]")
-        parser.add_argument("--fill-gaps", nargs="?", const="n", dest="gap_char", help="fill no coverage gaps in the consensus sequence [default: False], optional parameter is the character to use for filling [defaut: n]")
+        parser.add_argument("--fill-gaps", nargs="?", const="n", default="false", dest="gap_char", help="fill no coverage gaps in the consensus sequence [default: False], optional parameter is the character to use for filling [defaut: n]")
+        #parser.add_argument("--fill-gaps", nargs="?", const="n", default=None, dest="gap_char", help="fill no coverage gaps in the consensus sequence [default: False], optional parameter is the character to use for filling [defaut: n]")
         parser.add_argument("--mark-deletions", nargs="?", const="_", dest="del_char", help="fill deletions in the consensus sequence [default: False], optional parameter is the character to use for filling [defaut: _]")
 
         # Process arguments

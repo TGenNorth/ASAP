@@ -1009,7 +1009,7 @@ USAGE
         parser.add_argument("--output-format", type=str.lower, choices=('xml', 'json'), default='xml', help="output format [default: xml]")
         parser.add_argument("--min-base-qual", dest="bqual", default=5, type=int, help="What is the minimum base quality score to use a position (phred scale, i.e. 10=90, 20=99, 30=99.9 accuracy) [default: 5]")
         parser.add_argument("--consensus-proportion", default=0.8, type=float, help="minimum proportion required to call at base at that position, else 'N'. [default: 0.8]")
-        parser.add_argument("--fill-gaps", nargs="?", const="n", default="false", dest="gap_char", help="fill no coverage gaps in the consensus sequence [default: n], optional parameter is either the character to use for filling [defaut: n] or `false` for no gap filled array")
+        parser.add_argument("--fill-gaps", nargs="?", const="n", default="n", dest="gap_char", help="fill no coverage gaps in the consensus sequence [default: n], optional parameter is either the character to use for filling [defaut: n] or `false` for no gap filled array")
         #parser.add_argument("--fill-gaps", nargs="?", const="n", default=None, dest="gap_char", help="fill no coverage gaps in the consensus sequence [default: False], optional parameter is the character to use for filling [defaut: n]") # TP edited
         parser.add_argument("--mark-deletions", nargs="?", const="_", dest="del_char", help="fill deletions in the consensus sequence [default: _] or `false` for consensus without deletions.")
         #parser.add_argument("--mark-deletions", nargs="?", const="_", dest="del_char", help="fill deletions in the consensus sequence [default: False], optional parameter is the character to use for filling [defaut: _]") # TP edited

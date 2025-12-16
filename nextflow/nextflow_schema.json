@@ -113,8 +113,8 @@
     },
     "fill_gaps": {
       "description": "Whether to fill gaps in BAM processing.",
-      "type": "boolean",
-      "default": false
+      "type": "string",
+      "default": "n"
     },
     "mark_deletions": {
       "description": "Whether to mark deletions in BAM processing.",

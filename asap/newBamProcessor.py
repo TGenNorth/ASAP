@@ -238,14 +238,14 @@ def _process_pileup(pileup, amplicon, depth, proportion, mutdepth, offset, whole
 
         #Generate consensus call at this pos
         #consensus_seq += alignment_call if alignment_call_proportion >= consensus_proportion else "N"
-        # unless the alignment_call is a deletion, and >50% -- don't ever replace deletions with Ns
+        # unless the alignment_call is a deletion, and > consensus proportion (Previously 50%) -- don't ever replace deletions with Ns
         # or if coverage is less than the depth threshold, then always call N
         if not depth_passed: # N's if we don't have enough coverage
             consensus_seq += "N"
             if fill_gap_char != "false":
                 gapfilled_consensus_seq += "N"
         elif alignment_call != "_":
-            if alignment_call_proportion >= con_prop:
+            if alignment_call_proportion >= con_prop: #Add call to consensus and gap_filled...
                 consensus_seq += alignment_call
                 if fill_gap_char != "false":
                     gapfilled_consensus_seq += alignment_call
@@ -254,12 +254,12 @@ def _process_pileup(pileup, amplicon, depth, proportion, mutdepth, offset, whole
                 if fill_gap_char != "false":
                     gapfilled_consensus_seq += "N"
         else:
-            if alignment_call_proportion <= 0.5: #Verify that the gap call is truly greater than 50%
+            if alignment_call_proportion < con_prop: #TP Changed from <= 0.5 to be less than con_prop, this matches above calling.
                 consensus_seq += "N"
                 if fill_gap_char != "false":
                     gapfilled_consensus_seq += "N"
             else:
-                if fill_del_char: #Put in gaps if user requested them
+                if fill_del_char != "false": #Put in gaps if user requested them
                     consensus_seq += fill_del_char
                     if fill_gap_char != "false":
                         gapfilled_consensus_seq += fill_del_char
@@ -1009,9 +1009,10 @@ USAGE
         parser.add_argument("--output-format", type=str.lower, choices=('xml', 'json'), default='xml', help="output format [default: xml]")
         parser.add_argument("--min-base-qual", dest="bqual", default=5, type=int, help="What is the minimum base quality score to use a position (phred scale, i.e. 10=90, 20=99, 30=99.9 accuracy) [default: 5]")
         parser.add_argument("--consensus-proportion", default=0.8, type=float, help="minimum proportion required to call at base at that position, else 'N'. [default: 0.8]")
-        parser.add_argument("--fill-gaps", nargs="?", const="n", default="false", dest="gap_char", help="fill no coverage gaps in the consensus sequence [default: False], optional parameter is the character to use for filling [defaut: n]")
-        #parser.add_argument("--fill-gaps", nargs="?", const="n", default=None, dest="gap_char", help="fill no coverage gaps in the consensus sequence [default: False], optional parameter is the character to use for filling [defaut: n]")
-        parser.add_argument("--mark-deletions", nargs="?", const="_", dest="del_char", help="fill deletions in the consensus sequence [default: False], optional parameter is the character to use for filling [defaut: _]")
+        parser.add_argument("--fill-gaps", nargs="?", const="n", default="false", dest="gap_char", help="fill no coverage gaps in the consensus sequence [default: n], optional parameter is either the character to use for filling [defaut: n] or `false` for no gap filled array")
+        #parser.add_argument("--fill-gaps", nargs="?", const="n", default=None, dest="gap_char", help="fill no coverage gaps in the consensus sequence [default: False], optional parameter is the character to use for filling [defaut: n]") # TP edited
+        parser.add_argument("--mark-deletions", nargs="?", const="_", dest="del_char", help="fill deletions in the consensus sequence [default: _] or `false` for consensus without deletions.")
+        #parser.add_argument("--mark-deletions", nargs="?", const="_", dest="del_char", help="fill deletions in the consensus sequence [default: False], optional parameter is the character to use for filling [defaut: _]") # TP edited
 
         # Process arguments
         args = parser.parse_args()

@@ -118,8 +118,8 @@
     },
     "mark_deletions": {
       "description": "Whether to mark deletions in BAM processing.",
-      "type": "boolean",
-      "default": false
+      "type": "string",
+      "default": "_"
     },
     "combine_output": {
       "description": "Whether to combine output files.",

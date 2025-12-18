@@ -26,6 +26,7 @@ include {
     FORMAT_OUTPUT
 } from './modules/asap'
 include { IVAR_VARIANTS           } from './modules/ivar/variants/'
+include { MULTIQC                 } from './modules/multiqc'
 
 // Call validation in the global scope. The plugin handles the --help flag.
 validateParameters()
@@ -66,12 +67,14 @@ workflow {
 
     // Run fastp for adapter and quality trimming
     def fastp_out = RUN_FASTP(paired_reads, adapter_fasta)
-    // Re-structure fastp output for the next FastQC run
-    fastp_out
+
+    // Re-structure using .trimmed_reads to get the 5-item tuple
+    fastp_out.trimmed_reads
         .map { id, r1, r2, html, json -> [ [id: id, status: 'post_process'], [r1, r2] ] }
         .set { ch_for_fastqc_post }
-    // Re-structure fastp output for the aligner
-    def trimmed_reads = fastp_out.map { id, r1, r2, html, json -> tuple(id, r1, r2) }
+
+    // Re-structure for the aligner
+    def trimmed_reads = fastp_out.trimmed_reads.map { id, r1, r2, html, json -> tuple(id, r1, r2) }
 
 // --- STEP 3: Rerun Fatqc ---
 
@@ -150,14 +153,42 @@ workflow {
         [], 
         true 
     )
+
+// --- STEP 11: MultiQC Integration ---
+
+    ch_multiqc_files = Channel.empty()
+
+    // FASTQC logic (Assumes FASTQC module emits: path "*.zip", emit: zip)
+    ch_multiqc_files = ch_multiqc_files.mix(FASTQC_INITIAL.out.zip.map{ it[1] }.collect())
+    ch_multiqc_files = ch_multiqc_files.mix(FASTQC_POST.out.zip.map{ it[1] }.collect())
+
+    // FASTP logic - use the 'json' emission directly
+    // This is a single path, so we don't need it[1]
+    ch_multiqc_files = ch_multiqc_files.mix(RUN_FASTP.out.json.collect())
+
+    // IVAR logic - assuming module emits: path "*.tsv", emit: tsv
+    // Since iVar usually outputs [meta, tsv], we use it[1] to get the file
+    ch_multiqc_files = ch_multiqc_files.mix(IVAR_VARIANTS.out.tsv.map{ it[1] }.collect())
+
+    MULTIQC (
+        ch_multiqc_files.collect(),
+        [], [], [], [], []
+    )
+
 }
 
 workflow FASTQC_INITIAL {
     take: reads
     main: FASTQC(reads)
+    emit:
+        zip  = FASTQC.out.zip
+        html = FASTQC.out.html
 }
 
 workflow FASTQC_POST {
     take: reads
     main: FASTQC(reads)
+    emit:
+        zip  = FASTQC.out.zip
+        html = FASTQC.out.html
 }

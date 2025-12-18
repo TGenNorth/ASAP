@@ -10,6 +10,8 @@ process RUN_FASTP {
 
     output:
     tuple val(sample_id), path("${sample_id}.cleaned_R1.fastq.gz"), path("${sample_id}.cleaned_R2.fastq.gz"), path("${sample_id}.fastp.html"), path("${sample_id}.fastp.json"), emit: trimmed_reads
+    path "${sample_id}.fastp.html", emit: html
+    path "${sample_id}.fastp.json", emit: json // <-- We will collect this for MultiQC
 
     script:
     def extra_args = params.fastp_extra_args ? params.fastp_extra_args : ""

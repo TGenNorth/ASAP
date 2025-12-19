@@ -68,11 +68,16 @@ def _primer_mask(samdata, primer_file, wiggle, mask_bases, ponlybam, outfile):
     
     # process primer file - add some error handling here
     try:
-        primers = np.loadtxt(str(primer_file), delimiter="\t",
-          dtype={'names': ('CHROM', 'PrimerName', 'PrimerDirection', 'Start', 'End'),
-          'formats': ('<U100', '<U100', 'U1', 'int', 'int')}, skiprows=1)
+        primers = np.loadtxt(str(primer_file), 
+          delimiter="\t",
+          usecols=(0, 1, 2, 3, 5),
+          dtype={'names': ('CHROM', 'Start', 'End', 'PrimerName', 'PrimerDirection'),
+             'formats': ('<U100', 'int', 'int', '<U100', 'U1')}, skiprows=0)
+
+        primers["PrimerDirection"] = np.where(primers["PrimerDirection"] == "+", "F", "R")
+
     except ValueError:
-        logging.error("Incorrect primer file format")
+        logging.error("Incorrect primer file format, ensure ")
         return samdata
     primers["PrimerDirection"] = np.char.upper(primers["PrimerDirection"])
     primer_stats = []

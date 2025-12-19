@@ -83,14 +83,20 @@ workflow {
 // --- STEP 4: Align Fastp trimmed reads ---
     // Align reads using either bowtie2 or bwa
     def aligned_bams
+    def ch_flagstats = Channel.empty() // Initialize an empty channel for stats
+
     switch(params.aligner.toLowerCase()) {
         case 'bowtie2':
             def index_dir = BUILD_BOWTIE2_INDEX(ref_fasta)
-            aligned_bams = ALIGN_BOWTIE2(trimmed_reads.combine(index_dir))
+            ALIGN_BOWTIE2(trimmed_reads.combine(index_dir))
+            aligned_bams = ALIGN_BOWTIE2.out.bam_output
+            ch_flagstats = ALIGN_BOWTIE2.out.flagstat // Capture stats
             break
         case 'bwa':
             def index_dir = BUILD_BWA_INDEX(ref_fasta)
-            aligned_bams = ALIGN_BWA(trimmed_reads.combine(index_dir))
+            ALIGN_BWA(trimmed_reads.combine(index_dir))
+            aligned_bams = ALIGN_BWA.out.bam_output
+            ch_flagstats = ALIGN_BWA.out.flagstat // Capture stats
             break
         default:
             error "Unknown aligner: ${params.aligner}. Use 'bwa' or 'bowtie2'."
@@ -166,9 +172,16 @@ workflow {
     // This is a single path, so we don't need it[1]
     ch_multiqc_files = ch_multiqc_files.mix(RUN_FASTP.out.json.collect())
 
-    // IVAR logic - assuming module emits: path "*.tsv", emit: tsv
-    // Since iVar usually outputs [meta, tsv], we use it[1] to get the file
-    ch_multiqc_files = ch_multiqc_files.mix(IVAR_VARIANTS.out.tsv.map{ it[1] }.collect())
+    // Add Alignment Flagstats
+    ch_multiqc_files = ch_multiqc_files.mix(ch_flagstats.collect())
+
+    // 4. Add iVar Stats (Uncommented now)
+    ch_multiqc_files = ch_multiqc_files.mix(
+        IVAR_VARIANTS.out.tsv
+            .map { meta, tsv -> tsv }
+            .collect()
+            .ifEmpty([])
+    )
 
     MULTIQC (
         ch_multiqc_files.collect(),

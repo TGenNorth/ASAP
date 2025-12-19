@@ -29,6 +29,7 @@ process ALIGN_BWA {
 
     output:
     tuple val(sample_id), path("${sample_id}-bwa.bam"), path("${sample_id}-bwa.bam.bai"), emit: bam_output
+    path "${sample_id}.flagstat.txt", emit: flagstat
 
     script:
     def extra_args = params.aligner_extra_args ? params.aligner_extra_args : ""
@@ -44,6 +45,9 @@ process ALIGN_BWA {
 
     # Index the bam
     samtools index ${sample_id}-bwa.bam
+    
+    # Generate stats for MultiQC
+    samtools flagstat ${sample_id}-bwa.bam > ${sample_id}.flagstat.txt
     """
 }
 

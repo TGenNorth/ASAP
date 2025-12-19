@@ -27,6 +27,7 @@ process ALIGN_BOWTIE2 {
 
     output:
     tuple val(sample_id), path("${sample_id}-bt2.bam"), path("${sample_id}-bt2.bam.bai"), emit: bam_output
+    path "${sample_id}.flagstat.txt", emit: flagstat
 
     script:
     def extra_args = params.aligner_extra_args ? params.aligner_extra_args : ""
@@ -42,5 +43,8 @@ process ALIGN_BOWTIE2 {
 
     # Index the bam file
     samtools index ${sample_id}-bt2.bam
+
+    # Generate stats for MultiQC
+    samtools flagstat ${sample_id}-bt2.bam > ${sample_id}.flagstat.txt
     """
 }

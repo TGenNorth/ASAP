@@ -27,10 +27,9 @@ process MASK_PRIMERS {
     tuple val(sample_id), path("${bamfile.getBaseName()}_primerMasked.bam"), path("${bamfile.getBaseName()}_primerMasked.bam.bai"), emit: mask_primers_output
     tuple val(sample_id), path("primer_masking.tsv"), path("primer_masking.log"), emit: mask_primers_logging
 
+    script:
     def mask_bam_string = params.mask_bam ? "--mask-bam" : "--no-mask-bam"
     def ponly_string = params.primer_only ? "--primer-only" : "--no-primer-only"
-
-    script:
     """
     maskPrimers.py -b ${bamfile} -p ${primer_file} --wiggle ${params.wiggle} ${mask_bam_string} ${ponly_string} 
     """

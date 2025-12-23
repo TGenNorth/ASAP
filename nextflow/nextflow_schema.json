@@ -18,6 +18,11 @@
       "type": "string",
       "default": "ASAP_Results"
     },
+    "asap_snps": {
+      "description": "Disable ASAP SNP and Consensus profiling...",
+      "type": "boolean",
+      "default": true
+    },
     "name": {
       "description": "A meaningful name for the output files and reports.",
       "type": "string",
@@ -135,6 +140,26 @@
       "description": "Name of the output HTML file.",
       "type": ["string", "null"],
       "default": "<name>.html"
+    },
+    "ivar": {
+      "description": "Output directory for pipeline results.",
+      "type": "boolean",
+      "default": false
+    },
+    "ivar_trim_extra_args": {
+      "description": "String of additional arguments for the aligner.",
+      "type": "string",
+      "default": ""
+    },
+    "ivar_variants_extra_args": {
+      "description": "String of additional arguments for the aligner.",
+      "type": "string",
+      "default": ""
+    },
+    "ivar_consensus_extra_args": {
+      "description": "String of additional arguments for the aligner.",
+      "type": "string",
+      "default": ""
     },
     "fastp_container": {
       "description": "Container image for fastp.",

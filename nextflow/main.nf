@@ -25,7 +25,9 @@ include {
     OUTPUT_COMBINER
     FORMAT_OUTPUT
 } from './modules/asap'
+include { IVAR_TRIM           } from './modules/ivar/trim/'
 include { IVAR_VARIANTS           } from './modules/ivar/variants/'
+include { IVAR_CONSENSUS           } from './modules/ivar/consensus/'
 include { MULTIQC                 } from './modules/multiqc'
 
 // Call validation in the global scope. The plugin handles the --help flag.
@@ -103,11 +105,13 @@ workflow {
     }
 
 // --- Optional STEP 5: Primer masking ---
+def primer_bed_path = params.primer_file ? file(params.primer_file).toAbsolutePath() : null
+
     // Optionally run primer masking
     if(params.primer_file) {
-        def mask_primers_logging
-        Channel.of(file(params.primer_file).toAbsolutePath()).set { primer_file_ch }
-        (aligned_bams,mask_primers_logging) = MASK_PRIMERS(aligned_bams.combine(primer_file_ch))
+        // Create a path object for the primer file
+        MASK_PRIMERS(aligned_bams.combine(Channel.value(primer_bed_path)))
+        aligned_bams = MASK_PRIMERS.out.mask_primers_output
     }
 
 // --- Optional STEP 6: Identity Filtering ---
@@ -131,36 +135,54 @@ workflow {
         asap: [ it[0], it[1], it[2] ]   // Pass ID, BAM, and BAI (3 items)
         ivar: [ [id: it[0]], it[1] ]    // Pass Meta and BAM for iVar
     }.set { ch_split }
+    
+    def bam_indices = aligned_bams.map{ it -> [ [id: it[0]], it[2] ] }
+    
+    // If asap_snps == True
+    if(params.asap_snps) {
+    // --- STEP 8: Bam Processor (SNP calling and XML creation) ---
+        // We take the forked asap channel [id, bam, bai] and add json
+        def xml_output = PROCESS_BAM(ch_split.asap.combine(json_ch))
 
-// --- STEP 8: Bam Processor (SNP calling and XML creation) ---
-    // We take the forked asap channel [id, bam, bai] and add json
-    def xml_output = PROCESS_BAM(ch_split.asap.combine(json_ch))
+    // --- Optional STEP 9: Output Combiner --- 
+        // Optionally run output combiner and transformation
+        if(params.combine_output) {
+            def xmls = xml_output.map { id, f -> f }.collect()
+            def final_xml = OUTPUT_COMBINER(xmls)
 
-// --- Optional STEP 9: Output Combiner --- 
-    // Optionally run output combiner and transformation
-    if(params.combine_output) {
-        def xmls = xml_output.map { id, f -> f }.collect()
-        def final_xml = OUTPUT_COMBINER(xmls)
-
-        // Get the stylesheet to use for transformation
-        def default_stylesheet = file("${workflow.projectDir}/../output_transforms/ASAP_fulldetails_web.xsl")
-        def stylesheet_path = params.stylesheet ? file(params.stylesheet) : default_stylesheet
-        Channel
-            .value(stylesheet_path)
-            .set { stylesheet_ch }
-        def transformation = FORMAT_OUTPUT(final_xml, stylesheet_ch)
+            // Get the stylesheet to use for transformation
+            def default_stylesheet = file("${workflow.projectDir}/../output_transforms/ASAP_fulldetails_web.xsl")
+            def stylesheet_path = params.stylesheet ? file(params.stylesheet) : default_stylesheet
+            Channel
+                .value(stylesheet_path)
+                .set { stylesheet_ch }
+            def transformation = FORMAT_OUTPUT(final_xml, stylesheet_ch)
+        }
     }
 
-// --- Optional STEP 10: iVAR Variant Calling --- 
-    IVAR_VARIANTS (
-        ch_split.ivar,
-        ref_fasta,
-        params.primer_file ? file(params.primer_file) : [],
-        [], 
-        true 
+    if(params.ivar){
+    // --- Optional STEP 10: iVAR Trimming ---
+    IVAR_TRIM (
+        ch_split.ivar.join(bam_indices), 
+        primer_bed_path ?: [] // pass empty list if null
     )
 
-// --- STEP 11: MultiQC Integration ---
+    // --- Optional STEP 11: iVAR Variant Calling --- 
+    IVAR_VARIANTS (
+            IVAR_TRIM.out.bam,
+            ref_fasta,
+            true 
+        )
+    
+    // --- Optional STEP 12: iVAR Consensus ---
+    IVAR_CONSENSUS (
+            IVAR_TRIM.out.bam,
+            ref_fasta,
+            true
+        )
+    }
+
+// --- STEP 13: MultiQC Integration ---
 
     ch_multiqc_files = Channel.empty()
 
@@ -175,19 +197,16 @@ workflow {
     // Add Alignment Flagstats
     ch_multiqc_files = ch_multiqc_files.mix(ch_flagstats.collect())
 
-    // 4. Add iVar Stats (Uncommented now)
-    ch_multiqc_files = ch_multiqc_files.mix(
-        IVAR_VARIANTS.out.tsv
-            .map { meta, tsv -> tsv }
-            .collect()
-            .ifEmpty([])
-    )
+    // 4. Add iVar Stats
+    // SAFELY mix iVar only if it exists
+    def ivar_multiqc = params.ivar ? 
+        IVAR_VARIANTS.out.tsv.map{ meta, tsv -> tsv }.collect() : 
+        Channel.empty()
 
     MULTIQC (
-        ch_multiqc_files.collect(),
+        ch_multiqc_files.mix(ivar_multiqc).collect(),
         [], [], [], [], []
     )
-
 }
 
 workflow FASTQC_INITIAL {

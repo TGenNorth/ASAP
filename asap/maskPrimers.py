@@ -74,7 +74,8 @@ def _primer_mask(samdata, primer_file, wiggle, mask_bases, ponlybam, outfile):
           dtype={'names': ('CHROM', 'Start', 'End', 'PrimerName', 'PrimerDirection'),
              'formats': ('<U100', 'int', 'int', '<U100', 'U1')}, skiprows=0)
 
-        primers["PrimerDirection"] = np.where(primers["PrimerDirection"] == "+", "F", "R")
+        primers["PrimerDirection"] = np.char.upper(primers["PrimerDirection"])
+        primers["PrimerDirection"] = np.where((primers["PrimerDirection"] == "+") | (primers["PrimerDirection"] == "F"), "F", "R")
 
     except ValueError:
         logging.error("Incorrect primer file format, ensure ")

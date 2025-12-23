@@ -1,5 +1,4 @@
-
-process IVAR_VARIANTS {
+process IVAR_CONSENSUS {
     tag "$meta.id"
     label 'process_medium'
 
@@ -10,15 +9,14 @@ process IVAR_VARIANTS {
 
     input:
     tuple val(meta), path(bam)
-    path  fasta
-    // path  fai
-    // path  gff
-    val   save_mpileup
+    path fasta
+    val save_mpileup
 
     output:
-    tuple val(meta), path("*.tsv")    , emit: tsv
-    tuple val(meta), path("*.mpileup"), optional:true, emit: mpileup
-    path "versions.yml"               , emit: versions
+    tuple val(meta), path("*.fa")      , emit: fasta
+    tuple val(meta), path("*.qual.txt"), emit: qual
+    tuple val(meta), path("*.mpileup") , optional:true, emit: mpileup
+    path "versions.yml"                , emit: versions
 
     when:
     task.ext.when == null || task.ext.when
@@ -31,14 +29,13 @@ process IVAR_VARIANTS {
     """
     samtools \\
         mpileup \\
-        $args2 \\
         --reference $fasta \\
+        $args2 \\
         $bam \\
         $mpileup \\
         | ivar \\
-            variants \\
+            consensus \\
             $args \\
-            -r $fasta \\
             -p $prefix
 
     cat <<-END_VERSIONS > versions.yml
@@ -51,7 +48,8 @@ process IVAR_VARIANTS {
     def prefix = task.ext.prefix ?: "${meta.id}"
     def touch_mpileup = save_mpileup ? "touch ${prefix}.mpileup" : ''
     """
-    touch ${prefix}.tsv
+    touch ${prefix}.fa
+    touch ${prefix}.qual.txt
     $touch_mpileup
 
     cat <<-END_VERSIONS > versions.yml

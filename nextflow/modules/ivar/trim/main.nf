@@ -12,40 +12,52 @@ process IVAR_TRIM {
     path bed
 
     output:
-    tuple val(meta), path("*.bam"), emit: bam
-    tuple val(meta), path('*.log'), emit: log
-    path "versions.yml"           , emit: versions
+    tuple val(meta), path("${prefix}.bam")    , emit: bam
+    tuple val(meta), path("${prefix}.bam.bai"), emit: bai
+    tuple val(meta), path("${prefix}.ivar.log"), emit: log
+    path "versions.yml"                        , emit: versions
 
     when:
     task.ext.when == null || task.ext.when
 
     script:
     def args = task.ext.args ?: ''
-    def prefix = task.ext.prefix ?: "${meta.id}"
+    // Define prefix here so it can be used in the output block
+    prefix = task.ext.prefix ?: "${meta.id}"
     """
     ivar trim \\
-        $args \\
         -i $bam \\
         -b $bed \\
-        -p $prefix \\
+        -p ${prefix}_temp \\
+        $args \\
         > ${prefix}.ivar.log
+        
+    # Sort the ivar output (which is currently unsorted)
+    samtools sort \\
+        -o ${prefix}.bam \\
+        ${prefix}_temp.bam
+
+    # samtools index creates ${prefix}.bam.bai
+    samtools index ${prefix}.bam
 
     cat <<-END_VERSIONS > versions.yml
     "${task.process}":
         ivar: \$(ivar version | sed -n 's|iVar version \\(.*\\)|\\1|p')
+        samtools: \$(echo \$(samtools --version 2>&1) | sed 's/^.*samtools //; s/Using.*\$//')
     END_VERSIONS
     """
 
     stub:
-    def args = task.ext.args ?: ''
-    def prefix = task.ext.prefix ?: "${meta.id}"
+    prefix = task.ext.prefix ?: "${meta.id}"
     """
     touch ${prefix}.ivar.log
     touch ${prefix}.bam
+    touch ${prefix}.bam.bai
 
     cat <<-END_VERSIONS > versions.yml
     "${task.process}":
         ivar: \$(ivar version | sed -n 's|iVar version \\(.*\\)|\\1|p')
+        samtools: \$(echo \$(samtools --version 2>&1) | sed 's/^.*samtools //; s/Using.*\$//')
     END_VERSIONS
     """
 }

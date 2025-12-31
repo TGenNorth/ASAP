@@ -81,7 +81,7 @@ process PROCESS_BAM {
 
     script:
     """
-    newBamProcessor.py -j ${assay_json} -b ${bamfile} -d ${params.depth} --breadth ${params.breadth} -p ${params.proportion} -m ${params.mutation_depth} --min-base-qual ${params.min_base_qual} --consensus-proportion ${params.consensus_proportion} --fill-gaps ${params.fill_gaps} --mark-deletions ${params.mark_deletions} -o ${sample_id}.xml
+    newBamProcessor.py -j ${assay_json} -b ${bamfile} -d ${params.depth} --breadth ${params.breadth} -p ${params.proportion} -m ${params.mutation_depth} --min-base-qual ${params.min_base_qual} --consensus-proportion ${params.consensus_proportion} --fill-gaps ${params.fill_gaps} --mark-deletions ${params.mark_deletions} --whole-genome ${params.whole_genome}  -o ${sample_id}.xml
     """
 }
 

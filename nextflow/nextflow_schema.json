@@ -4,184 +4,103 @@
   "title": "ASAP Pipeline Parameters",
   "description": "Amplicon Sequencing Analysis Pipeline.",
   "type": "object",
-  "properties": {
-    "read_dir": {
-      "description": "Directory containing input FASTQ files.",
-      "type": ["string", "null"]
+  "$defs": {
+    "input_output_options": {
+      "title": "Input/Output Options",
+      "properties": {
+        "read_dir": { "type": ["string", "null"], "description": "Directory containing input FASTQ files." },
+        "json": { "type": ["string", "null"], "description": "Path to a JSON file with sample information." },
+        "outdir": { "type": "string", "default": "ASAP_Results", "description": "Output directory." },
+        "name": { "type": "string", "default": "ASAP_Output", "description": "Meaningful name for reports." }
+      },
+      "required": ["read_dir", "json"]
     },
-    "json": {
-      "description": "Path to a JSON file with sample information.",
-      "type": ["string", "null"]
+    "alignment_options": {
+      "title": "Quality Control (fastp) & Alignment Options",
+      "properties": {
+        "adapter_fasta": { "type": ["string", "null"], "default": "../asap/illumina_adapters_all.fasta", "description": "FASTA file containing adapter sequences for trimming." },
+        "fastp_extra_args": { "type": "string", "default": "", "description": "Extra args for fastp." },
+        "aligner": { "type": "string", "enum": ["bowtie2", "bwa"], "default": "bowtie2", "description": "Read alignment tool." },
+        "aligner_extra_args": { "type": "string", "default": "", "description": "Extra args for aligner." }
+      }
     },
-    "outdir": {
-      "description": "Output directory for pipeline results.",
-      "type": "string",
-      "default": "ASAP_Results"
+    "primer_masking_trimming": {
+      "title": "Primer Masking & Trimming Options",
+      "properties": {
+        "primer_file": { "type": ["string", "null"], "description": "Path to a primer file for primer removal via either primer masking or iVar trimming. File should not have headers and include 6 columns: reference, start, end, name, integer, strand (+/-). SEE: https://andersen-lab.github.io/ivar/html/manualpage.html" },
+        "mask_primers": { "type": "boolean", "default": null, "description": "Mask primers using the custom ASAP masking script. Default true if bed file is specified unless 'false' specified." },
+        "wiggle": { "type": "integer", "default": 9, "description": "FOR PRIMER MASKING ONLY: Wiggle distance for primer masking." },
+        "mask_bam": { "type": "boolean", "default": true, "description": "FOR PRIMER MASKING ONLY: Whether to mask primers in the BAM file." },
+        "primer_only": { "type": "boolean", "default": false, "description": "FOR PRIMER MASKING ONLY: Only perform primer masking." }
+      }
     },
-    "asap_snps": {
-      "description": "Disable ASAP SNP and Consensus profiling...",
-      "type": "boolean",
-      "default": true
+    "percent_id_options": {
+      "title": "Percent Identity Filtering Options",
+      "properties": {
+        "identity": { "type": ["number", "null"], "description": "Identity threshold for filtering." },
+        "ref_names": {"type": ["string", "array", "null"], "description": "Name(s) of the reference contig(s) for which identity is calculated; if omitted, apply to all contigs."}
+      }
     },
-    "name": {
-      "description": "A meaningful name for the output files and reports.",
-      "type": "string",
-      "default": "ASAP_Output"
+    "smor_options": {
+      "title": "SMOR Processing Options",
+      "properties": {
+        "smor": { "type": "boolean", "default": false, "description": "Enable SMOR analysis." }
+      }
     },
-    "adapter_fasta": {
-      "description": "FASTA file containing adapter sequences for trimming.",
-      "type": ["string", "null"],
-      "default": "../asap/illumina_adapters_all.fasta"
+    "variant_calling_options": {
+      "title": "Shared Variant Calling and Consensus Options between ASAP bam_processor and iVar.",
+      "properties": {
+        "proportion": { "type": "number", "default": 0.1, "description": "Minimum proportion required to call a variant/iSNV at a given locus (iVar variant -t argument)." },
+        "consensus_proportion": { "type": "number", "default": 0.8, "description": "Minimum proportion required to call a base at that position, else 'N' (iVar consensus -c argument). " },
+        "depth": { "type": "integer", "default": 100, "description": "Minimum read depth required to consider a position covered (iVar consensus -m argument)." },
+        "min_base_qual": { "type": "integer", "default": 5, "description": "Minimum base quality score to use a position for variant/iSNV or consensus calling (phred scale, i.e. 10=90, 20=99, 30=99.9 accuracy) (iVar variant and consensus -q argument)." }
+      }
     },
-    "fastp_extra_args": {
-      "description": "String of additional arguments for fastp.",
-      "type": "string",
-      "default": ""
+    "bam_processor_options": {
+      "title": "bam_processor Specific Options and JSON generation",
+      "properties": {
+        "asap_snps": { "type": "boolean", "default": true, "description": "Disable ASAP SNP and Consensus profiling (i.e., bam_processor)..." },
+        "breadth": { "type": "number", "default": 0.8, "description": "Minimum breadth of coverage required to consider an amplicon as present" },
+        "mutation_depth": { "type": "integer", "default": 5, "description": "Minimum number of reads required to call a mutation at a given locus." },
+        "fill_character": { "type": "string", "default": "N", "description": "Character to use for filling gaps." },
+        "fill_gaps": { "type": "string", "default": "n", "description": "Whether to fill gaps in BAM processing." },
+        "mark_deletions": { "type": "string", "default": "_", "description": "Whether to mark deletions in BAM processing." },
+        "whole_genome": {"type": "boolean", "default": false, "description": "JSON file uses a whole genome reference, so don't write out the consensus, depth, and proportion arrays for each sample"},
+        "combine_output": { "type": "boolean", "default": true, "description": "Whether to combine output files." },
+        "stylesheet": { "type": ["string", "null"], "default": "../output_transforms/ASAP_fulldetails_web.xsl", "description": "XSLT stylesheet for transforming output." },
+        "out_file": { "type": ["string", "null"], "default": "<name>.html", "description": "Name of the output HTML file." }
+      }
     },
-    "aligner": {
-      "description": "Read alignment tool to use.",
-      "type": "string",
-      "enum": ["bowtie2", "bwa"],
-      "default": "bowtie2"
+    "ivar_options": {
+      "title": "Options for iVar Processing",
+      "properties": {
+        "ivar": { "type": "boolean", "default": false, "description": "Execute full iVar workflow (trim, variants, consensus). Warning: incompatible with --smor." },
+        "ivar_trim": { "type": "boolean", "default": false, "description": "Flag to execute ivar trim ONLY. Not recommended." },
+        "ivar_variants": { "type": "boolean", "default": false, "description": "Flag to execute ivar variants ONLY. Useful for comparing ASAP SNPs to iVar." },
+        "ivar_consensus": { "type": "boolean", "default": false, "description": "Flag to execute ivar consensus ONLY." },
+        "ivar_trim_extra_args": { "type": "string", "default": "", "description": "Extra arguments for iVar trim." },
+        "ivar_variants_extra_args": { "type": "string", "default": "", "description": "Extra arguments for iVar variants." },
+        "ivar_consensus_extra_args": { "type": "string", "default": "", "description": "Extra arguments for iVar consensus." }
+      }
     },
-    "aligner_extra_args": {
-      "description": "String of additional arguments for the aligner.",
-      "type": "string",
-      "default": ""
-    },
-    "primer_file": {
-      "description": "Path to a primer file for masking.",
-      "type": ["string", "null"]
-    },
-    "wiggle": {
-      "description": "Wiggle distance for primer masking.",
-      "type": "integer",
-      "default": 9
-    },
-    "mask_bam": {
-      "description": "Whether to mask primers in the BAM file.",
-      "type": "boolean",
-      "default": true
-    },
-    "primer_only": {
-      "description": "Only perform primer masking.",
-      "type": "boolean",
-      "default": false
-    },
-    "identity": {
-      "description": "Identity threshold for filtering.",
-      "type": ["number", "null"]
-    },
-    "ref_names": {
-      "description": "Names of reference sequences.",
-      "type": ["string", "array", "null"]
-    },
-    "smor": {
-      "description": "Enable SMOR analysis.",
-      "type": "boolean",
-      "default": false
-    },
-    "fill_character": {
-      "description": "Character to use for filling gaps.",
-      "type": "string",
-      "default": "N"
-    },
-    "min_base_qual": {
-      "description": "Minimum base quality for BAM processing.",
-      "type": "integer",
-      "default": 5
-    },
-    "depth": {
-      "description": "Minimum depth for variant calling.",
-      "type": "integer",
-      "default": 100
-    },
-    "breadth": {
-      "description": "Minimum breadth for variant calling.",
-      "type": "number",
-      "default": 0.8
-    },
-    "proportion": {
-      "description": "Minimum proportion for variant calling.",
-      "type": "number",
-      "default": 0.1
-    },
-    "mutation_depth": {
-      "description": "Minimum depth for mutation calling.",
-      "type": "integer",
-      "default": 5
-    },
-    "consensus_proportion": {
-      "description": "Minimum proportion for consensus calling.",
-      "type": "number",
-      "default": 0.8
-    },
-    "fill_gaps": {
-      "description": "Whether to fill gaps in BAM processing.",
-      "type": "string",
-      "default": "n"
-    },
-    "mark_deletions": {
-      "description": "Whether to mark deletions in BAM processing.",
-      "type": "string",
-      "default": "_"
-    },
-    "combine_output": {
-      "description": "Whether to combine output files.",
-      "type": "boolean",
-      "default": true
-    },
-    "stylesheet": {
-      "description": "XSLT stylesheet for transforming output.",
-      "type": ["string", "null"],
-      "default": "../output_transforms/ASAP_fulldetails_web.xsl"
-    },
-    "out_file": {
-      "description": "Name of the output HTML file.",
-      "type": ["string", "null"],
-      "default": "<name>.html"
-    },
-    "ivar": {
-      "description": "Output directory for pipeline results.",
-      "type": "boolean",
-      "default": false
-    },
-    "ivar_trim_extra_args": {
-      "description": "String of additional arguments for the aligner.",
-      "type": "string",
-      "default": ""
-    },
-    "ivar_variants_extra_args": {
-      "description": "String of additional arguments for the aligner.",
-      "type": "string",
-      "default": ""
-    },
-    "ivar_consensus_extra_args": {
-      "description": "String of additional arguments for the aligner.",
-      "type": "string",
-      "default": ""
-    },
-    "fastp_container": {
-      "description": "Container image for fastp.",
-      "type": "string",
-      "default": "quay.io/biocontainers/fastp"
-    },
-    "bwa_container": {
-      "description": "Container image for bwa.",
-      "type": "string",
-      "default": "biocontainers/bwa"
-    },
-    "bowtie2_container": {
-      "description": "Container image for bowtie2.",
-      "type": "string",
-      "default": "biocontainers/bowtie2"
+    "containers": {
+      "title": "Container Settings",
+      "properties": {
+        "fastp_container": { "type": "string", "default": "quay.io/biocontainers/fastp:0.23.4--h125f33a_5", "description": "Container image for fastp." },
+        "bwa_container": { "type": "string", "default": "quay.io/biocontainers/mulled-v2-fe8faa35dbf6dc65a0f7f5d4ea12e31a79f73e40:219b6c272b25e7e642ae3ff0bf0c5c81a5135ab4-0", "description": "Container image for bwa and samtools." },
+        "bowtie2_container": { "type": "string", "default": "quay.io/biocontainers/mulled-v2-c742dccc9d8fabfcff2af0d8d6799dbc711366cf:1a5debacd33f449e5b3778ec7838b628406841f0-0", "description": "Container image for bowtie2 and samtools." }
+      }
     }
   },
-  "required": [
-    "read_dir",
-    "json",
-    "outdir",
-    "name"
-  ],
-  "definitions": {}
+  "allOf": [
+    { "$ref": "#/$defs/input_output_options" },
+    { "$ref": "#/$defs/alignment_options" },
+    { "$ref": "#/$defs/primer_masking_trimming" },
+    { "$ref": "#/$defs/percent_id_options" },
+    { "$ref": "#/$defs/smor_options" },
+    { "$ref": "#/$defs/variant_calling_options" },
+    { "$ref": "#/$defs/bam_processor_options" },
+    { "$ref": "#/$defs/ivar_options" },
+    { "$ref": "#/$defs/containers" }
+  ]
 }

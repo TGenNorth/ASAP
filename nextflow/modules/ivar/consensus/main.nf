@@ -35,8 +35,11 @@ process IVAR_CONSENSUS {
         $mpileup \\
         | ivar \\
             consensus \\
-            $args \\
-            -p $prefix
+            -q ${params.min_base_qual} \\
+            -m ${params.depth} \\
+            -c ${params.consensus_proportion} \\
+            -p $prefix \\
+            $args
 
     cat <<-END_VERSIONS > versions.yml
     "${task.process}":

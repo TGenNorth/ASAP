@@ -37,9 +37,11 @@ process IVAR_VARIANTS {
         $mpileup \\
         | ivar \\
             variants \\
-            $args \\
+            -q ${params.min_base_qual} \\
+            -t ${params.proportion} \\
             -r $fasta \\
-            -p $prefix
+            -p $prefix \\
+            $args
 
     cat <<-END_VERSIONS > versions.yml
     "${task.process}":

@@ -27,7 +27,7 @@
     "primer_masking_trimming": {
       "title": "Primer Masking & Trimming Options",
       "properties": {
-        "primer_file": { "type": ["string", "null"], "description": "Path to a primer file for primer removal via either primer masking or iVar trimming. File should not have headers and include 6 columns: reference, start, end, name, integer, strand (+/-). SEE: https://andersen-lab.github.io/ivar/html/manualpage.html" },
+        "primer_file": { "type": ["string", "null"], "description": "Path to a primer file for primer removal via either primer masking or iVar trimming. File should not have headers and include 6 columns: reference, start, end, name, integer, strand (+/-) (SEE: https://andersen-lab.github.io/ivar/html/manualpage.html). NOTE1: The +/- strand direction is critical and based on the reference (i.e.m + notations must be on left, - must be on the right). NOTE2: PRIMER MASKING will mask Forward and Reverse primers if they are within the wiggle and on appropriate side of the amplicon." },
         "mask_primers": { "type": "boolean", "default": null, "description": "Mask primers using the custom ASAP masking script. Default true if bed file is specified unless 'false' specified." },
         "wiggle": { "type": "integer", "default": 9, "description": "FOR PRIMER MASKING ONLY: Wiggle distance for primer masking." },
         "mask_bam": { "type": "boolean", "default": true, "description": "FOR PRIMER MASKING ONLY: Whether to mask primers in the BAM file." },

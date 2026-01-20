@@ -44,10 +44,15 @@ workflow {
 
     // Find and pair the read files
     def reads_dir_abs = file(params.read_dir).toAbsolutePath()
-    def pattern = "${reads_dir_abs}/*_R{1,2}_001.fastq.gz"
+    def search_pattern = "${reads_dir_abs}/*{_R1,_R2,_1,_2}*.{fastq.gz,fq.gz}"
+    
     Channel
-        .fromFilePairs(pattern)
-        .ifEmpty { error "No paired-end FASTQ files matched in: ${reads_dir_abs}" }
+        .fromFilePairs(search_pattern, checkIfExists: true) { file -> 
+            // Custom grouping strategy: 
+            // Extracts the base name before the R1/R2 or _1/_2 part
+            file.name.replaceAll(/(_R1|_R2|_1|_2)?(_001)?\.(fastq|fq)\.gz$/, '') 
+        }
+        .ifEmpty { error "No paired-end files found in ${reads_dir_abs} matching ${search_pattern}" }
         .set { paired_reads }
     
 // --- STEP 1: FastQC Initial ---

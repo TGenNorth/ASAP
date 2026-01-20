@@ -25,7 +25,7 @@ process IVAR_VARIANTS {
 
     script:
     def args = task.ext.args ?: ''
-    def args2 = task.ext.args2 ?: ''
+    def args2 = task.ext.args2 ?: '-aa -A -d 10000000 -B -Q 0'
     def prefix = task.ext.prefix ?: "${meta.id}"
     def mpileup = save_mpileup ? "| tee ${prefix}.mpileup" : ""
     """
@@ -39,6 +39,7 @@ process IVAR_VARIANTS {
             variants \\
             -q ${params.min_base_qual} \\
             -t ${params.proportion} \\
+            -m ${params.depth} \\
             -r $fasta \\
             -p $prefix \\
             $args

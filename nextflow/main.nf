@@ -118,7 +118,7 @@ workflow {
             minimap_index.index.collect(), 
             true, "bai", false, true
         )
-        ch_aligned_with_meta = MINIMAP2_ALIGN.out.bam.join(MINIMAP2_ALIGN.out.index)
+        ch_aligned_with_meta = MINIMAP2_ALIGN.out.bam_output
     } else {
         switch(params.aligner.toLowerCase()) {
             case 'bowtie2':

@@ -11,7 +11,8 @@
         "read_dir": { "type": ["string", "null"], "description": "Directory containing input FASTQ files." },
         "json": { "type": ["string", "null"], "description": "Path to a JSON file with sample information." },
         "outdir": { "type": "string", "default": "ASAP_Results", "description": "Output directory." },
-        "name": { "type": "string", "default": "ASAP_Output", "description": "Meaningful name for reports." }
+        "name": { "type": "string", "default": "ASAP_Output", "description": "Meaningful name for reports." },
+        "technology": { "type": "string", "enum": ["illumina", "ont", "pacbio"], "default": "illumina", "description": "Technology to guide workflow."},
       },
       "required": ["read_dir", "json"]
     },
@@ -19,8 +20,8 @@
       "title": "Quality Control (fastp) & Alignment Options",
       "properties": {
         "adapter_fasta": { "type": ["string", "null"], "default": "../asap/illumina_adapters_all.fasta", "description": "FASTA file containing adapter sequences for trimming." },
-        "fastp_extra_args": { "type": "string", "default": "", "description": "Extra args for fastp." },
-        "aligner": { "type": "string", "enum": ["bowtie2", "bwa"], "default": "bowtie2", "description": "Read alignment tool." },
+        "fastp_extra_args": { "type": "string", "default": "", "description": "Extra args for fastp or fastplong." },
+        "aligner": { "type": "string", "enum": ["bowtie2", "bwa", "minimap2"], "default": "bowtie2", "description": "Read alignment tool." },
         "aligner_extra_args": { "type": "string", "default": "", "description": "Extra args for aligner." }
       }
     },

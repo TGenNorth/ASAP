@@ -1,5 +1,5 @@
 process FASTQC {
-    tag "${meta.id}"
+    tag "${meta.id}-${meta.status ?: ''}"
     label 'process_medium'
 
     conda "${moduleDir}/environment.yml"
@@ -7,30 +7,29 @@ process FASTQC {
         'https://depot.galaxyproject.org/singularity/fastqc:0.12.1--hdfd78af_0' :
         'biocontainers/fastqc:0.12.1--hdfd78af_0' }"
 
+    publishDir "${params.outdir}/sample_info/${meta.id}/fastqc/${meta.status ?: ''}", mode: 'copy'
+
     input:
     tuple val(meta), path(reads)
 
     output:
-    tuple val(meta)             , path("*.html")                                                       , emit: html
-    tuple val(meta)             , path("*.zip")                                                        , emit: zip
-    tuple val("${task.process}"), val('fastqc'), eval('fastqc --version | sed "/FastQC v/!d; s/.*v//"'), emit: versions_fastqc, topic: versions
-
-    when:
-    task.ext.when == null || task.ext.when
+    tuple val(meta), path("*.html"), emit: html
+    tuple val(meta), path("*.zip") , emit: zip
 
     script:
-    def args          = task.ext.args ?: ''
-    def prefix        = task.ext.prefix ?: "${meta.id}"
-    // Make list of old name and new name pairs to use for renaming in the bash while loop
-    def old_new_pairs = reads instanceof Path || reads.size() == 1 ? [[ reads, "${prefix}.${reads.extension}" ]] : reads.withIndex().collect { entry, index -> [ entry, "${prefix}_${index + 1}.${entry.extension}" ] }
+    def args   = task.ext.args ?: ''
+    // Use meta.status (initial/post_process) in the prefix to avoid filename collisions
+    def prefix = "${meta.id}${meta.status ? '.' + meta.status : ''}"
+    
+    // Logic to handle renaming to avoid collisions and simplify MultiQC tracking
+    def old_new_pairs = (reads instanceof Path || reads.size() == 1) ? 
+        [[ reads, "${prefix}.fastq.gz" ]] : 
+        reads.withIndex().collect { entry, index -> [ entry, "${prefix}_${index + 1}.fastq.gz" ] }
+    
     def rename_to     = old_new_pairs*.join(' ').join(' ')
     def renamed_files = old_new_pairs.collect{ _old_name, new_name -> new_name }.join(' ')
 
-    // The total amount of allocated RAM by FastQC is equal to the number of threads defined (--threads) time the amount of RAM defined (--memory)
-    // https://github.com/s-andrews/FastQC/blob/1faeea0412093224d7f6a07f777fad60a5650795/fastqc#L211-L222
-    // Dividing the task.memory by task.cpu allows to stick to requested amount of RAM in the label
-    def memory_in_mb = task.memory ? task.memory.toUnit('MB') / task.cpus : null
-    // FastQC memory value allowed range (100 - 10000)
+    def memory_in_mb = task.memory ? task.memory.toUnit('MB') / task.cpus : 2000
     def fastqc_memory = memory_in_mb > 10000 ? 10000 : (memory_in_mb < 100 ? 100 : memory_in_mb)
 
     """
@@ -43,12 +42,5 @@ process FASTQC {
         --threads ${task.cpus} \\
         --memory ${fastqc_memory} \\
         ${renamed_files}
-    """
-
-    stub:
-    def prefix = task.ext.prefix ?: "${meta.id}"
-    """
-    touch ${prefix}.html
-    touch ${prefix}.zip
     """
 }

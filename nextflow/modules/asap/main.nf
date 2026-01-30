@@ -18,7 +18,7 @@ process GENERATE_REFERENCE_FASTA {
 
 process MASK_PRIMERS {
     tag "$sample_id"
-    publishDir "${params.outdir}/${sample_id}/mask_primers", mode: 'copy'
+    publishDir "${params.outdir}/sample_info/${sample_id}/mask_primers", mode: 'copy'
 
     input:
     tuple val(sample_id), path(bamfile), path(bamindex), path(primer_file)
@@ -37,7 +37,7 @@ process MASK_PRIMERS {
 
 process IDENTITY_FILTER {
     tag "$sample_id"
-    publishDir "${params.outdir}/${sample_id}/identity_filter", mode: 'copy'
+    publishDir "${params.outdir}/sample_info/${sample_id}/identity_filter", mode: 'copy'
 
     input:
     tuple val(sample_id), path(bamfile), path(bamindex)
@@ -54,7 +54,7 @@ process IDENTITY_FILTER {
 
 process SMOR {
     tag "$sample_id"
-    publishDir "${params.outdir}/${sample_id}/smor", mode: 'copy'
+    publishDir "${params.outdir}/sample_info/${sample_id}/smor", mode: 'copy'
 
     input:
     tuple val(sample_id), path(bamfile), path(bamindex)

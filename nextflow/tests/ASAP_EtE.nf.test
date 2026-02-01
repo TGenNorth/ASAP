@@ -1,0 +1,29 @@
+nextflow_pipeline {
+
+    name "Test_Pipeline_End_to_End_Illumina_SARS_CoV_2"
+    script "main.nf"
+
+    test("EtE_Illumina_PE_execution") {
+
+when {
+            params {
+                outdir         = "results"
+                read_dir       = "${baseDir}/tests/data/SC2_Paired_Illumina/"
+                json           = "${baseDir}/tests/json/SC2_Reference.json"
+                aligner        = "bwa"
+                technology     = "illumina"
+                name           = "ASAP_EtE_SC2_Paired_Illumina"
+                proportion     = 0.05
+                identity       = 0.97
+                combine_output = false
+            }
+        }
+
+        then {
+            assert workflow.success
+            assert path("${params.outdir}/bwa").exists()
+            assert snapshot(path("${params.outdir}/xml").list()).match()
+        }
+
+    }
+}

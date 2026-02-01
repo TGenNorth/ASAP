@@ -81,7 +81,7 @@ workflow {
         ch_for_fastqc_post = fastp_out.trimmed_reads
             .map { meta, reads -> [ meta.clone() << [status: 'post_process'], reads ] }
 
-    } else if (params.technology.toLowerCase() == 'ont' || params.technology.toLowerCase() == 'pacbio') {
+    } else if (params.technology.toLowerCase() == 'ont' || params.technology.toLowerCase() == 'ont.v14' || params.technology.toLowerCase() == 'pacbio') {
         
         def ch_longreads_unwrapped = ch_raw_reads_for_pipeline
             .map { meta, reads -> [ meta, reads[0] ] }

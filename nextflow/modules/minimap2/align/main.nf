@@ -21,8 +21,22 @@ process MINIMAP2_ALIGN {
     script:
     def args   = params.aligner_extra_args ?: ""
     def prefix = task.ext.prefix ?: "${meta.id}"
+    def technology = params.technology?.toLowerCase()
+    def preset = ""
+
+    if (technology == 'ont') {
+        preset = "-x map-ont"
+    } else if (technology == 'ont.v14') {
+        preset = "-x lr:hq"
+    } else if (technology == 'pacbio') {
+        preset = "-x map-hifi"
+    } else {
+        preset = " "
+    }
+
     """
     minimap2 \\
+        $preset \\
         $args \\
         --MD \\
         -t $task.cpus \\

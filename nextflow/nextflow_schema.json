@@ -12,7 +12,7 @@
         "json": { "type": ["string", "null"], "description": "Path to a JSON file with sample information." },
         "outdir": { "type": "string", "default": "ASAP_Results", "description": "Output directory." },
         "name": { "type": "string", "default": "ASAP_Output", "description": "Meaningful name for reports." },
-        "technology": { "type": "string", "enum": ["illumina", "ont", "pacbio"], "default": "illumina", "description": "Technology to guide workflow."},
+        "technology": { "type": "string", "enum": ["illumina", "ont", "ont.v14", "pacbio"], "default": "illumina", "description": "Technology to guide workflow. Guides QC and alignment."},
       },
       "required": ["read_dir", "json"]
     },

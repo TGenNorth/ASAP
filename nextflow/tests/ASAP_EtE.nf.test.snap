@@ -1,0 +1,42 @@
+{
+    "EtE_Illumina_PE_execution_SRR25496336": {
+        "content": [
+            "SRR25496336.xml:md5,6021be043aa6b36a917079cc07dfbacd"
+        ],
+        "meta": {
+            "nf-test": "0.9.3",
+            "nextflow": "25.04.6"
+        },
+        "timestamp": "2026-02-01T16:31:48.000158426"
+    },
+    "EtE_Illumina_SE_execution_ERR9990397": {
+        "content": [
+            "ERR9990397_SE.xml:md5,0991177c8b468d71ad45cce414bb7cfb"
+        ],
+        "meta": {
+            "nf-test": "0.9.3",
+            "nextflow": "25.04.6"
+        },
+        "timestamp": "2026-02-01T16:48:50.934655949"
+    },
+    "EtE_Illumina_PE_execution": {
+        "content": [
+            "SRR25496336.xml:md5,6021be043aa6b36a917079cc07dfbacd"
+        ],
+        "meta": {
+            "nf-test": "0.9.3",
+            "nextflow": "25.04.6"
+        },
+        "timestamp": "2026-02-01T16:15:20.345385829"
+    },
+    "EtE_Illumina_PE_execution_SRR25496336_SMOR": {
+        "content": [
+            "SRR25496336.xml:md5,f07efb090bf2e6116d46f768c099bdcd"
+        ],
+        "meta": {
+            "nf-test": "0.9.3",
+            "nextflow": "25.04.6"
+        },
+        "timestamp": "2026-02-01T16:33:04.674609601"
+    }
+}

@@ -1,29 +1,116 @@
 nextflow_pipeline {
 
-    name "Test_Pipeline_End_to_End_Illumina_SARS_CoV_2"
+    name "ASAP Test Pipeline End to End"
     script "main.nf"
 
-    test("EtE_Illumina_PE_execution") {
+    test("EtE_Illumina_PE_execution_SRR25496336") {
 
-when {
-            params {
-                outdir         = "results"
-                read_dir       = "${baseDir}/tests/data/SC2_Paired_Illumina/"
-                json           = "${baseDir}/tests/json/SC2_Reference.json"
-                aligner        = "bwa"
-                technology     = "illumina"
-                name           = "ASAP_EtE_SC2_Paired_Illumina"
-                proportion     = 0.05
-                identity       = 0.97
-                combine_output = false
+        when {
+                params {
+                    outdir         = "$outputDir"
+                    read_dir       = "${baseDir}/tests/data/SC2_Paired_Illumina/"
+                    json           = "${baseDir}/tests/json/SC2_Reference.json"
+                    aligner        = "bwa"
+                    technology     = "illumina"
+                    name           = "ASAP_EtE_SC2_Paired_Illumina"
+                    proportion     = 0.05
+                    identity       = 0.97
+                    combine_output = false
+                }
             }
-        }
 
         then {
-            assert workflow.success
-            assert path("${params.outdir}/bwa").exists()
-            assert snapshot(path("${params.outdir}/xml").list()).match()
+            assertAll(
+                    { assert workflow.success },
+                    
+                    // Check if the XML file exists and is not empty
+                    { assert path("$outputDir/xml/SRR25496336.xml").exists() },
+                    
+                    // Check if the sample_info subdirectories exist
+                    { assert path("$outputDir/sample_info/SRR25496336/bwa").exists() },
+                    { assert path("$outputDir/sample_info/SRR25496336/fastp").exists() },
+                    
+                    // snapshot() will track changes to the file content over time
+                    { assert snapshot(
+                        path("$outputDir/xml/SRR25496336.xml")
+                    ).match() 
+                    }
+                )
         }
-
     }
+
+    test("EtE_Illumina_PE_execution_SRR25496336_SMOR") {
+
+        when {
+                params {
+                    outdir         = "$outputDir"
+                    read_dir       = "${baseDir}/tests/data/SC2_Paired_Illumina/"
+                    json           = "${baseDir}/tests/json/SC2_Reference.json"
+                    aligner        = "bwa"
+                    technology     = "illumina"
+                    name           = "ASAP_EtE_SC2_Paired_Illumina"
+                    proportion     = 0.05
+                    identity       = 0.97
+                    smor           = true
+                    combine_output = false
+                }
+            }
+
+        then {
+            assertAll(
+                    { assert workflow.success },
+                    
+                    // Check if the XML file exists and is not empty
+                    { assert path("$outputDir/xml/SRR25496336.xml").exists() },
+                    
+                    // Check if the sample_info subdirectories exist
+                    { assert path("$outputDir/sample_info/SRR25496336/bwa").exists() },
+                    { assert path("$outputDir/sample_info/SRR25496336/fastp").exists() },
+                    
+                    // snapshot() will track changes to the file content over time
+                    { assert snapshot(
+                        path("$outputDir/xml/SRR25496336.xml")
+                    ).match() 
+                    }
+                )
+        }
+    }
+    
+    test("EtE_Illumina_SE_execution_ERR9990397") {
+
+        when {
+                params {
+                    outdir         = "$outputDir"
+                    read_dir       = "${baseDir}/tests/data/SC2_Single_Illumina/"
+                    json           = "${baseDir}/tests/json/SC2_Reference.json"
+                    aligner        = "bwa"
+                    technology     = "illumina"
+                    name           = "ASAP_EtE_SC2_Paired_Illumina"
+                    proportion     = 0.05
+                    identity       = 0.97
+                    combine_output = false
+                }
+            }
+
+        then {
+            assertAll(
+                    { assert workflow.success },
+                    
+                    // Check if the XML file exists and is not empty
+                    { assert path("$outputDir/xml/ERR9990397_SE.xml").exists() },
+                    
+                    // Check if the sample_info subdirectories exist
+                    { assert path("$outputDir/sample_info/ERR9990397_SE/bwa").exists() },
+                    { assert path("$outputDir/sample_info/ERR9990397_SE/fastp").exists() },
+                    
+                    // snapshot() will track changes to the file content over time
+                    { assert snapshot(
+                        path("$outputDir/xml/ERR9990397_SE.xml")
+                    ).match() 
+                    }
+                )
+        }
+    }
+
+
 }

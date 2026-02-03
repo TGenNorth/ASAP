@@ -16,6 +16,7 @@ nextflow_pipeline {
                     proportion     = 0.05
                     identity       = 0.97
                     combine_output = false
+
                 }
             }
 
@@ -39,7 +40,7 @@ nextflow_pipeline {
         }
     }
 
-    test("EtE_Illumina_PE_execution_SRR25496336_SMOR") {
+    test("EtE_Illumina_PE_execution_SRR25496336_SMOR_Primer") {
 
         when {
                 params {
@@ -49,6 +50,7 @@ nextflow_pipeline {
                     aligner        = "bwa"
                     technology     = "illumina"
                     name           = "ASAP_EtE_SC2_Paired_Illumina"
+                    primer_file    = "${baseDir}/tests/bedfiles/SC2_Concatenated_Bedfile.bed"
                     proportion     = 0.05
                     identity       = 0.97
                     smor           = true
@@ -75,8 +77,8 @@ nextflow_pipeline {
                 )
         }
     }
-    
-    test("EtE_Illumina_SE_execution_ERR9990397") {
+
+    test("EtE_Illumina_SE_execution_ERR9990397_Primer") {
 
         when {
                 params {
@@ -86,6 +88,7 @@ nextflow_pipeline {
                     aligner        = "bwa"
                     technology     = "illumina"
                     name           = "ASAP_EtE_SC2_Paired_Illumina"
+                    primer_file    = "${baseDir}/tests/bedfiles/SC2_Concatenated_Bedfile.bed"
                     proportion     = 0.05
                     identity       = 0.97
                     combine_output = false

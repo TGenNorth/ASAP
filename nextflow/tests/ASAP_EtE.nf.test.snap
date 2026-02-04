@@ -1,13 +1,16 @@
 {
     "EtE_Illumina_PE_execution_SRR25496336": {
         "content": [
+            "SRR25496336.fastp.json:md5,854684840c7ae7e5d20928e3a294448e",
+            "SRR25496336-bwa.bam:md5,7b46305d7275c1ff51b628dcf294d874",
+            "SRR25496336-bwa_identityFiltered.bam:md5,c43805800660e523cd2701e43c4cdb4b",
             "SRR25496336.xml:md5,6021be043aa6b36a917079cc07dfbacd"
         ],
         "meta": {
             "nf-test": "0.9.3",
             "nextflow": "25.04.6"
         },
-        "timestamp": "2026-02-01T16:31:48.000158426"
+        "timestamp": "2026-02-03T10:50:13.023812753"
     },
     "EtE_Illumina_SE_execution_ERR9990397": {
         "content": [

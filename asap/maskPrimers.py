@@ -97,6 +97,13 @@ def _primer_mask(samdata, primer_file, wiggle, mask_bases, ponlybam, outfile):
             no_primer = 0
             primer_found = 0
             for read in samdata.fetch(chrom, until_eof=True):
+                # TP ADDED TO FIX TYPE ERROR THAT SEEMS TO ARISE WITH LONG READ DATA
+                if read.query_sequence is None or read.query_qualities is None:
+                    outdata.write(read)
+                    # This line ensures the read still shows up in your report
+                    out.write(f'{chrom}\t{read.query_name}\tSkipped\tMissing_Data\tNone\n')
+                    continue
+                ###############################
                 try:
                     align_start = min(read.get_reference_positions())
                     align_end = max(read.get_reference_positions())

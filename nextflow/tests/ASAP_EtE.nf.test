@@ -33,6 +33,9 @@ nextflow_pipeline {
                     
                     // snapshot() will track changes to the file content over time
                     { assert snapshot(
+                        path("$outputDir/sample_info/SRR25496336/fastp/SRR25496336.fastp.json"),
+                        path("$outputDir/sample_info/SRR25496336/bwa/SRR25496336-bwa.bam"),
+                        path("$outputDir/sample_info/SRR25496336/identity_filter/SRR25496336-bwa_identityFiltered.bam"),
                         path("$outputDir/xml/SRR25496336.xml")
                     ).match() 
                     }

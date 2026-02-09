@@ -16,6 +16,7 @@ include {
     GENERATE_REFERENCE_FASTA; MASK_PRIMERS; IDENTITY_FILTER; SMOR
     PROCESS_BAM; OUTPUT_COMBINER; FORMAT_OUTPUT
 } from './modules/asap'
+include { PROCESS_XML_R } from './modules/asap_tools'
 include { IVAR_TRIM } from './modules/ivar/trim/'
 include { IVAR_VARIANTS } from './modules/ivar/variants/'
 include { IVAR_CONSENSUS } from './modules/ivar/consensus/'
@@ -170,6 +171,12 @@ workflow {
     // --- STEP 9: ASAP Processing ---
     if(params.asap_snps) {
         def xml_output = PROCESS_BAM(ch_split.asap.combine(json_ch))
+        
+        // --- STEP 9.1: ASAP Tools Processing ---
+        if(params.asaptools_processing) {
+            PROCESS_XML_R(xml_output, params.proportion)
+        }
+
         if(params.combine_output) {
             def xmls = xml_output.map { id, f -> f }.collect()
             def final_xml = OUTPUT_COMBINER(xmls)

@@ -72,6 +72,12 @@
         "out_file": { "type": ["string", "null"], "default": "<name>.html", "description": "Name of the output HTML file." }
       }
     },
+    "asaptools_options": {
+      "title": "Specific Options for ASAP Tools Processing",
+      "properties": {
+        "asaptools_processing": { "type": "boolean", "default": true, "description": "Disable ASAP Tools Processing..." }
+      }
+    },
     "ivar_options": {
       "title": "Options for iVar Processing",
       "properties": {
@@ -101,6 +107,7 @@
     { "$ref": "#/$defs/smor_options" },
     { "$ref": "#/$defs/variant_calling_options" },
     { "$ref": "#/$defs/bam_processor_options" },
+    { "$ref": "#/$defs/asaptools_options" },
     { "$ref": "#/$defs/ivar_options" },
     { "$ref": "#/$defs/containers" }
   ]

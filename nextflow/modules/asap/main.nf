@@ -108,11 +108,11 @@ process OUTPUT_COMBINER {
     path xml_files
     
     output:
-    path("${params.name}_analysis.xml"), emit: final_xml
+    path("${params.file_name}_analysis.xml"), emit: final_xml
 
     script:
     """
-    outputCombiner.py -x . -n ${params.name}
+    outputCombiner.py -x . -n ${params.file_name}
     """
 }
 
@@ -120,7 +120,7 @@ process FORMAT_OUTPUT {
     tag "format_output"
     publishDir "${params.outdir}/", mode: 'copy'
 
-    def out_file = params.out_file ? params.out_file : "ASAP_Report_${params.name}.html"
+    def out_file = params.out_file ? params.out_file : "ASAP_Report_${params.file_name}.html"
 
     input:
     path final_xml
@@ -128,7 +128,7 @@ process FORMAT_OUTPUT {
     
     output:
     path("*.html"), emit: asap_output
-    path("${params.name}/"), emit : extra_output
+    path("${params.file_name}/"), emit : extra_output
 
     script:
     """

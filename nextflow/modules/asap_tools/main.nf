@@ -5,7 +5,7 @@ process PROCESS_XML_R {
     label 'process_low'
     
     // Direct path to your existing environment
-    conda "/tgen_labs/EPIC/miniconda3/envs/asap_r_env"
+    conda "/tgen_labs/EPIC/miniconda3/envs/r_mirror_env"
 
     publishDir "${params.outdir}/XML_Rdata", mode: 'copy'
 
@@ -20,5 +20,84 @@ process PROCESS_XML_R {
     script:
     """
     process_xml.R ${xml} ${proportion} ${sample_id}
+    """
+}
+
+process PROCESS_COMBINE_RDATA {
+    tag "combine_rdata"
+    label 'process_medium'
+    conda "/tgen_labs/EPIC/miniconda3/envs/r_mirror_env"
+    
+    publishDir "${params.outdir}/ASAP_R_Data", mode: 'copy'
+
+    input:
+    path rdata_files // The list of all .Rdata files from .collect()
+
+    output:
+    path "Combined_ASAP_Data.Rdata", emit: combined_rdata
+    path "Combined_Summary.csv",   emit: combined_csv
+
+    script:
+    """
+    # Use a shell script wrapper or call R directly
+    process_combine_rdata.R ${rdata_files}
+    """
+}
+
+process PROCCESS_GENERATE_COV_TABLE {
+    tag "coverage_table"
+    label 'process_medium'
+    conda "/tgen_labs/EPIC/miniconda3/envs/r_mirror_env"
+    
+    publishDir "${params.outdir}/ASAP_R_Data", mode: 'copy'
+
+    input:
+    path combined_rdata  // arg[1]
+    val  min_depth       // arg[2]
+    val  prefix          // arg[3]
+    val  poi_input       // arg[4] - Changed from 'any' to 'val'
+
+    output:
+    path "*.xlsx", emit: excel, optional: true
+
+    script:
+    def poi_param = (poi_input == null || poi_input == "NULL") ? "NULL" : poi_input
+    """
+    process_asaptools_cov_table.R ${combined_rdata} ${min_depth} ${prefix} ${poi_param}
+    """
+}
+
+process PROCESS_GENERATE_SNP_TABLE {
+    tag "snp_table"
+    label 'process_medium'
+    conda "/tgen_labs/EPIC/miniconda3/envs/r_mirror_env"
+
+    publishDir "${params.outdir}/ASAP_SNP_Table", mode: 'copy'
+
+    input:
+    path combined_rdata      // 1
+    val  prefix              // 2
+    path genbank_ref        // 3
+    path primer_bed         // 4
+    val  poi_input           // 5
+
+    output:
+    path "*.xlsx", emit: snp_xlsx
+
+    script:
+    def poi_param = (poi_input == null || poi_input == "NULL" || poi_input == "") ? "NULL" : poi_input
+    def exclude_list = (params.asaptools_samples_to_remove == null || params.asaptools_samples_to_remove == "") ? "NONE" : params.asaptools_samples_to_remove
+    
+    """
+    process_asaptools_snp_table.R \\
+        ${combined_rdata} \\
+        ${prefix} \\
+        ${params.asaptools_snp_proportion} \\
+        ${params.asaptools_max_sample_snp_count} \\
+        ${params.asaptools_min_location_depth} \\
+        "${exclude_list}" \\
+        ${poi_param} \\
+        ${genbank_ref} \\
+        ${primer_bed}
     """
 }

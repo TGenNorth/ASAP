@@ -16,10 +16,10 @@ poi_csv     <- args[4] # Will be "NULL" if not provided
 
 poi_csv <- if(length(args) >= 4) args[4] else "NULL"
 
-# rdata_input <- "/scratch/tporter/ASAP_SC2_Validation/ASAP_Illumina_Paired_ASAP_Tools/ASAP_R_Data/Combined_ASAP_Data.Rdata"
+# rdata_input <- "/scratch/tporter/ASAP_TB_Validation/ASAP_TB_Subset/ASAP_R_Data/Combined_ASAP_Data.Rdata"
 # min_depth   <- 99
 # prefix      <- "ASAP_Illumina_Paired_ASAP_Tools"
-# poi_csv     <- NULL
+# poi_csv     <- "/tgen_labs/EPIC/tporter/ASAP_R_Script/TB_Genes_meganedits_exactstartandstop_2.csv"
 
 # 1. Load Data
 load(rdata_input) # Loads final_asap, final_snps, final_array

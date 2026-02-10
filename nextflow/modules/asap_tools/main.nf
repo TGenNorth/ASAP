@@ -31,6 +31,7 @@ process PROCESS_COMBINE_RDATA {
     publishDir "${params.outdir}/ASAP_R_Data", mode: 'copy'
 
     input:
+    val  poi_input
     path rdata_files // The list of all .Rdata files from .collect()
 
     output:
@@ -38,9 +39,10 @@ process PROCESS_COMBINE_RDATA {
     path "Combined_Summary.csv",   emit: combined_csv
 
     script:
+    def poi_param = (poi_input == null || poi_input == "NULL" || poi_input == "") ? "NULL" : poi_input
     """
     # Use a shell script wrapper or call R directly
-    process_combine_rdata.R ${rdata_files}
+    process_combine_rdata.R ${poi_param} ${rdata_files}
     """
 }
 
@@ -72,7 +74,7 @@ process PROCESS_GENERATE_SNP_TABLE {
     label 'process_medium'
     conda "/tgen_labs/EPIC/miniconda3/envs/r_mirror_env"
 
-    publishDir "${params.outdir}/ASAP_SNP_Table", mode: 'copy'
+    publishDir "${params.outdir}/ASAP_R_Data", mode: 'copy'
 
     input:
     path combined_rdata      // 1

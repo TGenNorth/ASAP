@@ -11,10 +11,15 @@ library(parallelly)
 # 1. Capture Arguments
 args <- commandArgs(trailingOnly = TRUE)
 if (length(args) < 2) {
-  stop("Usage: process_combine_rdata.R <input_files...>", call. = FALSE)
+  stop("Usage: process_combine_rdata.R <optional_poi_csv> <input_files...>", call. = FALSE)
 }
 
-files <- args[1:length(args)]
+poi_csv <- args[1] # Will be "NULL" if not provided
+files <- args[2:length(args)]
+
+# Test env
+# files <- list.files("/scratch/tporter/ASAP_TB_Validation/ASAP_TB_Subset/XML_Rdata/", pattern = "Rdata", full.names = T)
+# poi_csv <- "/scratch/tporter/ASAP_TB_Validation/Updated_TB_Genes.csv"
 
 # 2. Setup Parallel Backend
 # parallelly::availableCores() is SLURM-aware and respects cpus allocated to the job
@@ -35,6 +40,39 @@ combined_list <- foreach(f = files, .packages = c("tidyverse")) %dopar% {
   # Create a local environment for each file to prevent object collision
   temp_env <- new.env()
   load(f, envir = temp_env)
+  
+  # 2. Handle Positions of Interest (Optional)
+  if (is.na(poi_csv) || poi_csv == "NULL" || poi_csv == "") {
+    message("No Positions of Interest provided. Generating reference data...")
+
+    } else {
+    message(paste("Loading positions of interest from:", poi_csv))
+    genes <- read.csv(poi_csv)
+    
+    # Generate positions for each gene in the CSV
+    Gene_Positions <- genes %>%
+      rowwise() %>%
+      do(data.frame(
+        position = seq(min(.$start, .$end), max(.$start, .$end)), 
+        gene = .$gene,
+        reference = .$seqnames
+      )) %>%
+      ungroup()
+    
+    # filter unneeded array info...
+    temp_env$array_info <- temp_env$array_info %>%
+      semi_join(Gene_Positions, by = c("position" = "position", "assay_name" = "reference"))
+    
+    # Remove array_info fields from ASAP
+    temp_env$ASAP$n_reads <- NULL
+    temp_env$ASAP$quality_discards <- NULL
+    temp_env$ASAP$proportions <- NULL
+    temp_env$ASAP$depths <- NULL
+    
+    # Remove unneeded data from fields.
+    # For TB Example, no way to easily clean SNPs to match POI filtering... 
+  }
+  
   
   # Return as a structured list for easier extraction
   list(

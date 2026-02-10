@@ -181,13 +181,15 @@ workflow {
             def parallel_r_out = PROCESS_XML_R(xml_output, params.proportion)
             
             // 2. Combine results (Gather)
-            def combined_data = PROCESS_COMBINE_RDATA(parallel_r_out.rdata.collect())
+            def poi_input = params.asaptools_positions_of_interest ? file(params.asaptools_positions_of_interest) : "NULL"
+            
+            def combined_data = PROCESS_COMBINE_RDATA(
+                poi_input,
+                parallel_r_out.rdata.collect()
+                )
 
             // 3. Optional Coverage Table
             if(params.asaptools_cov_table){
-                // Define variable here to ensure it's fresh for this block
-                def poi_input = params.asaptools_positions_of_interest ? file(params.asaptools_positions_of_interest) : "NULL"
-                
                 PROCCESS_GENERATE_COV_TABLE(
                     combined_data.combined_rdata,
                     params.asaptools_min_location_depth,
@@ -196,8 +198,6 @@ workflow {
                 )
             }
             if(params.asaptools_snp_table){
-                def poi_input = params.asaptools_positions_of_interest ? file(params.asaptools_positions_of_interest) : "NULL"
-                
                 PROCESS_GENERATE_SNP_TABLE(
                     PROCESS_COMBINE_RDATA.out.combined_rdata, // input 1: path
                     params.file_name,                        // input 2: val

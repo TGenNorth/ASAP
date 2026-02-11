@@ -11,7 +11,7 @@ if (length(args) < 3) {
 
 # Assign the arguments to variables
 xml_file   <- args[1]
-min_snp    <- as.numeric(args[2])
+min_snp    <- as.numeric(args[2])*100
 sample_id  <- args[3]
 
 # 1. Individual Processing 

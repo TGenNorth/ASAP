@@ -10,18 +10,19 @@ library(foreach)
 args <- commandArgs(trailingOnly = TRUE)
 
 if (length(args) < 9) {
-  stop("Usage: generate_snp_table.R <rdata> <prefix> <min_snp_perc> <max_snp_count> <min_depth> <remove_names> <poi_csv> <ref> <primer_bed>")
+  stop("Usage: generate_snp_table.R <rdata> <prefix> <min_snp_perc> <max_snp_count> <min_depth> <remove_names> <poi_csv> <ref> <primer_bed> <SNP_File>")
 }
 
 RDATA_INPUT        <- args[1]
 PREFIX             <- args[2]
-MIN_SNP_PERC       <- as.numeric(args[3])
+MIN_SNP_PERC       <- as.numeric(args[3])*100
 MAX_SNP_COUNT      <- as.numeric(args[4])
 MIN_LOCATION_DEPTH <- as.numeric(args[5])
 REMOVE_NAMES       <- if(args[6] == "NONE" || args[6] == "") character(0) else unlist(strsplit(args[6], ","))
 POI_CSV            <- args[7]
 REFERENCE          <- args[8]
 BED_FILE           <- args[9]
+SNP_RDATA          <- args[10]
 
 
 # RDATA_INPUT        <- "/scratch/tporter/ASAP_SC2_Validation/ASAP_Illumina_Paired_ASAP_Tools/ASAP_R_Data/Combined_ASAP_Data.Rdata"
@@ -114,19 +115,21 @@ SNPS_To_AA <- SNPS %>%
   distinct()
 
 # Convert SNP to amino acid
-Gene_SNPS <- TGenGenomicTools::genome.snp.to.gene.snp(snp_db = SNPS_To_AA, ref_seq = REFERENCE, cores = parallelly::availableCores())
+# Gene_SNPS <- TGenGenomicTools::genome.snp.to.gene.snp(snp_db = SNPS_To_AA, ref_seq = REFERENCE, cores = parallelly::availableCores())
 
-Gene_SNPS <- Gene_SNPS %>%
-  distinct()
+# Gene_SNPS <- Gene_SNPS %>%
+#   distinct()
 
-Gene_SNPS$Gene_SNP <- Gene_SNPS$SNP_Gene
-Gene_SNPS$SNP_Gene <- NULL
+# Gene_SNPS$Gene_SNP <- Gene_SNPS$SNP_Gene
+# Gene_SNPS$SNP_Gene <- NULL
 
-Gene_SNPS
+# Gene_SNPS
 
-Amino_Acids <- TGenGenomicTools::snps.to.amino(snp_db = SNPS_To_AA, ref_seq = REFERENCE, cores = parallelly::availableCores())
+# Amino_Acids <- TGenGenomicTools::snps.to.amino(snp_db = SNPS_To_AA, ref_seq = REFERENCE, cores = parallelly::availableCores())
 
-Amino_Acids <- select(Amino_Acids, SNP, Product, AA)
+# Amino_Acids <- select(Amino_Acids, SNP, Product, AA)
+
+load(SNP_RDATA)
 
 Amino_Acids <- left_join(Amino_Acids, Gene_SNPS,  relationship = "many-to-many")
 
@@ -172,23 +175,23 @@ SAMPLE_Exclude <- rbind(SAMPLE_Exclude,
 getStyle <- function(value) {
   if (is.na(value)) {
     return(createStyle(fgFill = "gray75", border = c("top", "bottom", "left", "right"), borderColour = "black"))
-  } else if (value > 9*MIN_SNP_PERC) {
+  } else if (value > 90) {
     return(createStyle(fgFill = "#800026", border = c("top", "bottom", "left", "right"), borderColour = "black"))
-  } else if (value > 8*MIN_SNP_PERC) {
+  } else if (value > 80) {
     return(createStyle(fgFill = "#bd0026", border = c("top", "bottom", "left", "right"), borderColour = "black"))
-  } else if (value > 7*MIN_SNP_PERC) {
+  } else if (value > 70) {
     return(createStyle(fgFill = "#e31a1c", border = c("top", "bottom", "left", "right"), borderColour = "black"))
-  } else if (value > 6*MIN_SNP_PERC) {
+  } else if (value > 60) {
     return(createStyle(fgFill = "#fc4e2a", border = c("top", "bottom", "left", "right"), borderColour = "black"))
-  } else if (value > 5*MIN_SNP_PERC) {
+  } else if (value > 50) {
     return(createStyle(fgFill = "#fd8d3c", border = c("top", "bottom", "left", "right"), borderColour = "black"))
-  } else if (value > 4*MIN_SNP_PERC) {
+  } else if (value > 40) {
     return(createStyle(fgFill = "#feb24c", border = c("top", "bottom", "left", "right"), borderColour = "black"))
-  } else if (value > 3*MIN_SNP_PERC) {
+  } else if (value > 30) {
     return(createStyle(fgFill = "#fed976", border = c("top", "bottom", "left", "right"), borderColour = "black"))
-  } else if (value > 2*MIN_SNP_PERC) {
+  } else if (value > 20) {
     return(createStyle(fgFill = "#ffeda0", border = c("top", "bottom", "left", "right"), borderColour = "black"))
-  } else if (value > 1*MIN_SNP_PERC) {
+  } else if (value > 10) {
     return(createStyle(fgFill = "#ffffcc", border = c("top", "bottom", "left", "right"), borderColour = "black"))
   } else if (value > 0) {
     return(createStyle(fgFill = "deepskyblue", border = c("top", "bottom", "left", "right"), borderColour = "black"))

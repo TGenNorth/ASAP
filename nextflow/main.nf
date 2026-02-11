@@ -16,7 +16,7 @@ include {
     GENERATE_REFERENCE_FASTA; MASK_PRIMERS; IDENTITY_FILTER; SMOR
     PROCESS_BAM; OUTPUT_COMBINER; FORMAT_OUTPUT
 } from './modules/asap'
-include { PROCESS_XML_R; PROCESS_COMBINE_RDATA; PROCCESS_GENERATE_COV_TABLE; PROCESS_GENERATE_SNP_TABLE} from './modules/asap_tools'
+include { PROCESS_XML_R; PROCESS_COMBINE_RDATA; PROCCESS_GENERATE_COV_TABLE; PROCESS_GENERATE_SNP_TABLE; PROCESS_SNPS_TO_AMINOACIDS} from './modules/asap_tools'
 include { IVAR_TRIM } from './modules/ivar/trim/'
 include { IVAR_VARIANTS } from './modules/ivar/variants/'
 include { IVAR_CONSENSUS } from './modules/ivar/consensus/'
@@ -168,8 +168,8 @@ workflow {
         ivar: [ [id: sample_id], bam, bai ] 
     }
     
-    // Define the variable OUTSIDE the specific cov_table if-block
-    def poi_file = params.asaptools_positions_of_interest ? file(params.asaptools_positions_of_interest) : "NULL"
+    // // Define the variable OUTSIDE the specific cov_table if-block
+    // def poi_file = params.asaptools_positions_of_interest ? file(params.asaptools_positions_of_interest) : "NULL"
 
     // --- STEP 9: ASAP Processing ---
     if(params.asap_snps) {
@@ -190,6 +190,7 @@ workflow {
 
             // 3. Optional Coverage Table
             if(params.asaptools_cov_table){
+
                 PROCCESS_GENERATE_COV_TABLE(
                     combined_data.combined_rdata,
                     params.asaptools_min_location_depth,
@@ -198,12 +199,19 @@ workflow {
                 )
             }
             if(params.asaptools_snp_table){
+
+                def snp_amino_data = PROCESS_SNPS_TO_AMINOACIDS(
+                    combined_data.combined_rdata,
+                    params.asaptools_genbank_location
+                )
+
                 PROCESS_GENERATE_SNP_TABLE(
                     PROCESS_COMBINE_RDATA.out.combined_rdata, // input 1: path
                     params.file_name,                        // input 2: val
                     params.asaptools_genbank_location,       // input 3: path
                     params.primer_file,                     // input 4: path
-                    poi_input                               // input 5: val
+                    poi_input,                               // input 5: val
+                    snp_amino_data.snp_to_amino_rdata      // input 6: path
                 )
             }
         }

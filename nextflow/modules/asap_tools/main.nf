@@ -69,6 +69,28 @@ process PROCCESS_GENERATE_COV_TABLE {
     """
 }
 
+process PROCESS_SNPS_TO_AMINOACIDS {
+    tag "snp_to_aa_conversion"
+    label 'process_medium'
+    conda "/tgen_labs/EPIC/miniconda3/envs/r_mirror_env"
+
+    publishDir "${params.outdir}/ASAP_R_Data", mode: 'copy'
+
+    input:
+    path combined_rdata      // 1
+    path genbank_ref        // 3
+
+    output:
+    path "SNP_Amino_Acid_Table.Rdata", emit: snp_to_amino_rdata
+
+    script:
+    """
+    process_asaptools_snps_amino_acids.R \\
+        ${combined_rdata} \\
+        ${genbank_ref}
+    """
+}
+
 process PROCESS_GENERATE_SNP_TABLE {
     tag "snp_table"
     label 'process_medium'
@@ -82,9 +104,10 @@ process PROCESS_GENERATE_SNP_TABLE {
     path genbank_ref        // 3
     path primer_bed         // 4
     val  poi_input           // 5
-
+    path aa_rdata           // 6 - This maps to the file from snp_amino_data
+    
     output:
-    path "*.xlsx", emit: snp_xlsx
+    path "*.xlsx", emit: excel, optional: true
 
     script:
     def poi_param = (poi_input == null || poi_input == "NULL" || poi_input == "") ? "NULL" : poi_input
@@ -100,6 +123,7 @@ process PROCESS_GENERATE_SNP_TABLE {
         "${exclude_list}" \\
         ${poi_param} \\
         ${genbank_ref} \\
-        ${primer_bed}
+        ${primer_bed} \\
+        ${aa_rdata} 
     """
 }

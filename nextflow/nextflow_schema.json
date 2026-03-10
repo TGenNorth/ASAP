@@ -78,12 +78,14 @@
         "asaptools_processing": { "type": "boolean", "default": true, "description": "Enable/Disable the ASAP Tools R-script downstream processing." },
         "asaptools_cov_table": { "type": "boolean", "default": true, "description": "Enable/Disable the ASAP Tools Coverage Table." },
         "asaptools_snp_table": { "type": "boolean", "default": true, "description": "Enable/Disable the ASAP Tools SNP Table." },
+        "asaptools_fasta": { "type": "boolean", "default": true, "description": "Enable/Disable the ASAP Tools fasta generation." },
         "asaptools_positions_of_interest": {"type": "string", "default": null, "description": "Path to CSV file containing genes/positions of interest. This is helpful if processing amplicon data using WGS reference."},
         "asaptools_min_location_depth": { "type": "integer", "default": 99, "description": "Minimum depth required at a specific location to consider SNPs or Coverage in Table." },        
         "asaptools_snp_proportion": {"type": "number", "default": 0.05, "description": "SNP Table Parameter: Minimum proportion required to call a variant in the ASAP Tools script."},
         "asaptools_genbank_location": { "type": "string", "default": null, "description": "SNP Table Parameter: Path to the reference GenBank file."},
         "asaptools_max_sample_snp_count": { "type": "integer", "default": 50, "description": "SNP Table Parameter: Maximum number of SNPs allowed per sample. This filters samples with >x snps in the SNP table."},
-        "asaptools_samples_to_remove": { "type": "string", "default": null,"description": "SNP Table Parameter: Comma-separated list of Sample IDs to exclude from the SNP table."}
+        "asaptools_samples_to_remove": { "type": "string", "default": null,"description": "SNP Table Parameter: Comma-separated list of Sample IDs to exclude from the SNP table."},
+        "asaptools_breadth_threshold": { "type": "number", "default": null, "description": "Breadth of coverage min (>) to export fasta files for."}
       }
     }
     },

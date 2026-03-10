@@ -46,6 +46,28 @@ process PROCESS_COMBINE_RDATA {
     """
 }
 
+process PROCCESS_GENERATE_FASTA {
+    tag "GENERATE_FASTA"
+    label 'process_low'
+    conda "/tgen_labs/EPIC/miniconda3/envs/r_mirror_env"
+    
+    publishDir "${params.outdir}/ASAP_R_Data", mode: 'copy'
+
+    input:
+    path combined_rdata  // arg[1]
+    val  prefix          // arg[2]
+
+    output:
+    path "*.fasta", emit: fasta, optional: true
+
+    script:
+    def fasta_threshold = params.asaptools_breadth_threshold ?: params.breadth
+    """
+    process_asaptools_fasta_export.R ${combined_rdata} ${prefix} ${fasta_threshold}
+    """
+}
+
+
 process PROCCESS_GENERATE_COV_TABLE {
     tag "coverage_table"
     label 'process_medium'
@@ -82,6 +104,7 @@ process PROCESS_SNPS_TO_AMINOACIDS {
 
     output:
     path "SNP_Amino_Acid_Table.Rdata", emit: snp_to_amino_rdata
+    path "*.csv",  emit: csv,   optional: true
 
     script:
     """

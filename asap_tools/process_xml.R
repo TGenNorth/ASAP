@@ -14,14 +14,19 @@ xml_file   <- args[1]
 min_snp    <- as.numeric(args[2])*100
 sample_id  <- args[3]
 
-# 1. Individual Processing 
+# xml_file   <- "/scratch/tporter/ASAP_SC2_Results/ASAP_Illumina_Reads_R_Out_Sunday/xml/DRR640392.xml"
+# min_snp    <- 0.01*100
+# sample_id  <- "DRR640392"
+
+
+# 1. Individual Processing
 ASAP <- ASAPTools::read.ASAP.individual(xml_file)
 SNPS <- ASAPTools::read.ASAP.snps.individual(xml_file)
 
 # Define the columns that SHOULD be numeric
 asap_numeric_names <- c("mapped_reads", "unassigned_reads", "unmapped_reads", "amplicon_number", "amplicon_reads", "breadth", "avg_depth")
-snps_numeric_names <- c("Mapped_Reads", "unassigned_reads", "unmapped_reads", 
-                        "amplicon_number", "location_depth", "snp_position", 
+snps_numeric_names <- c("Mapped_Reads", "unassigned_reads", "unmapped_reads",
+                        "amplicon_number", "location_depth", "snp_position",
                         "snp_depth", "snp_proportion")
 
 # 2. Numeric Cleaning (Using a safe helper function)
@@ -50,7 +55,7 @@ cat("Line 46")
 
 # Joining results
 array_info <- Depth %>%
-  left_join(Proportions,     by = c("run", "name", "assay_name", "position")) %>% 
+  left_join(Proportions,     by = c("run", "name", "assay_name", "position")) %>%
   left_join(N_Reads,         by = c("run", "name", "assay_name", "position")) %>%
   left_join(Quality.Discards, by = c("run", "name", "assay_name", "position"))
 

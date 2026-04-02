@@ -13,7 +13,7 @@ include { BUILD_BOWTIE2_INDEX; ALIGN_BOWTIE2 } from './modules/bowtie2'
 include { MINIMAP2_INDEX} from './modules/minimap2/index'
 include { MINIMAP2_ALIGN } from './modules/minimap2/align'
 include {
-    GENERATE_REFERENCE_FASTA; MASK_PRIMERS; IDENTITY_FILTER; SMOR
+    GENERATE_REFERENCE_FASTA; MASK_PRIMERS; IDENTITY_FILTER; SMOR; SMOR_CORRECTION;
     PROCESS_BAM; OUTPUT_COMBINER; FORMAT_OUTPUT
 } from './modules/asap'
 include { PROCESS_XML_R; PROCESS_COMBINE_RDATA; PROCCESS_GENERATE_COV_TABLE; PROCESS_GENERATE_SNP_TABLE; PROCESS_SNPS_TO_AMINOACIDS} from './modules/asap_tools'
@@ -158,6 +158,10 @@ workflow {
     }
     if(params.smor) {
         def result = SMOR(aligned_bams)
+        aligned_bams = result[0]
+    }
+    if(params.smor_correction) {
+        def result = SMOR_CORRECTION(aligned_bams)
         aligned_bams = result[0]
     }
 

@@ -69,6 +69,23 @@ process SMOR {
     """
 }
 
+process SMOR_CORRECTION {
+    tag "$sample_id"
+    publishDir "${params.outdir}/sample_info/${sample_id}/smor_correction/", mode: 'copy'
+
+    input:
+    tuple val(sample_id), path(bamfile), path(bamindex)
+    
+    output:
+    tuple val(sample_id), path("${bamfile.getBaseName()}_SMOR.bam"), path("${bamfile.getBaseName()}_SMOR.bam.bai"), emit: smor_output
+    tuple val(sample_id), path("smor_processing.log"), emit: smor_logging
+
+    script:
+    """
+    generateSMORbam_correction.py -b ${bamfile} -c ${params.fill_character} 
+    """
+}
+
 process PROCESS_BAM {
     tag "$sample_id"
     publishDir "${params.outdir}/xml", mode: 'copy'

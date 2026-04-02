@@ -45,7 +45,8 @@
     "smor_options": {
       "title": "SMOR Processing Options",
       "properties": {
-        "smor": { "type": "boolean", "default": false, "description": "Enable SMOR analysis." }
+        "smor": { "type": "boolean", "default": false, "description": "Enable SMOR analysis." },
+        "smor_correction": { "type": "boolean", "default": false, "description": "Enable SMOR analysis." }
       }
     },
     "variant_calling_options": {

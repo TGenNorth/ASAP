@@ -13,7 +13,7 @@ include { BUILD_BOWTIE2_INDEX; ALIGN_BOWTIE2 } from './modules/bowtie2'
 include { MINIMAP2_INDEX} from './modules/minimap2/index'
 include { MINIMAP2_ALIGN } from './modules/minimap2/align'
 include {
-    GENERATE_REFERENCE_FASTA; MASK_PRIMERS; IDENTITY_FILTER; SMOR; SMOR_CORRECTION;
+    PREPARE_ASAP_JSON; GENERATE_REFERENCE_FASTA; MASK_PRIMERS; IDENTITY_FILTER; SMOR; SMOR_CORRECTION;
     PROCESS_BAM; OUTPUT_COMBINER; FORMAT_OUTPUT
 } from './modules/asap'
 include { PROCESS_XML_R; PROCESS_COMBINE_RDATA; PROCCESS_GENERATE_COV_TABLE; PROCESS_GENERATE_SNP_TABLE; PROCESS_SNPS_TO_AMINOACIDS} from './modules/asap_tools'
@@ -29,8 +29,19 @@ workflow {
     log.info paramsSummaryLog(workflow)
     
     // --- SETUP: Reference Generation ---
-    def assay_json = file(params.json).toAbsolutePath()
-    json_ch = Channel.value(assay_json)
+    // Check if the provided file is already JSON or needs conversion
+    def input_ref = file(params.reference_input).toAbsolutePath()
+    def is_genbank = input_ref.name.endsWith('.gb') || input_ref.name.endsWith('.genbank')
+    def gb_file_to_use = is_genbank ? input_ref : (params.asaptools_genbank_location ? file(params.asaptools_genbank_location) : null)
+    
+    if (input_ref.name.endsWith('.json')) {
+        // If it's already JSON, just create a value channel
+        json_ch = Channel.value(input_ref)
+    } else {
+        // Otherwise, run the conversion process
+        json_ch = PREPARE_ASAP_JSON(input_ref).json
+    }
+    
     def ref_fasta = GENERATE_REFERENCE_FASTA(json_ch).ref_fasta
     
     // --- STEP 0: Input Handling ---
@@ -204,19 +215,23 @@ workflow {
             }
             if(params.asaptools_snp_table){
 
-                def snp_amino_data = PROCESS_SNPS_TO_AMINOACIDS(
-                    combined_data.combined_rdata,
-                    params.asaptools_genbank_location
-                )
+                if (gb_file_to_use) {
+                    def snp_amino_data = PROCESS_SNPS_TO_AMINOACIDS(
+                        combined_data.combined_rdata,
+                        gb_file_to_use
+                    )
 
-                PROCESS_GENERATE_SNP_TABLE(
-                    PROCESS_COMBINE_RDATA.out.combined_rdata, // input 1: path
-                    params.file_name,                        // input 2: val
-                    params.asaptools_genbank_location,       // input 3: path
-                    params.primer_file,                     // input 4: path
-                    poi_input,                               // input 5: val
-                    snp_amino_data.snp_to_amino_rdata      // input 6: path
-                )
+                    PROCESS_GENERATE_SNP_TABLE(
+                        PROCESS_COMBINE_RDATA.out.combined_rdata, // input 1: path
+                        params.file_name,                        // input 2: val
+                        gb_file_to_use,                          // input 3: path
+                        params.primer_file,                     // input 4: path
+                        poi_input,                               // input 5: val
+                        snp_amino_data.snp_to_amino_rdata      // input 6: path
+                    )
+                } else {
+                    log.warn "Skipping SNP Table generation: No GenBank file provided or detected."
+                }
             }
         }
 

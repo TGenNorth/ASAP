@@ -39,6 +39,47 @@ PROFILE = 0
 PRESENCE_ABSENCE = 10
 GENE_VARIANT = 20
 
+def _process_genbank(gb_file):
+    """
+    Parses a GenBank file and converts it into ASAP Assay objects.
+    Maps GenBank 'features' to ASAP 'Targets'.
+    """
+    return_list = []
+    # skbio handles genbank format; it returns a generator of sequences
+    for seq in skbio.io.registry.read(gb_file, format='genbank', constructor=DNA):
+        # We'll treat each sequence record as an Assay
+        assay_name = seq.metadata.get('id', 'unknown_gb_entry')
+        assay = assayInfo.Assay(name=assay_name, assay_type='genbank_import')
+        
+        # Create an amplicon from the full sequence
+        full_seq_str = _clean_seq(str(seq))
+        amplicon = assayInfo.Amplicon(sequence=full_seq_str)
+        
+        # Map features (like genes) to ASAP Targets if they exist
+        # This is a basic implementation; adjust based on which features you need
+        if 'features' in seq.metadata:
+            for feature in seq.metadata['features']:
+                if feature['type'] == 'gene':
+                    # Extract gene name safely
+                    qualifiers = feature.get('qualifiers', {})
+                    gene_name = qualifiers.get('gene', qualifiers.get('locus_tag', ['unknown']))[0]
+                    
+                    target = assayInfo.Target(
+                        function='genbank_feature',
+                        gene_name=gene_name,
+                        amplicon=amplicon
+                    )
+                    # If ASAP supports multiple targets per assay, add here.
+                    # Otherwise, the current logic only keeps the last gene found.
+                    assay.target = target
+        
+        # If no specific target was found, attach the amplicon to a generic target
+        if not assay.target:
+            assay.target = assayInfo.Target(function='full_record', amplicon=amplicon)
+            
+        return_list.append(assay)
+    return return_list
+
 def _process_fasta(fasta, fasta_type, message=None):
     return_list = []
     for seq in skbio.io.registry.read(fasta, format='fasta', constructor=DNA):
@@ -70,7 +111,7 @@ def _clean_str(string):
         return None
 
 def _strip(string):
-    if string or string is 0:
+    if string or string == 0:
         if type(string) is str:
             return string.strip()
         else:
@@ -140,19 +181,27 @@ USAGE
         # exclusive_group = required_group.add_mutually_exclusive_group(required=True)
         # exclusive_group.add_argument("-f", "--fasta", metavar="FILE", help="fasta file containing amplicon sequences.")
         # exclusive_group.add_argument("-x", "--excel", metavar="FILE", help="Excel file of assay data.")
+        # exclusive_group.add_argument("-g", "--gbb", metavar="FILE", help="GBB file containing genome data.")
         # required_group.add_argument("-o", "--out", metavar="FILE", required=True, help="output JSON file to write. [REQUIRED]")
         # parser.add_argument("-w", "--worksheet", help="Excel worksheet to use, the first one in the file will be used if not specified")
         # parser.add_argument('-v', '--version', action='version', version=program_version_message)
 
         # Process arguments
+        # if isinstance(argv, argparse.Namespace):
+        #     args = argv
+        #     pass
+        # else:
+        #     args = cmdParser.parser.parse_args(argv)
+
         if isinstance(argv, argparse.Namespace):
             args = argv
-            pass
         else:
-            args = cmdParser.parser.parse_args(argv)
+            # Use the parser you just defined above in main()
+            args = parser.parse_args(argv)
 
         fasta_file = args.fasta
         excel_file = args.excel
+        gb_file = args.gbb
         out_file = args.out
         worksheet = args.worksheet
 
@@ -160,6 +209,8 @@ USAGE
 
         if fasta_file:
             assay_list = _process_fasta(fasta_file, PRESENCE_ABSENCE)
+        elif gb_file: # New logic branch
+            assay_list = _process_genbank(gb_file)
         else:
             wb = load_workbook(excel_file, read_only=True)
             ws = wb.active
@@ -231,8 +282,11 @@ USAGE
     except Exception as e:
         if DEBUG or TESTRUN:
             raise(e)
-        indent = len(cmdParser.program_name) * " "
-        sys.stderr.write(cmdParser.program_name + ": " + repr(e) + "\n")
+        # indent = len(cmdParser.program_name) * " "
+        # sys.stderr.write(cmdParser.program_name + ": " + repr(e) + "\n")
+        program_name = os.path.basename(sys.argv[0])
+        indent = len(program_name) * " "
+        sys.stderr.write(program_name + ": " + repr(e) + "\n")
         sys.stderr.write(indent + "  for help use --help")
         return 2
 

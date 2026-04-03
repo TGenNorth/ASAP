@@ -5,3 +5,5 @@ asap.egg-info
 .*
 !.gitignnore
 __pycache__
+*.gz
+nextflow/tests/

@@ -180,6 +180,7 @@ def main(argv=None):
         required_group = parser_prepareJSONInput.add_argument_group("required arguments")
         exclusive_group = required_group.add_mutually_exclusive_group(required=True)
         exclusive_group.add_argument("-f", "--fasta", metavar="FILE", help="fasta file containing amplicon sequences.")
+        exclusive_group.add_argument("-g", "--gbb", metavar="FILE", help="Genbank file containing amplicon sequences or WGS.")
         exclusive_group.add_argument("-x", "--excel", metavar="FILE", help="Excel file of assay data.")
         required_group.add_argument("-o", "--out", metavar="FILE", required=True, help="output JSON file to write. [REQUIRED]")
         parser_prepareJSONInput.add_argument("-w", "--worksheet", help="Excel worksheet to use, the first one in the file will be used if not specified")

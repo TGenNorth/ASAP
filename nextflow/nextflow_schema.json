@@ -9,7 +9,7 @@
       "title": "Input/Output Options",
       "properties": {
         "read_dir": { "type": ["string", "null"], "description": "Directory containing input FASTQ files." },
-        "json": { "type": ["string", "null"], "description": "Path to a JSON file with sample information." },
+        "reference_input": { "type": ["string", "null"], "description": "Path to a reference input (JSON, fasta, excel, of GB)." },
         "outdir": { "type": "string", "default": "ASAP_Results", "description": "Output directory." },
         "file_name": { "type": "string", "default": "ASAP_Output", "description": "Meaningful name for reports." },
         "technology": { "type": "string", "enum": ["illumina", "ont", "ont.v14", "pacbio"], "default": "illumina", "description": "Technology to guide workflow. Guides QC and alignment."}

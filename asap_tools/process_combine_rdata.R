@@ -18,20 +18,28 @@ poi_csv <- args[1] # Will be "NULL" if not provided
 files <- args[2:length(args)]
 
 # Test env
-# files <- list.files("/scratch/tporter/ASAP_TB_Validation/ASAP_TB_Subset/XML_Rdata/", pattern = "Rdata", full.names = T)
+# files <- list.files("/scratch/tporter/ASAP_TB_Validation/ASAP_TB_PTC_Reads_Correction/XML_Rdata/", pattern = "Rdata", full.names = T)
 # poi_csv <- "/scratch/tporter/ASAP_TB_Validation/Updated_TB_Genes.csv"
+#poi_csv <- NULL
 
 # 2. Setup Parallel Backend
 # parallelly::availableCores() is SLURM-aware and respects cpus allocated to the job
 num_cores <- parallelly::availableCores()
-cl <- makeCluster(num_cores)
-registerDoParallel(cl)
+# cl <- makeCluster(num_cores)
+# registerDoParallel(cl)
+# Only use parallel if more than 1 file
+if(length(files) > 1) {
+  cl <- makeCluster(num_cores)
+  registerDoParallel(cl)
+} else {
+  registerDoSEQ() # Fallback to sequential for single file
+}
 
 message(paste("🚀 Combining", length(files), "samples using", num_cores, "cores..."))
 
 # 3. Parallel Loading with foreach
 # We use %dopar% to read files simultaneously across available cores
-combined_list <- foreach(f = files, .packages = c("tidyverse")) %dopar% {
+combined_list <- foreach(f = files, .packages = c("tidyverse")) %do% {
   
   if (!file.exists(f)) {
     stop(paste("File not found in task directory:", f))
@@ -42,11 +50,16 @@ combined_list <- foreach(f = files, .packages = c("tidyverse")) %dopar% {
   load(f, envir = temp_env)
   
   # 2. Handle Positions of Interest (Optional)
-  if (is.na(poi_csv) || poi_csv == "NULL" || poi_csv == "") {
+  if (is.na(poi_csv) || poi_csv == "NULL" || poi_csv == "" || is.null(poi_csv)) {
     message("No Positions of Interest provided. Generating reference data...")
 
     } else {
     message(paste("Loading positions of interest from:", poi_csv))
+    
+    if (!file.exists(poi_csv)) {
+      stop(paste("Positions of interest not found:", poi_csv))
+    }
+      
     genes <- read.csv(poi_csv)
     
     # Generate positions for each gene in the CSV
@@ -72,7 +85,6 @@ combined_list <- foreach(f = files, .packages = c("tidyverse")) %dopar% {
     # Remove unneeded data from fields.
     # For TB Example, no way to easily clean SNPs to match POI filtering... 
   }
-  
   
   # Return as a structured list for easier extraction
   list(

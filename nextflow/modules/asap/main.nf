@@ -1,5 +1,33 @@
 #! /usr/bin/env nextflow
 
+process PREPARE_ASAP_JSON {
+    tag "Preparing ASAP JSON"
+
+    input:
+    path input_file
+
+    output:
+    path "assay_input.json", emit: json
+
+    script:
+    def args = ""
+    if (input_file.name.endsWith('.fasta') || input_file.name.endsWith('.fa')) {
+        args = "-f ${input_file}"
+    } else if (input_file.name.endsWith('.gb') || input_file.name.endsWith('.gbk') || input_file.name.endsWith('.gbb')) {
+        args = "-g ${input_file}"
+    } else if (input_file.name.endsWith('.xlsx') || input_file.name.endsWith('.xls')) {
+        args = "-x ${input_file}"
+    } else {
+        error "Unsupported reference format: ${input_file.name}. Expected FASTA, GB, or Excel."
+    }
+
+    """
+    prepareJSONInput_nextflow.py \\
+        ${args} \\
+        -o assay_input.json
+    """
+}
+
 process GENERATE_REFERENCE_FASTA {
     tag "generate_reference"
     publishDir "${params.outdir}/reference", mode: 'copy'

@@ -4,21 +4,46 @@ process PREPARE_ASAP_JSON {
     tag "Preparing ASAP JSON"
 
     input:
-    path input_file
+    path input_files
 
     output:
     path "assay_input.json", emit: json
 
     script:
     def args = ""
-    if (input_file.name.endsWith('.fasta') || input_file.name.endsWith('.fa')) {
-        args = "-f ${input_file}"
-    } else if (input_file.name.endsWith('.gb') || input_file.name.endsWith('.gbk') || input_file.name.endsWith('.gbb')) {
-        args = "-g ${input_file}"
-    } else if (input_file.name.endsWith('.xlsx') || input_file.name.endsWith('.xls')) {
-        args = "-x ${input_file}"
+    def file_list = input_files instanceof List ? input_files : [input_files]
+    def num_files = file_list.size()
+    def first_file = file_list[0].name.toLowerCase()
+
+    // 1. Identify Format
+    def is_gb = first_file.endsWith('.gb') || first_file.endsWith('.gbk') || first_file.endsWith('.gbb') || first_file.endsWith('.genbank')
+    def is_fasta = first_file.endsWith('.fasta') || first_file.endsWith('.fa')
+    def is_excel = first_file.endsWith('.xlsx') || first_file.endsWith('.xls')
+
+    // 2. Validate Multi-file Rule
+    if (num_files > 1 && !is_gb) {
+        error """
+        ERROR: Multiple files detected for non-GenBank input.
+        Format detected: ${is_fasta ? 'FASTA' : is_excel ? 'Excel' : 'Unknown'}
+        Number of files: ${num_files}
+        
+        ASAP only supports multiple reference files when using GenBank (.gb, .gbb, .gbk) format.
+        Please provide only one file for FASTA or Excel inputs.
+        """.stripIndent()
+    }
+
+    // 3. Construct Arguments & Log Status
+    if (is_fasta) {
+        log.info "[ASAP] Preparing JSON from single FASTA: ${file_list[0].name}"
+        args = "-f ${file_list[0]}"
+    } else if (is_gb) {
+        log.info "[ASAP] Preparing JSON from ${num_files} GenBank file(s): ${file_list*.name.join(', ')}"
+        args = "-g ${file_list.join(' ')}"
+    } else if (is_excel) {
+        log.info "[ASAP] Preparing JSON from single Excel sheet: ${file_list[0].name}"
+        args = "-x ${file_list[0]}"
     } else {
-        error "Unsupported reference format: ${input_file.name}. Expected FASTA, GB, or Excel."
+        error "[ASAP] Unsupported reference format: ${first_file}. Expected FASTA, GB, or Excel."
     }
 
     """
@@ -164,7 +189,8 @@ process OUTPUT_COMBINER {
 process FORMAT_OUTPUT {
     tag "format_output"
     publishDir "${params.outdir}/", mode: 'copy'
-
+    stageInMode = 'copy'
+    
     def out_file = params.out_file ? params.out_file : "ASAP_Report_${params.file_name}.html"
 
     input:
@@ -173,10 +199,22 @@ process FORMAT_OUTPUT {
     
     output:
     path("*.html"), emit: asap_output
-    path("${params.file_name}/"), emit : extra_output
+    path("${params.file_name}/"), emit : extra_output, optional: true
 
     script:
     """
+    echo "--- DEBUGGING FILE SYSTEM ---"
+    echo "Current directory: \$(pwd)"
+    echo "Checking for XML: ${final_xml}"
+    ls -lh ${final_xml} || echo "XML NOT FOUND"
+    
+    echo "Checking for Stylesheet: ${stylesheet}"
+    ls -lh ${stylesheet} || echo "STYLESHEET NOT FOUND"
+    
+    echo "Checking if stylesheet is a valid link:"
+    readlink -f ${stylesheet}
+    
+    echo "--- STARTING PYTHON SCRIPT ---"
     formatOutput.py -x ${final_xml} -s ${stylesheet} -o ${out_file} 
     """
 }

@@ -8,13 +8,13 @@
     "input_output_options": {
       "title": "Input/Output Options",
       "properties": {
-        "read_dir": { "type": ["string", "null"], "description": "Directory containing input FASTQ files." },
-        "reference_input": { "type": ["string", "null"], "description": "Path to a reference input (JSON, fasta, excel, of GB)." },
+        "read_dir": { "type": ["string"], "description": "Directory containing input FASTQ files." },
+        "reference_input": { "type": ["string"], "description": "Path to a reference input (JSON, fasta, excel, or Genbank files). NOTE: a single fasta, excel, JSON is required. For Genbank files, multiple can be specified, but the command needs ' ' to prevent shell script issues." },
         "outdir": { "type": "string", "default": "ASAP_Results", "description": "Output directory." },
         "file_name": { "type": "string", "default": "ASAP_Output", "description": "Meaningful name for reports." },
         "technology": { "type": "string", "enum": ["illumina", "ont", "ont.v14", "pacbio"], "default": "illumina", "description": "Technology to guide workflow. Guides QC and alignment."}
       },
-      "required": ["read_dir", "json"]
+      "required": ["read_dir", "reference_input"]
     },
     "alignment_options": {
       "title": "Quality Control (fastp) & Alignment Options",
@@ -29,7 +29,7 @@
       "title": "Primer Masking & Trimming Options",
       "properties": {
         "primer_file": { "type": ["string", "null"], "description": "Path to a primer file for primer removal via either primer masking or iVar trimming. File should not have headers and include 6 columns: reference, start, end, name, integer, strand (+/-) (SEE: https://andersen-lab.github.io/ivar/html/manualpage.html). NOTE1: The +/- strand direction is critical and based on the reference (i.e.m + notations must be on left, - must be on the right). NOTE2: PRIMER MASKING will mask Forward and Reverse primers if they are within the wiggle and on appropriate side of the amplicon." },
-        "mask_primers": { "type": "boolean", "default": null, "description": "Mask primers using the custom ASAP masking script. Default true if bed file is specified unless 'false' specified." },
+        "mask_primers": { "type": ["boolean", "null"], "default": null, "description": "Mask primers using the custom ASAP masking script. Default true if bed file is specified unless 'false' specified." },
         "wiggle": { "type": "integer", "default": 9, "description": "FOR PRIMER MASKING ONLY: Wiggle distance for primer masking." },
         "mask_bam": { "type": "boolean", "default": true, "description": "FOR PRIMER MASKING ONLY: Whether to mask primers in the BAM file." },
         "primer_only": { "type": "boolean", "default": false, "description": "FOR PRIMER MASKING ONLY: Only perform primer masking." }
@@ -46,11 +46,11 @@
       "title": "SMOR Processing Options",
       "properties": {
         "smor": { "type": "boolean", "default": false, "description": "Enable SMOR analysis." },
-        "smor_correction": { "type": "boolean", "default": false, "description": "Enable SMOR analysis." }
+        "smor_correction": { "type": "boolean", "default": false, "description": "Enable SMOR Correction analysis." }
       }
     },
     "variant_calling_options": {
-      "title": "Shared Variant Calling and Consensus Options between ASAP bam_processor and iVar.",
+      "title": "Shared Variant Calling and Consensus Options",
       "properties": {
         "proportion": { "type": "number", "default": 0.1, "description": "Minimum proportion required to call a variant/iSNV at a given locus (iVar variant -t argument)." },
         "consensus_proportion": { "type": "number", "default": 0.8, "description": "Minimum proportion required to call a base at that position, else 'N' (iVar consensus -c argument). " },
@@ -69,8 +69,8 @@
         "mark_deletions": { "type": "string", "default": "_", "description": "Whether to mark deletions in BAM processing." },
         "whole_genome": {"type": "boolean", "default": false, "description": "JSON file uses a whole genome reference, so don't write out the consensus, depth, and proportion arrays for each sample"},
         "combine_output": { "type": "boolean", "default": true, "description": "Whether to combine output files." },
-        "stylesheet": { "type": ["string", "null"], "default": "../output_transforms/ASAP_fulldetails_web.xsl", "description": "XSLT stylesheet for transforming output." },
-        "out_file": { "type": ["string", "null"], "default": "<name>.html", "description": "Name of the output HTML file." }
+        "stylesheet": { "type": ["string"], "default": "default_stylesheet/ASAP_fulldetails_web.xsl", "description": "XSLT stylesheet for transforming output." },
+        "out_file": { "type": ["string", "null"], "default": null, "description": "Name of the output HTML file." }
       }
     },
     "asaptools_options": {
@@ -80,15 +80,14 @@
         "asaptools_cov_table": { "type": "boolean", "default": true, "description": "Enable/Disable the ASAP Tools Coverage Table." },
         "asaptools_snp_table": { "type": "boolean", "default": true, "description": "Enable/Disable the ASAP Tools SNP Table." },
         "asaptools_fasta": { "type": "boolean", "default": true, "description": "Enable/Disable the ASAP Tools fasta generation." },
-        "asaptools_positions_of_interest": {"type": "string", "default": null, "description": "Path to CSV file containing genes/positions of interest. This is helpful if processing amplicon data using WGS reference."},
+        "asaptools_positions_of_interest": {"type": ["string", "null"], "default": null, "description": "Path to CSV file containing genes/positions of interest. This is helpful if processing amplicon data using WGS reference."},
         "asaptools_min_location_depth": { "type": "integer", "default": 99, "description": "Minimum depth required at a specific location to consider SNPs or Coverage in Table." },        
         "asaptools_snp_proportion": {"type": "number", "default": 0.05, "description": "SNP Table Parameter: Minimum proportion required to call a variant in the ASAP Tools script."},
-        "asaptools_genbank_location": { "type": "string", "default": null, "description": "SNP Table Parameter: Path to the reference GenBank file."},
+        "asaptools_genbank_location": { "type": ["string", "null"], "default": null, "description": "SNP Table Parameter: Path to the reference GenBank file."},
         "asaptools_max_sample_snp_count": { "type": "integer", "default": 50, "description": "SNP Table Parameter: Maximum number of SNPs allowed per sample. This filters samples with >x snps in the SNP table."},
-        "asaptools_samples_to_remove": { "type": "string", "default": null,"description": "SNP Table Parameter: Comma-separated list of Sample IDs to exclude from the SNP table."},
-        "asaptools_breadth_threshold": { "type": "number", "default": null, "description": "Breadth of coverage min (>) to export fasta files for."}
+        "asaptools_samples_to_remove": { "type": "string", "default": "", "description": "SNP Table Parameter: Comma-separated list of Sample IDs to exclude from the SNP table."},
+        "asaptools_breadth_threshold": { "type": ["number", "null"], "default": 80, "description": "Breadth of coverage min (>) to export fasta files for."}
       }
-    }
     },
     "ivar_options": {
       "title": "Options for iVar Processing",
@@ -103,7 +102,8 @@
       }
     },
     "containers": {
-      "title": "Container Settings",
+      "title": "Container Settings (Hidden)",
+      "hidden": true,
       "properties": {
         "fastp_container": { "type": "string", "default": "quay.io/biocontainers/fastp:0.23.4--h125f33a_5", "description": "Container image for fastp." },
         "bwa_container": { "type": "string", "default": "quay.io/biocontainers/mulled-v2-fe8faa35dbf6dc65a0f7f5d4ea12e31a79f73e40:219b6c272b25e7e642ae3ff0bf0c5c81a5135ab4-0", "description": "Container image for bwa and samtools." },

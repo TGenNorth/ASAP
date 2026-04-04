@@ -1,65 +1,46 @@
 {
-    "EtE_Illumina_PE_execution_SRR25496336": {
+    "Help": {
         "content": [
-            "SRR25496336.fastp.json:md5,854684840c7ae7e5d20928e3a294448e",
-            "SRR25496336-bwa.bam:md5,7b46305d7275c1ff51b628dcf294d874",
-            "SRR25496336-bwa_identityFiltered.bam:md5,c43805800660e523cd2701e43c4cdb4b",
-            "SRR25496336.xml:md5,6021be043aa6b36a917079cc07dfbacd"
+            [
+                
+            ]
         ],
         "meta": {
             "nf-test": "0.9.3",
             "nextflow": "25.04.6"
         },
-        "timestamp": "2026-02-03T10:50:13.023812753"
+        "timestamp": "2026-04-04T09:49:31.368571095"
     },
-    "EtE_Illumina_SE_execution_ERR9990397": {
+    "html_report": {
         "content": [
-            "ERR9990397_SE.xml:md5,0991177c8b468d71ad45cce414bb7cfb"
+            "ASAP_Report_RSV_End_To_End_Test.html:md5,9a30cd8658ff6cd0dbf76f023507dabc"
         ],
         "meta": {
             "nf-test": "0.9.3",
             "nextflow": "25.04.6"
         },
-        "timestamp": "2026-02-01T16:48:50.934655949"
+        "timestamp": "2026-04-04T09:57:59.101532117"
     },
-    "EtE_Illumina_PE_execution": {
+    "combined_xml": {
         "content": [
-            "SRR25496336.xml:md5,6021be043aa6b36a917079cc07dfbacd"
+            "RSV_End_To_End_Test_analysis.xml:md5,a30551f9415264e00ff620539bef9546"
         ],
         "meta": {
             "nf-test": "0.9.3",
             "nextflow": "25.04.6"
         },
-        "timestamp": "2026-02-01T16:15:20.345385829"
+        "timestamp": "2026-04-04T09:57:58.990272165"
     },
-    "EtE_Illumina_SE_execution_ERR9990397_Primer": {
+    "RSV_End_To_End_Test_Out": {
         "content": [
-            "ERR9990397_SE.xml:md5,012f65acd396b27015eb7314b18747ed"
+            [
+                
+            ]
         ],
         "meta": {
             "nf-test": "0.9.3",
             "nextflow": "25.04.6"
         },
-        "timestamp": "2026-02-02T11:59:38.330896779"
-    },
-    "EtE_Illumina_PE_execution_SRR25496336_SMOR_Primer": {
-        "content": [
-            "SRR25496336.xml:md5,690e20a769fb9436a172ecb1d62510ec"
-        ],
-        "meta": {
-            "nf-test": "0.9.3",
-            "nextflow": "25.04.6"
-        },
-        "timestamp": "2026-02-02T11:40:26.133515567"
-    },
-    "EtE_Illumina_PE_execution_SRR25496336_SMOR": {
-        "content": [
-            "SRR25496336.xml:md5,f07efb090bf2e6116d46f768c099bdcd"
-        ],
-        "meta": {
-            "nf-test": "0.9.3",
-            "nextflow": "25.04.6"
-        },
-        "timestamp": "2026-02-01T16:33:04.674609601"
+        "timestamp": "2026-04-04T09:57:58.970011762"
     }
 }

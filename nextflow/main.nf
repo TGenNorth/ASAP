@@ -22,24 +22,29 @@ include { IVAR_VARIANTS } from './modules/ivar/variants/'
 include { IVAR_CONSENSUS } from './modules/ivar/consensus/'
 include { MULTIQC } from './modules/multiqc'
 
-validateParameters()
-
 workflow {
+    // --- VALIDATE PARAMETERS ---
+    validateParameters()
 
     log.info paramsSummaryLog(workflow)
     
-    // --- SETUP: Reference Generation ---
-    // Check if the provided file is already JSON or needs conversion
-    def input_ref = file(params.reference_input).toAbsolutePath()
-    def is_genbank = input_ref.name.endsWith('.gb') || input_ref.name.endsWith('.genbank')
-    def gb_file_to_use = is_genbank ? input_ref : (params.asaptools_genbank_location ? file(params.asaptools_genbank_location) : null)
+    // --- SETUP: Reference Generation --
+    // Collect all matches into a list
+    def input_refs = files(params.reference_input)
+    if (input_refs.size() == 0) error "No reference files found matching: ${params.reference_input}"
+
+    // Logic for GenBank detection (using the first file as a representative)
+    def first_ref = input_refs[0]
+    def is_genbank = first_ref.name.endsWith('.gb') || first_ref.name.endsWith('.genbank') || first_ref.name.endsWith('.gbk')
     
-    if (input_ref.name.endsWith('.json')) {
-        // If it's already JSON, just create a value channel
-        json_ch = Channel.value(input_ref)
+    // This will be a list of paths if GenBank, or a single path otherwise
+    def gb_file_to_use = is_genbank ? input_refs : (params.asaptools_genbank_location ? file(params.asaptools_genbank_location) : null)
+    
+    if (first_ref.name.endsWith('.json')) {
+        json_ch = Channel.value(first_ref)
     } else {
-        // Otherwise, run the conversion process
-        json_ch = PREPARE_ASAP_JSON(input_ref).json
+        // Pass the entire list (input_refs) to the process
+        json_ch = PREPARE_ASAP_JSON(input_refs).json
     }
     
     def ref_fasta = GENERATE_REFERENCE_FASTA(json_ch).ref_fasta
@@ -57,16 +62,29 @@ workflow {
             [ [id: id, single_end: is_single], files ]
         }
     
+    // ch_raw_reads
+    //     .map { meta, files -> 
+    //         "${meta.id}\t${meta.single_end ? 'Single-End' : 'Paired-End'}\t${files.join(', ')}" 
+    //     }
+    //     .collectFile(
+    //         name: 'sample_read_type_summary.tsv', 
+    //         keepHeader: true, 
+    //         newLine: true, 
+    //         storeDir: "${params.outdir}/pipeline_info"
+    //     ) { "Sample_ID\tType\tFiles" }
+
     ch_raw_reads
         .map { meta, files -> 
+            // This creates the actual row content
             "${meta.id}\t${meta.single_end ? 'Single-End' : 'Paired-End'}\t${files.join(', ')}" 
         }
         .collectFile(
             name: 'sample_read_type_summary.tsv', 
-            keepHeader: true, 
-            newLine: true, 
-            storeDir: "${params.outdir}/pipeline_info"
-        ) { "Sample_ID\tType\tFiles" }
+            storeDir: "${params.outdir}/pipeline_info",
+            newLine: true,
+            sort: true,      // Optional: keeps the TSV in alphabetical order
+            seed: "Sample_ID\tType\tFiles" // This is the reliable way to set a header
+        )
 
     def ch_raw_reads_for_pipeline = ch_raw_reads
     
@@ -238,8 +256,11 @@ workflow {
         if(params.combine_output) {
             def xmls = xml_output.map { id, f -> f }.collect()
             def final_xml = OUTPUT_COMBINER(xmls)
-            def default_stylesheet = file("${workflow.projectDir}/../output_transforms/ASAP_fulldetails_web.xsl")
+            
+            // Adding .toAbsolutePath() is the secret sauce here
+            def default_stylesheet = file("${baseDir}/default_stylesheet/ASAP_fulldetails_web.xsl").toAbsolutePath()
             def stylesheet_path = params.stylesheet ? file(params.stylesheet) : default_stylesheet
+            
             FORMAT_OUTPUT(final_xml, Channel.value(stylesheet_path))
         }
     }

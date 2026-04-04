@@ -1,122 +1,57 @@
+//nf-test test ./tests/ASAP_EtE.nf.test --silent --profile slurm --update-snapshot
+//nf-test test ./tests/ASAP_EtE.nf.test --silent --profile slurm --updateSnapshot --wipeSnapshot
+
 nextflow_pipeline {
 
-    name "ASAP Test Pipeline End to End"
+    name "Test E2E ASAP Pipeline"
     script "main.nf"
 
-    test("EtE_Illumina_PE_execution_SRR25496336") {
-
+    test ("Nextflow Help Test") {
+        // Goal of this test is to ensure that the help documentation is functional.
         when {
-                params {
-                    outdir         = "$outputDir"
-                    read_dir       = "${baseDir}/tests/data/SC2_Paired_Illumina/"
-                    json           = "${baseDir}/tests/json/SC2_Reference.json"
-                    aligner        = "bwa"
-                    technology     = "illumina"
-                    name           = "ASAP_EtE_SC2_Paired_Illumina"
-                    proportion     = 0.05
-                    identity       = 0.97
-                    combine_output = false
-
-                }
+            params {
+                help = true
             }
-
+        }
         then {
-            assertAll(
-                    { assert workflow.success },
-                    
-                    // Check if the XML file exists and is not empty
-                    { assert path("$outputDir/xml/SRR25496336.xml").exists() },
-                    
-                    // Check if the sample_info subdirectories exist
-                    { assert path("$outputDir/sample_info/SRR25496336/bwa").exists() },
-                    { assert path("$outputDir/sample_info/SRR25496336/fastp").exists() },
-                    
-                    // snapshot() will track changes to the file content over time
-                    { assert snapshot(
-                        path("$outputDir/sample_info/SRR25496336/fastp/SRR25496336.fastp.json"),
-                        path("$outputDir/sample_info/SRR25496336/bwa/SRR25496336-bwa.bam"),
-                        path("$outputDir/sample_info/SRR25496336/identity_filter/SRR25496336-bwa_identityFiltered.bam"),
-                        path("$outputDir/xml/SRR25496336.xml")
-                    ).match() 
-                    }
-                )
+            assert workflow.success
+            def targetFile = new File("tests/test_output/Help/help_docs.txt")
+            targetFile.parentFile.mkdirs()
+            targetFile.text = workflow.stdout
+            
+            assert snapshot(workflow.stdout).match("Help")
         }
     }
 
-    test("EtE_Illumina_PE_execution_SRR25496336_SMOR_Primer") {
-
+    test ("RSV E2E Multiple GB Input") {
+        // Goal is to test simple ASAP functionality using RSV amplicon reads.
+        // Paired end, 2 GB files, no asaptools testing.
         when {
-                params {
-                    outdir         = "$outputDir"
-                    read_dir       = "${baseDir}/tests/data/SC2_Paired_Illumina/"
-                    json           = "${baseDir}/tests/json/SC2_Reference.json"
-                    aligner        = "bwa"
-                    technology     = "illumina"
-                    name           = "ASAP_EtE_SC2_Paired_Illumina"
-                    primer_file    = "${baseDir}/tests/bedfiles/SC2_Concatenated_Bedfile.bed"
-                    proportion     = 0.05
-                    identity       = 0.97
-                    smor           = true
-                    combine_output = false
-                }
+            params {
+                read_dir             = "${baseDir}/tests/data/RSV/"
+                reference_input      = "${baseDir}/tests/preparejson/RSV*.gb"
+                outdir               = "${baseDir}/tests/test_output/RSV_End_To_End_Test"
+                aligner              = "bwa"
+                proportion           = 0.1
+                file_name            = "RSV_End_To_End_Test"
+                asaptools_processing = false
             }
+        }
 
         then {
-            assertAll(
-                    { assert workflow.success },
-                    
-                    // Check if the XML file exists and is not empty
-                    { assert path("$outputDir/xml/SRR25496336.xml").exists() },
-                    
-                    // Check if the sample_info subdirectories exist
-                    { assert path("$outputDir/sample_info/SRR25496336/bwa").exists() },
-                    { assert path("$outputDir/sample_info/SRR25496336/fastp").exists() },
-                    
-                    // snapshot() will track changes to the file content over time
-                    { assert snapshot(
-                        path("$outputDir/xml/SRR25496336.xml")
-                    ).match() 
-                    }
-                )
-        }
-    }
-
-    test("EtE_Illumina_SE_execution_ERR9990397_Primer") {
-
-        when {
-                params {
-                    outdir         = "$outputDir"
-                    read_dir       = "${baseDir}/tests/data/SC2_Single_Illumina/"
-                    json           = "${baseDir}/tests/json/SC2_Reference.json"
-                    aligner        = "bwa"
-                    technology     = "illumina"
-                    name           = "ASAP_EtE_SC2_Paired_Illumina"
-                    primer_file    = "${baseDir}/tests/bedfiles/SC2_Concatenated_Bedfile.bed"
-                    proportion     = 0.05
-                    identity       = 0.97
-                    combine_output = false
-                }
+            assert workflow.success
+            assert snapshot(workflow.stdout).match("RSV_End_To_End_Test_Out")
+            
+            // Check the combined XML
+            def xmlReport = path("${baseDir}/tests/test_output/RSV_End_To_End_Test/RSV_End_To_End_Test_analysis.xml")
+            assert xmlReport.exists()
+            assert snapshot(xmlReport).match("combined_xml")
+            
+            // Check the combined HTML (Final Output)
+            def htmlReport = path("${baseDir}/tests/test_output/RSV_End_To_End_Test/ASAP_Report_RSV_End_To_End_Test.html")
+            assert htmlReport.exists()
+            assert snapshot(htmlReport).match("html_report")
+            
             }
-
-        then {
-            assertAll(
-                    { assert workflow.success },
-                    
-                    // Check if the XML file exists and is not empty
-                    { assert path("$outputDir/xml/ERR9990397_SE.xml").exists() },
-                    
-                    // Check if the sample_info subdirectories exist
-                    { assert path("$outputDir/sample_info/ERR9990397_SE/bwa").exists() },
-                    { assert path("$outputDir/sample_info/ERR9990397_SE/fastp").exists() },
-                    
-                    // snapshot() will track changes to the file content over time
-                    { assert snapshot(
-                        path("$outputDir/xml/ERR9990397_SE.xml")
-                    ).match() 
-                    }
-                )
-        }
     }
-
-
 }

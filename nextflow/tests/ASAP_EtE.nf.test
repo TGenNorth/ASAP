@@ -1,5 +1,5 @@
-//nf-test test ./tests/ASAP_EtE.nf.test --silent --profile slurm --update-snapshot
-//nf-test test ./tests/ASAP_EtE.nf.test --silent --profile slurm --updateSnapshot --wipeSnapshot
+//nf-test test ./tests/ASAP_EtE.nf.test --profile slurm --update-snapshot
+//nf-test test ./tests/ASAP_EtE.nf.test --profile slurm --updateSnapshot --wipeSnapshot
 
 nextflow_pipeline {
 

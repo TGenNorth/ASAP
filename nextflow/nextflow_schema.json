@@ -78,6 +78,7 @@
       "properties": {
         "asaptools_processing": { "type": "boolean", "default": true, "description": "Enable/Disable the ASAP Tools R-script downstream processing." },
         "asaptools_cov_table": { "type": "boolean", "default": true, "description": "Enable/Disable the ASAP Tools Coverage Table." },
+        "asaptools_qc_plots": { "type": "boolean", "default": true, "description": "Enable/Disable the ASAP Tools QC Plots." },
         "asaptools_snp_table": { "type": "boolean", "default": true, "description": "Enable/Disable the ASAP Tools SNP Table." },
         "asaptools_fasta": { "type": "boolean", "default": true, "description": "Enable/Disable the ASAP Tools fasta generation." },
         "asaptools_positions_of_interest": {"type": ["string", "null"], "default": null, "description": "Path to CSV file containing genes/positions of interest. This is helpful if processing amplicon data using WGS reference."},

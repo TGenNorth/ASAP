@@ -1,46 +1,50 @@
 #!/usr/bin/env Rscript
 
-# Load necessary libraries
 library(tidyverse)
 library(openxlsx)
 library(doParallel)
 library(foreach)
 
-# --- Argument Parsing ---
 args <- commandArgs(trailingOnly = TRUE)
 
 if (length(args) < 2) {
-  stop("Usage: generate_snp_table.R <rdata> <ref>")
+  stop("Usage: generate_snp_table.R <rdata> <ref1> <ref2> ...")
 }
 
-# RDATA_INPUT        <- "/scratch/tporter/ASAP_SC2_Validation/ASAP_Illumina_Paired_SE_Test/ASAP_R_Data/Combined_ASAP_Data.Rdata"
-# RDATA_INPUT        <- "/scratch/tporter/ASAP_SC2_Results/TGen_Results/ASAP_TGen_COH_Samples/XML_Rdata//SARS2_TG1362019_S5_L001_XML_Data.Rdata"
-# RDATA_INPUT        <- "/scratch/tporter/ASAP_SC2_Validation/ASAP_TGen_Patient_1/ASAP_R_Data/Combined_ASAP_Data.Rdata"
-# REFERENCE          <- "/tgen_labs/EPIC/tporter/COVID_BAA_202601_Chronic_Bioinformatics/SC2_Reference.gb"
+RDATA_INPUT  <- args[1]
 
-RDATA_INPUT        <- args[1]
-REFERENCE          <- args[2]
+# RDATA_INPUT  <- "/tgen_labs/EPIC/tporter/ASAP/nextflow/tests/RSV_Test_Temp/ASAP_R_Data/Combined_ASAP_Data.Rdata"
+# raw_refs <- "/tgen_labs/EPIC/tporter/ASAP/nextflow/tests/work/f7/96ace34e74fc25f0c9d70be78e3ea1/genbank_input/"
 
 
-######################
+raw_refs <- args[2:length(args)]
+GENBANK_FILES <- c()
+
+for (path in raw_refs) {
+  if (dir.exists(path)) {
+    # If the arg is a directory, get all files inside
+    GENBANK_FILES <- c(GENBANK_FILES, list.files(path, full.names = TRUE, pattern = "\\.(gb|gbk|genbank)$"))
+  } else if (file.exists(path)) {
+    # If it's a direct file path
+    GENBANK_FILES <- c(GENBANK_FILES, path)
+  }
+}
+
+message("Resolved GenBank files:")
+print(GENBANK_FILES)
+
+if (length(GENBANK_FILES) == 0) {
+  stop("Error: No valid GenBank files found in arguments.")
+}
+
+
 # Load data from ASAP_Import_XML
-######################
 load(RDATA_INPUT)
 
 SNPS <- final_snps
 array_info <- final_array
 
-#################################
-## Extract data from files
-#################################
-# Create cluster
-# cl <- makeCluster(parallelly::availableCores())
-# registerDoParallel(cl)
-
-######################
-# Extract Unique Amino Acids from SNPs
-######################
-# Add in distribution for NA values
+# --- Initial SNPS Cleaning (as per your original code) ---
 SNPS$snp_distribution[is.na(SNPS$snp_distribution)] <- "A=0, T=0, C=0, G=0, _=0"
 
 #Find number of SNPS
@@ -60,41 +64,53 @@ SNPS <- SNPS %>%
   filter(snp_reference != Call) %>%
   filter(!is.na(snp_proportion))
 
-print("Checkpoint 1...")
+# --- Loop Through All GenBank Files ---
+all_amino_acids <- list()
+all_gene_snps <- list()
 
-reference <- genbankr::readGenBank(REFERENCE)
+for (REFERENCE in GENBANK_FILES) {
+  # Read the specific reference
+  reference_obj <- genbankr::readGenBank(REFERENCE)
+  acc_id <- reference_obj@accession
+  
+  file_base <- tools::file_path_sans_ext(basename(REFERENCE))
+  
+  message(paste0("Processing: ", REFERENCE, " (ID: ", acc_id, " | FileBase: ", file_base, ")"))
+  
+  # Filter SNPs belonging to this specific accession/assay
+  SNPS_To_AA <- SNPS %>%
+    filter(grepl(acc_id, assay_name) | grepl(file_base, assay_name)) %>% 
+    select(SNP, assay_name) %>%
+    distinct()
+  
+  if (nrow(SNPS_To_AA) == 0) {
+    message(paste("No SNPs found for accession:", acc_id))
+    message(paste("If this is unexpected check SNP assay name."))
+    message(paste0("Filtering was conducted with: ", acc_id, " | FileBase: ", file_base, ")"))
+    next
+  }
 
-#Create list of distinct amino acids
-SNPS_To_AA <- SNPS %>%
-  filter(grepl(reference@accession, assay_name)) %>% 
-  select(SNP, assay_name) %>%
-  distinct()
+  # Convert SNP to amino acid using the specific reference
+  gene_snps_sub <- TGenGenomicTools::genome.snp.to.gene.snp(
+    snp_db = SNPS_To_AA, 
+    ref_seq = REFERENCE, 
+    cores = parallelly::availableCores()
+  ) %>% 
+    mutate(assay_name=file_base)
+  
+  amino_acids_sub <- TGenGenomicTools::snps.to.amino(
+    snp_db = SNPS_To_AA, 
+    ref_seq = REFERENCE, 
+    cores = parallelly::availableCores()
+  ) %>% 
+    mutate(assay_name=file_base)
 
-ASSAY <- unique(SNPS_To_AA$assay_name)
+  all_gene_snps[[acc_id]] <- gene_snps_sub
+  all_amino_acids[[acc_id]] <- amino_acids_sub
+}
 
-# Convert SNP to amino acid
-Gene_SNPS <- TGenGenomicTools::genome.snp.to.gene.snp(snp_db = SNPS_To_AA, ref_seq = REFERENCE, cores = parallelly::availableCores())
+# Combine results
+Gene_SNPS   <- bind_rows(all_gene_snps) %>% distinct()
+Amino_Acids <- bind_rows(all_amino_acids) %>% select(assay_name, SNP, Product, AA)
 
-Gene_SNPS$assay_name <- ASSAY
-
-print("Checkpoint 2...")
-
-Gene_SNPS <- Gene_SNPS %>%
-  distinct()
-
-Gene_SNPS$Gene_SNP <- Gene_SNPS$SNP_Gene
-Gene_SNPS$SNP_Gene <- NULL
-
-Gene_SNPS
-
-Amino_Acids <- TGenGenomicTools::snps.to.amino(snp_db = SNPS_To_AA, ref_seq = REFERENCE, cores = parallelly::availableCores())
-
-Amino_Acids$assay_name <- ASSAY
-
-print("Checkpoint 3...")
-
-Amino_Acids <- select(Amino_Acids, assay_name, SNP, Product, AA)
-
-save(Amino_Acids, Gene_SNPS, file = paste0("SNP_Amino_Acid_Table.Rdata"))
-
-#save(Amino_Acids, Gene_SNPS, file = paste0("/scratch/tporter/ASAP_SC2_Validation/ASAP_TGen_Patient_1/ASAP_R_Data/SNP_Amino_Acid_Table.Rdata"))
+save(Amino_Acids, Gene_SNPS, file = "SNP_Amino_Acid_Table.Rdata")

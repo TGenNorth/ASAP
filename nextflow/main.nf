@@ -62,17 +62,6 @@ workflow {
             [ [id: id, single_end: is_single], files ]
         }
     
-    // ch_raw_reads
-    //     .map { meta, files -> 
-    //         "${meta.id}\t${meta.single_end ? 'Single-End' : 'Paired-End'}\t${files.join(', ')}" 
-    //     }
-    //     .collectFile(
-    //         name: 'sample_read_type_summary.tsv', 
-    //         keepHeader: true, 
-    //         newLine: true, 
-    //         storeDir: "${params.outdir}/pipeline_info"
-    //     ) { "Sample_ID\tType\tFiles" }
-
     ch_raw_reads
         .map { meta, files -> 
             // This creates the actual row content
@@ -85,7 +74,7 @@ workflow {
             sort: true,      // Optional: keeps the TSV in alphabetical order
             seed: "Sample_ID\tType\tFiles" // This is the reliable way to set a header
         )
-
+    
     def ch_raw_reads_for_pipeline = ch_raw_reads
     
     // --- STEP 1: FastQC Initial ---
@@ -231,26 +220,68 @@ workflow {
                     poi_input
                 )
             }
-            if(params.asaptools_snp_table){
+            
+            if(params.asaptools_qc_plots){
+            
+                PROCESS_QC_PLOTS(
+                    combined_data.combined_rdata,
+                    params.file_name,
+                    poi_input
+                )
+            }
+            // if(params.asaptools_snp_table){
 
+            //     if (gb_file_to_use) {
+            //         def snp_amino_data = PROCESS_SNPS_TO_AMINOACIDS(
+            //             combined_data.combined_rdata,
+            //             gb_file_to_use
+            //         )
+
+            //         PROCESS_GENERATE_SNP_TABLE(
+            //             PROCESS_COMBINE_RDATA.out.combined_rdata, // input 1: path
+            //             params.file_name,                        // input 2: val
+            //             gb_file_to_use,                          // input 3: path
+            //             params.primer_file,                     // input 4: path
+            //             poi_input,                               // input 5: val
+            //             snp_amino_data.snp_to_amino_rdata      // input 6: path
+            //         )
+            //     } else {
+            //         log.warn "Skipping SNP Table generation: No GenBank file provided or detected."
+            //     }
+            // }
+            if(params.asaptools_snp_table) {
+                // 1. Handle GenBank Files (Optional)
+                // If no GB files, pass an empty list []
+                def gb_files_ch = gb_file_to_use ?: []
+
+                // 2. Handle Amino Acid Data (Optional)
+                // Only run AA conversion if GB files exist
+                def aa_data_ch
                 if (gb_file_to_use) {
-                    def snp_amino_data = PROCESS_SNPS_TO_AMINOACIDS(
+                    aa_data_ch = PROCESS_SNPS_TO_AMINOACIDS(
                         combined_data.combined_rdata,
                         gb_file_to_use
-                    )
-
-                    PROCESS_GENERATE_SNP_TABLE(
-                        PROCESS_COMBINE_RDATA.out.combined_rdata, // input 1: path
-                        params.file_name,                        // input 2: val
-                        gb_file_to_use,                          // input 3: path
-                        params.primer_file,                     // input 4: path
-                        poi_input,                               // input 5: val
-                        snp_amino_data.snp_to_amino_rdata      // input 6: path
-                    )
+                    ).snp_to_amino_rdata
                 } else {
-                    log.warn "Skipping SNP Table generation: No GenBank file provided or detected."
+                    // Pass a dummy string/path that the R script will recognize as "NULL"
+                    aa_data_ch = Channel.value("null_aa_placeholder")
                 }
+
+                // 3. Handle Primer BED (Optional)
+                def primer_bed_ch = params.primer_file ? file(params.primer_file) : file("null_primer_placeholder")
+
+                // 4. Run the SNP Table Process
+                // This now runs regardless of whether GB files exist
+                PROCESS_GENERATE_SNP_TABLE(
+                    combined_data.combined_rdata,
+                    params.file_name,
+                    gb_files_ch,      // Path: genbank_input/*
+                    primer_bed_ch,    // Path: primer_bed
+                    poi_input,        // Val: poi_input
+                    aa_data_ch        // Path: aa_rdata
+                )
             }
+
         }
 
         if(params.combine_output) {

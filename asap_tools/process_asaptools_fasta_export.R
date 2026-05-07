@@ -7,16 +7,18 @@ if (length(args) < 3) {
   stop("Check usage...")
 }
 
-rdata_input <- args[1]
+RDATA_INPUT <- args[1]
 prefix      <- args[2]
 BREADTH_COVERAGE_THRESHOLD <- as.numeric(args[3])*100
 
-# rdata_input <- "/scratch/tporter/ASAP_SC2_Validation/ASAP_Illumina_Paired_SE_Test/ASAP_R_Data/Combined_ASAP_Data.Rdata"
+# RDATA_INPUT <- "/scratch/tporter/ASAP_RSV_Results/work/1b/128f5f068cae04471a6481ab4686f7/Combined_ASAP_Data.Rdata"
+# BREADTH_COVERAGE_THRESHOLD <- 80
 # poi_csv     <- "NULL"
-#rdata_input <- "/scratch/tporter/ASAP_TB_Validation/ASAP_TB_Subset/ASAP_R_Data/Combined_ASAP_Data.Rdata"
 # min_depth   <- 99
 # prefix      <- "ASAP_Illumina_Paired_ASAP_Tools"
 # poi_csv     <- "/scratch/tporter/ASAP_TB_Validation/Updated_TB_Genes.csv"
+
+load(RDATA_INPUT)
 
 unique_assays <- unique(final_asap$assay_name)
 

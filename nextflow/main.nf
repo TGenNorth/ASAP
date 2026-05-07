@@ -16,7 +16,7 @@ include {
     PREPARE_ASAP_JSON; GENERATE_REFERENCE_FASTA; MASK_PRIMERS; IDENTITY_FILTER; SMOR; SMOR_CORRECTION;
     PROCESS_BAM; OUTPUT_COMBINER; FORMAT_OUTPUT
 } from './modules/asap'
-include { PROCESS_XML_R; PROCESS_COMBINE_RDATA; PROCCESS_GENERATE_COV_TABLE; PROCESS_GENERATE_SNP_TABLE; PROCESS_SNPS_TO_AMINOACIDS} from './modules/asap_tools'
+include { PROCESS_XML_R; PROCESS_COMBINE_RDATA; PROCESS_GENERATE_COV_TABLE; PROCESS_GENERATE_FASTA; PROCESS_GENERATE_SNP_TABLE; PROCESS_SNPS_TO_AMINOACIDS; PROCESS_QC_PLOTS} from './modules/asap_tools'
 include { IVAR_TRIM } from './modules/ivar/trim/'
 include { IVAR_VARIANTS } from './modules/ivar/variants/'
 include { IVAR_CONSENSUS } from './modules/ivar/consensus/'
@@ -93,7 +93,6 @@ workflow {
         adapter_fasta_ch = Channel.value(file(adapter_path, checkIfExists: true))
 
         def fastp_out = RUN_FASTP(ch_raw_reads_for_pipeline, adapter_fasta_ch)
-
         ch_trimmed_for_align = fastp_out.trimmed_reads
         ch_trim_json_for_multiqc = fastp_out.json
         
@@ -213,7 +212,7 @@ workflow {
             // 3. Optional Coverage Table
             if(params.asaptools_cov_table){
 
-                PROCCESS_GENERATE_COV_TABLE(
+                PROCESS_GENERATE_COV_TABLE(
                     combined_data.combined_rdata,
                     params.asaptools_min_location_depth,
                     params.file_name,
@@ -229,26 +228,15 @@ workflow {
                     poi_input
                 )
             }
-            // if(params.asaptools_snp_table){
 
-            //     if (gb_file_to_use) {
-            //         def snp_amino_data = PROCESS_SNPS_TO_AMINOACIDS(
-            //             combined_data.combined_rdata,
-            //             gb_file_to_use
-            //         )
-
-            //         PROCESS_GENERATE_SNP_TABLE(
-            //             PROCESS_COMBINE_RDATA.out.combined_rdata, // input 1: path
-            //             params.file_name,                        // input 2: val
-            //             gb_file_to_use,                          // input 3: path
-            //             params.primer_file,                     // input 4: path
-            //             poi_input,                               // input 5: val
-            //             snp_amino_data.snp_to_amino_rdata      // input 6: path
-            //         )
-            //     } else {
-            //         log.warn "Skipping SNP Table generation: No GenBank file provided or detected."
-            //     }
-            // }
+            if(params.asaptools_generate_fasta){
+            
+                PROCESS_GENERATE_FASTA(
+                    combined_data.combined_rdata,
+                    params.file_name
+                )
+            }
+            
             if(params.asaptools_snp_table) {
                 // 1. Handle GenBank Files (Optional)
                 // If no GB files, pass an empty list []

@@ -1,12 +1,15 @@
+//conda activate /home/dlemmer/miniconda3/envs/asap
+//module load singularity
 //nf-test test ./tests/ASAP_EtE.nf.test --profile slurm --update-snapshot
 //nf-test test ./tests/ASAP_EtE.nf.test --profile slurm --updateSnapshot --wipeSnapshot
+//nf-test test ./tests/ASAP_EtE.nf.test --tag "TB_Amplicon"
 
 nextflow_pipeline {
-
     name "Test E2E ASAP Pipeline"
     script "main.nf"
 
     test ("Nextflow Help Test") {
+        tag "Help"
         // Goal of this test is to ensure that the help documentation is functional.
         when {
             params {
@@ -24,6 +27,7 @@ nextflow_pipeline {
     }
 
     test ("RSV E2E Multiple GB Input") {
+        tag "RSV_Amplicon"
         // Goal is to test simple ASAP functionality using RSV amplicon reads.
         // Paired end, 2 GB files, no asaptools testing.
         when {
@@ -52,6 +56,36 @@ nextflow_pipeline {
             assert htmlReport.exists()
             assert snapshot(htmlReport).match("html_report")
             
+            }
+    }
+    
+    test ("TB Ampseq E2E") {
+        tag "TB_Amplicon"
+        // Goal is to test simple ASAP functionality using TBamplicon reads.
+        when {
+            params {
+                read_dir             = "${baseDir}/tests/data/TB_Ampseq/"
+                reference_input      = "${baseDir}/tests/preparejson/H37Rv_NC0009623.gb"
+                outdir               = "${baseDir}/tests/test_output/TB_End_To_End_Test"
+                aligner              = "bwa"
+                proportion           = 0.0001
+                file_name            = "RSV_End_To_End_Test"
+                asaptools_processing = true
+                primer_file          = "${baseDir}/tests/bedfiles/H37Rv_NC0009623_Primer_File_Ampseq.bed"
+                asaptools_positions_of_interest = "${baseDir}/tests/Genes_Of_Interest/H37Rv_Genes_Of_Interst.csv"
+                asaptools_min_location_depth = 499 
+                mask_primers         = true
+                smor_correction      = true
+                fastp_extra_args     = '-l 100'
+                identity             = 0.97
+                combine_output       = false
+            }
+        }
+
+        then {
+            assert workflow.success
+            assert snapshot(workflow.stdout).match("TB_End_To_End_Test_Out")
+
             }
     }
 }

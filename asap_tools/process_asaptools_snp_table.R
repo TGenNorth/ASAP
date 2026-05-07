@@ -22,18 +22,19 @@ REMOVE_NAMES       <- if(args[6] == "NONE" || args[6] == "") character(0) else u
 POI_CSV            <- args[7]
 BED_FILE           <- args[8]
 SNP_RDATA          <- args[9]
-GB_FILES           <- args[10:length(args)]
+SNP_XLS            <- args[10]
+GB_FILES           <- args[11:length(args)]
 
-# RDATA_INPUT        <- "/tgen_labs/EPIC/tporter/ASAP/nextflow/tests/work/51/4cd3c57a5acd45545f7adc960f0311/Combined_ASAP_Data.Rdata"
+# RDATA_INPUT        <- "/tgen_labs/EPIC/tporter/ASAP/nextflow/.nf-test/tests/2389292981cc5fccac0b4b3f37a2bd62/work/b4/cee59e06acf4503f68ca757075d169/Combined_ASAP_Data.Rdata"
 # PREFIX             <- "RSV_Test"
 # MIN_SNP_PERC       <- as.numeric(0.05) * 100
 # MAX_SNP_COUNT      <- as.numeric(50)
-# MIN_LOCATION_DEPTH <- as.numeric(99)
+# MIN_LOCATION_DEPTH <- as.numeric(499)
 # REMOVE_NAMES       <- if("NONE" == "NONE" || args[6] == "") character(0) else unlist(strsplit(args[6], ","))
-# POI_CSV            <- NULL
-# BED_FILE           <- "null_primer_placeholder"
-# SNP_RDATA          <- "/tgen_labs/EPIC/tporter/ASAP/nextflow/tests/work/51/4cd3c57a5acd45545f7adc960f0311/SNP_Amino_Acid_Table.Rdata"
-# GB_FILES           <- "/tgen_labs/EPIC/tporter/ASAP/nextflow/tests/work/51/4cd3c57a5acd45545f7adc960f0311/genbank_input/"
+# POI_CSV            <- "/tgen_labs/EPIC/tporter/ASAP/nextflow/tests/Genes_Of_Interest/H37Rv_Genes_Of_Interst.csv"
+# BED_FILE           <- "/tgen_labs/EPIC/tporter/ASAP/nextflow/.nf-test/tests/2389292981cc5fccac0b4b3f37a2bd62/work/b4/cee59e06acf4503f68ca757075d169/H37Rv_NC0009623_Primer_File_Ampseq.bed"
+# SNP_RDATA          <- "/tgen_labs/EPIC/tporter/ASAP/nextflow/.nf-test/tests/2389292981cc5fccac0b4b3f37a2bd62/work/b4/cee59e06acf4503f68ca757075d169/SNP_Amino_Acid_Table.Rdata"
+# GB_FILES           <- "/tgen_labs/EPIC/tporter/ASAP/nextflow/.nf-test/tests/2389292981cc5fccac0b4b3f37a2bd62/work/b4/cee59e06acf4503f68ca757075d169/genbank_input/"
 
 ######################
 # Load data from ASAP_Import_XML
@@ -41,7 +42,6 @@ GB_FILES           <- args[10:length(args)]
 load(RDATA_INPUT)
 SNPS <- final_snps
 array_info <- final_array
-
 
 # --- Handle Flexible Reference List ---
 all_gb_paths <- c()
@@ -241,32 +241,52 @@ write.csv(SNP_Table_Wide_All, paste0(PREFIX, "_SNP_Table_All_Samples.csv"))
 # Excel Export & Styling
 ######################
 
-getStyle <- function(value) {
-  if (is.na(value)) return(createStyle(fgFill = "gray75", border = "TopBottomLeftRight"))
-  if (value > 90) return(createStyle(fgFill = "#800026", border = "TopBottomLeftRight"))
-  if (value > 50) return(createStyle(fgFill = "#fd8d3c", border = "TopBottomLeftRight"))
-  if (value > 0)  return(createStyle(fgFill = "deepskyblue", border = "TopBottomLeftRight"))
-  return(createStyle(fgFill = "#9ecae1", border = "TopBottomLeftRight"))
-}
+if (SNP_XLS == TRUE){
 
-wb <- createWorkbook()
-sheets <- list("Included_Samples" = SNP_TABLE_Included_Samples_Wide, "All_Samples" = SNP_Table_Wide_All)
+  cat("Generating excel table, this can take a very long time.")
 
-for (sname in names(sheets)) {
-  addWorksheet(wb, sname)
-  dat <- sheets[[sname]]
-  writeData(wb, sname, dat)
-  
-  # Styling
-  addStyle(wb, sname, createStyle(border = "TopBottomLeftRight"), rows = 1:(nrow(dat)+1), cols = 1:ncol(dat), gridExpand = TRUE)
-  addStyle(wb, sname, createStyle(textRotation = -90), rows = 1, cols = 8:ncol(dat), gridExpand = TRUE)
-  
-  for (r in 1:nrow(dat)) {
-    for (c in 8:ncol(dat)) {
-      addStyle(wb, sname, style = getStyle(dat[r, c]), rows = r + 1, cols = c)
+  getStyle <- function(value) {
+    if (is.na(value)) return(createStyle(fgFill = "gray75", border = "TopBottomLeftRight"))
+    if (value > 90) return(createStyle(fgFill = "#800026", border = "TopBottomLeftRight"))
+    if (value > 50) return(createStyle(fgFill = "#fd8d3c", border = "TopBottomLeftRight"))
+    if (value > 0)  return(createStyle(fgFill = "deepskyblue", border = "TopBottomLeftRight"))
+    return(createStyle(fgFill = "#9ecae1", border = "TopBottomLeftRight"))
+  }
+
+  wb <- createWorkbook()
+  sheets <- list("Included_Samples" = SNP_TABLE_Included_Samples_Wide, "All_Samples" = SNP_Table_Wide_All)
+
+  for (sname in names(sheets)) {
+    addWorksheet(wb, sname)
+    dat <- sheets[[sname]]
+    writeData(wb, sname, dat)
+    
+    # Only apply styling and loops if there are rows present
+    if (nrow(dat) > 0) {
+      
+      # Base Styling
+      addStyle(wb, sname, createStyle(border = "TopBottomLeftRight"), 
+              rows = 1:(nrow(dat) + 1), cols = 1:ncol(dat), gridExpand = TRUE)
+      
+      # Header Rotation
+      addStyle(wb, sname, createStyle(textRotation = -90), 
+              rows = 1, cols = 8:ncol(dat), gridExpand = TRUE)
+      
+      # Conditional Cell Styling
+      for (r in 1:nrow(dat)) {
+        for (c in 8:ncol(dat)) {
+          addStyle(wb, sname, style = getStyle(dat[r, c]), rows = r + 1, cols = c)
+        }
+      }
+      
+      freezePane(wb, sname, firstActiveRow = 2, firstActiveCol = 8)
+      
+    } else {
+      # Optional: Add a message or specific formatting for empty sheets
+      message(paste("Sheet", sname, "is empty. Skipping styling loops."))
     }
   }
-  freezePane(wb, sname, firstActiveRow = 2, firstActiveCol = 8)
-}
 
-saveWorkbook(wb, paste0(PREFIX, "_SNP_Table_Final.xlsx"), overwrite = TRUE)
+  saveWorkbook(wb, paste0(PREFIX, "_SNP_Table_Final.xlsx"), overwrite = TRUE)} else {
+    cat("Excel file skipped based on input parameters...")
+}

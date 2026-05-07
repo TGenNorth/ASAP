@@ -12,12 +12,11 @@ if (length(args) < 2) {
 }
 
 RDATA_INPUT  <- args[1]
-
-# RDATA_INPUT  <- "/tgen_labs/EPIC/tporter/ASAP/nextflow/tests/RSV_Test_Temp/ASAP_R_Data/Combined_ASAP_Data.Rdata"
-# raw_refs <- "/tgen_labs/EPIC/tporter/ASAP/nextflow/tests/work/f7/96ace34e74fc25f0c9d70be78e3ea1/genbank_input/"
-
-
 raw_refs <- args[2:length(args)]
+
+# RDATA_INPUT  <- "/tgen_labs/EPIC/tporter/ASAP/nextflow/.nf-test/tests/2389292981cc5fccac0b4b3f37a2bd62/work/49/f254b276529b5d69d95d2f6349cb68/Combined_ASAP_Data.Rdata"
+# raw_refs <- "/tgen_labs/EPIC/tporter/ASAP/nextflow/.nf-test/tests/2389292981cc5fccac0b4b3f37a2bd62/work/49/f254b276529b5d69d95d2f6349cb68/genbank_input/"
+
 GENBANK_FILES <- c()
 
 for (path in raw_refs) {
@@ -36,7 +35,6 @@ print(GENBANK_FILES)
 if (length(GENBANK_FILES) == 0) {
   stop("Error: No valid GenBank files found in arguments.")
 }
-
 
 # Load data from ASAP_Import_XML
 load(RDATA_INPUT)
@@ -70,19 +68,20 @@ all_gene_snps <- list()
 
 for (REFERENCE in GENBANK_FILES) {
   # Read the specific reference
-  reference_obj <- genbankr::readGenBank(REFERENCE)
+  reference_obj <- suppressWarnings(genbankr::readGenBank(REFERENCE))
+
   acc_id <- reference_obj@accession
-  
+
   file_base <- tools::file_path_sans_ext(basename(REFERENCE))
-  
+
   message(paste0("Processing: ", REFERENCE, " (ID: ", acc_id, " | FileBase: ", file_base, ")"))
-  
+
   # Filter SNPs belonging to this specific accession/assay
   SNPS_To_AA <- SNPS %>%
-    filter(grepl(acc_id, assay_name) | grepl(file_base, assay_name)) %>% 
+    filter(grepl(acc_id, assay_name) | grepl(file_base, assay_name)) %>%
     select(SNP, assay_name) %>%
     distinct()
-  
+
   if (nrow(SNPS_To_AA) == 0) {
     message(paste("No SNPs found for accession:", acc_id))
     message(paste("If this is unexpected check SNP assay name."))
@@ -90,23 +89,30 @@ for (REFERENCE in GENBANK_FILES) {
     next
   }
 
+  message(paste0("Processing Gene SNPS: ", REFERENCE, " (ID: ", acc_id, " | FileBase: ", file_base, ")"))
+
+  # Convert SNP to Gene SNP using the specific reference
+  gene_snps_sub <- suppressWarnings(TGenGenomicTools::genome.snp.to.gene.snp(
+    snp_db = SNPS_To_AA,
+    ref_seq = REFERENCE,
+    cores = parallelly::availableCores()
+  ) %>%
+    mutate(assay_name=file_base))
+
+  message(paste0("Processing Amino Acids: ", REFERENCE, " (ID: ", acc_id, " | FileBase: ", file_base, ")"))
+
   # Convert SNP to amino acid using the specific reference
-  gene_snps_sub <- TGenGenomicTools::genome.snp.to.gene.snp(
-    snp_db = SNPS_To_AA, 
-    ref_seq = REFERENCE, 
+  amino_acids_sub <- suppressWarnings(TGenGenomicTools::snps.to.amino(
+    snp_db = SNPS_To_AA,
+    ref_seq = REFERENCE,
     cores = parallelly::availableCores()
-  ) %>% 
-    mutate(assay_name=file_base)
-  
-  amino_acids_sub <- TGenGenomicTools::snps.to.amino(
-    snp_db = SNPS_To_AA, 
-    ref_seq = REFERENCE, 
-    cores = parallelly::availableCores()
-  ) %>% 
-    mutate(assay_name=file_base)
+  ) %>%
+    mutate(assay_name=file_base))
 
   all_gene_snps[[acc_id]] <- gene_snps_sub
   all_amino_acids[[acc_id]] <- amino_acids_sub
+
+  message(paste0("Success processing: ", REFERENCE, " (ID: ", acc_id, " | FileBase: ", file_base, ")"))
 }
 
 # Combine results

@@ -46,7 +46,7 @@ process PROCESS_COMBINE_RDATA {
     """
 }
 
-process PROCCESS_GENERATE_FASTA {
+process PROCESS_GENERATE_FASTA {
     tag "GENERATE_FASTA"
     label 'process_low'
     conda "/tgen_labs/EPIC/miniconda3/envs/r_mirror_env"
@@ -68,7 +68,7 @@ process PROCCESS_GENERATE_FASTA {
 }
 
 
-process PROCCESS_GENERATE_COV_TABLE {
+process PROCESS_GENERATE_COV_TABLE {
     tag "coverage_table"
     label 'process_medium'
     conda "/tgen_labs/EPIC/miniconda3/envs/r_mirror_env"
@@ -189,10 +189,15 @@ process PROCESS_GENERATE_SNP_TABLE {
     val  poi_input
     path aa_rdata           // This is the file from PROCESS_SNPS_TO_AMINOACIDS
     
+    output:
+    path "*.xlsx", emit: xlsx, optional: true
+    path "*.csv", emit: csv
+
     script:
     def poi_param = (poi_input == null || poi_input == "NULL" || poi_input == "") ? "NULL" : poi_input
     def exclude_list = (params.asaptools_samples_to_remove == null || params.asaptools_samples_to_remove == "") ? "NONE" : params.asaptools_samples_to_remove
-    
+    def effective_prop = params.asaptools_snp_proportion ?: params.proportion
+    def xls_toggle = params.asaptools_snp_table_xls.toString().toUpperCase()
     // Handle optional files
     def bed_param = (primer_bed && primer_bed.name != 'null') ? primer_bed : "NULL"
     def aa_param  = (aa_rdata && aa_rdata.name != 'null') ? aa_rdata : "NULL"
@@ -201,20 +206,20 @@ process PROCESS_GENERATE_SNP_TABLE {
     process_asaptools_snp_table.R \\
         ${combined_rdata} \\
         ${prefix} \\
-        ${params.asaptools_snp_proportion} \\
+        ${effective_prop} \\
         ${params.asaptools_max_sample_snp_count} \\
         ${params.asaptools_min_location_depth} \\
         "${exclude_list}" \\
         ${poi_param} \\
         "${bed_param}" \\
         "${aa_param}" \\
+        ${xls_toggle} \\
         genbank_input/*
     """
 }
 
 process PROCESS_QC_PLOTS {
-    tag "${prefix}"
-    label 'process_medium'
+    tag "qc_plots"
     conda "/tgen_labs/EPIC/miniconda3/envs/r_mirror_env"
 
     publishDir "${params.outdir}/ASAP_R_Data", mode: 'copy'
@@ -231,9 +236,11 @@ process PROCESS_QC_PLOTS {
     script:
     def poi_param = (poi_input == null || poi_input == "NULL" || poi_input == "") ? "NULL" : poi_input
     """
-    process_asaptools_qc_plots.R \\
+    process_asaptools_generate_figures.R \\
         ${combined_rdata} \\
         ${prefix} \\
-        ${poi_param}
+        ${poi_param} \\
+        ${params.asaptools_snp_proportion} \\
+        ${params.asaptools_min_location_depth}
     """
 }

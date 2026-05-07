@@ -42,5 +42,17 @@
             "nextflow": "25.04.6"
         },
         "timestamp": "2026-04-04T09:57:58.970011762"
+    },
+    "TB_End_To_End_Test_Out": {
+        "content": [
+            [
+                
+            ]
+        ],
+        "meta": {
+            "nf-test": "0.9.3",
+            "nextflow": "25.04.6"
+        },
+        "timestamp": "2026-05-05T11:12:12.463249931"
     }
 }

@@ -25,16 +25,17 @@ SNP_RDATA          <- args[9]
 SNP_XLS            <- args[10]
 GB_FILES           <- args[11:length(args)]
 
-# RDATA_INPUT        <- "/tgen_labs/EPIC/tporter/ASAP/nextflow/.nf-test/tests/2389292981cc5fccac0b4b3f37a2bd62/work/b4/cee59e06acf4503f68ca757075d169/Combined_ASAP_Data.Rdata"
+# RDATA_INPUT        <- "/scratch/tporter/ASAP_RSV_Results/work/eb/34919aa89a69685f5f8ec49607d67f/Combined_ASAP_Data.Rdata"
 # PREFIX             <- "RSV_Test"
-# MIN_SNP_PERC       <- as.numeric(0.05) * 100
-# MAX_SNP_COUNT      <- as.numeric(50)
+# MIN_SNP_PERC       <- as.numeric(0.9) * 100
+# MAX_SNP_COUNT      <- as.numeric(5000000)
 # MIN_LOCATION_DEPTH <- as.numeric(499)
 # REMOVE_NAMES       <- if("NONE" == "NONE" || args[6] == "") character(0) else unlist(strsplit(args[6], ","))
-# POI_CSV            <- "/tgen_labs/EPIC/tporter/ASAP/nextflow/tests/Genes_Of_Interest/H37Rv_Genes_Of_Interst.csv"
-# BED_FILE           <- "/tgen_labs/EPIC/tporter/ASAP/nextflow/.nf-test/tests/2389292981cc5fccac0b4b3f37a2bd62/work/b4/cee59e06acf4503f68ca757075d169/H37Rv_NC0009623_Primer_File_Ampseq.bed"
-# SNP_RDATA          <- "/tgen_labs/EPIC/tporter/ASAP/nextflow/.nf-test/tests/2389292981cc5fccac0b4b3f37a2bd62/work/b4/cee59e06acf4503f68ca757075d169/SNP_Amino_Acid_Table.Rdata"
-# GB_FILES           <- "/tgen_labs/EPIC/tporter/ASAP/nextflow/.nf-test/tests/2389292981cc5fccac0b4b3f37a2bd62/work/b4/cee59e06acf4503f68ca757075d169/genbank_input/"
+# POI_CSV            <- NA # "/tgen_labs/EPIC/tporter/ASAP/nextflow/tests/Genes_Of_Interest/H37Rv_Genes_Of_Interst.csv"
+# BED_FILE           <- NULL #"/scratch/tporter/ASAP_RSV_Results/work/eb/34919aa89a69685f5f8ec49607d67f/H37Rv_NC0009623_Primer_File_Ampseq.bed"
+# SNP_RDATA          <- "/scratch/tporter/ASAP_RSV_Results/work/eb/34919aa89a69685f5f8ec49607d67f/SNP_Amino_Acid_Table.Rdata"
+# SNP_XLS            <- FALSE
+# GB_FILES           <- "/scratch/tporter/ASAP_RSV_Results/work/eb/34919aa89a69685f5f8ec49607d67f/genbank_input/"
 
 ######################
 # Load data from ASAP_Import_XML
@@ -83,9 +84,9 @@ if (POI_CSV == "NA" || POI_CSV == "NULL" || POI_CSV == "" || is.na(POI_CSV) || i
 ######################
 # Load data from bed file (Optional)
 ######################
-if (BED_FILE == "NULL" || !file.exists(BED_FILE) || is.null(BED_FILE)) {
+if (BED_FILE == "NA" || BED_FILE == "NULL" || is.null(BED_FILE)) { # !file.exists(BED_FILE)
   message("No primer BED file provided. Skipping primer annotation...")
-  Primer_Locations <- numeric(0)
+  Primer_Locations <- "No BED file."
 } else {
   bed_colnames <- c("reference", "start", "end", "name", "integer", "strand")
   Bed_File <- read_delim(BED_FILE, delim = "\t", col_names = bed_colnames, trim_ws = TRUE)
@@ -124,7 +125,10 @@ if (SNP_RDATA == "NULL" || !file.exists(SNP_RDATA) || is.null(SNP_RDATA)) {
 }
 
 # Join info
-AA_Merged <- left_join(Amino_Acids, Gene_SNPS, by = c("assay_name", "SNP"), relationship = "many-to-many")
+# Note depending on references there can be 2 records because of overlapping genes.
+AA_Merged <- left_join(Amino_Acids, Gene_SNPS, by = c("assay_name", "SNP"), relationship = "many-to-many") %>% 
+  distinct()
+
 SNPS <- left_join(SNPS, AA_Merged, by = c("assay_name", "SNP"), relationship = "many-to-many")
 
 ######################
@@ -132,7 +136,7 @@ SNPS <- left_join(SNPS, AA_Merged, by = c("assay_name", "SNP"), relationship = "
 ######################
 SAMPLE_Exclude <- SNPS %>%
   filter(snp_proportion > MIN_SNP_PERC, location_depth > MIN_LOCATION_DEPTH) %>%
-  group_by(name) %>%
+  group_by(assay_name, name) %>%
   tally() %>%
   filter(n > MAX_SNP_COUNT) %>%
   select(name)
@@ -147,134 +151,50 @@ if (length(REMOVE_NAMES) > 0) {
 ######################
 # Create QCed Table Functions
 ######################
-
-generate_wide_table <- function(include_only = TRUE) {
-  
-  # 1. Filter SNPs based on QC and valid references
-  sig_filter <- SNPS %>%
-    filter(as.numeric(snp_proportion) > MIN_SNP_PERC,
-           as.numeric(location_depth) > MIN_LOCATION_DEPTH,
-           as.numeric(snp_position) %in% positions_of_interest)
-  
-  if (length(valid_refs) > 0) {
-    sig_filter <- sig_filter %>% 
-      filter(grepl(paste(valid_refs, collapse="|"), assay_name))
-  }
-  
-  if (include_only) {
-    sig_filter <- sig_filter %>% filter(!name %in% SAMPLE_Exclude$name)
-  }
-  
-  # Get unique significant SNPs for their specific coordinates
-  SIGNIFICANT_SNPS_COORDS <- sig_filter %>% 
-    select(run, assay_name, name, SNP, snp_position) %>% 
-    distinct()
-  
-  # 2. Prepare Background from array_info
-  Background <- array_info %>% distinct()
-  
-  if (length(valid_refs) > 0) {
-    Background <- Background %>% 
-      filter(grepl(paste(valid_refs, collapse="|"), assay_name))
-  }
-  
-  # 3. Join by coordinates
-  Background <- Background %>%
-    left_join(
-      SIGNIFICANT_SNPS_COORDS, 
-      by = c("run", "assay_name", "name", "position" = "snp_position"),
-      relationship = "many-to-many"
-    ) %>%
-    filter(!is.na(SNP))
-  
-  # 4. Join back to metadata
-  Background <- Background %>%
-    left_join(
-      SNPS %>% select(run, assay_name, name, SNP, snp_proportion, n, 
-                      any_of(c("AA", "Gene_SNP", "Gene", "Product"))),
-      by = c("run", "assay_name", "name", "SNP")
-    )
-  
-  # Final cleanup logic
-  Background$n[is.na(Background$n)] <- "No SNP Detected"
-  Background$snp_proportion[is.na(Background$snp_proportion)] <- 0
-  
-  # --- Logic for "Unknown" Primer Regions ---
-  Background <- Background %>%
-    mutate(Primer = case_when(
-      # If BED_FILE was NULL or missing, Primer_Locations has length 0
-      (BED_FILE == "NULL" || !file.exists(BED_FILE) || is.null(BED_FILE)) ~ "Unknown",
-      # Otherwise perform standard T/F check
-      position %in% Primer_Locations ~ "TRUE",
-      TRUE ~ "FALSE"
-    )) %>%
-    mutate(snp_prop_final = ifelse(depth > MIN_LOCATION_DEPTH, round(snp_proportion, 2), NA)) %>%
-    select(Run = run, 
-           Assay = assay_name, 
-           Sample = name, 
-           any_of("Gene"), 
-           `SNP (Genome)` = SNP, 
-           `SNP (Gene)` = any_of("Gene_SNP"), 
-           `Amino Acid Change` = any_of("AA"), 
-           `Primer Region` = Primer, # Will now be TRUE, FALSE, or Unknown
-           `SNP Proportion (%)` = snp_prop_final, 
-           `SNP Depth` = n, 
-           `Location Depth` = depth)
-  
-  # 5. Pivot to Wide format
-  Wide <- Background %>%
-    select(-`SNP Depth`, -`Location Depth`) %>%
-    distinct() %>%
-    pivot_wider(names_from = Sample, values_from = `SNP Proportion (%)`)
-  
-  return(Wide)
-}
-
-SNP_TABLE_Included_Samples_Wide <- generate_wide_table(include_only = TRUE)
-SNP_Table_Wide_All <- generate_wide_table(include_only = FALSE)
-
-# Save CSVs
-write.csv(SNP_TABLE_Included_Samples_Wide, paste0(PREFIX, "_SNP_Table_Included_Samples.csv"))
-write.csv(SNP_Table_Wide_All, paste0(PREFIX, "_SNP_Table_All_Samples.csv"))
-
-######################
-# Excel Export & Styling
-######################
-
 if (SNP_XLS == TRUE){
-
   cat("Generating excel table, this can take a very long time.")
-
+  
   getStyle <- function(value) {
-    if (is.na(value)) return(createStyle(fgFill = "gray75", border = "TopBottomLeftRight"))
-    if (value > 90) return(createStyle(fgFill = "#800026", border = "TopBottomLeftRight"))
-    if (value > 50) return(createStyle(fgFill = "#fd8d3c", border = "TopBottomLeftRight"))
-    if (value > 0)  return(createStyle(fgFill = "deepskyblue", border = "TopBottomLeftRight"))
+    # 1. Handle the "Low Coverage" string check first
+    if (grepl("Low Coverage", value)) return(createStyle(fgFill = "gray10", fontColour = "white", border = "TopBottomLeftRight"))
+    
+    # 2. Convert value to numeric so the '>' comparisons work
+    val <- as.numeric(value)
+    
+    # 3. Use 'val' for comparisons (matching your existing logic)
+    if (is.na(val)) return(createStyle(fgFill = "#9ecae1", border = "TopBottomLeftRight")) # Handle non-numeric/NA
+    if (val > 99) return(createStyle(fgFill = "#49006a", fontColour = "white", border = "TopBottomLeftRight")) 
+    if (val > 90) return(createStyle(fgFill = "#800026", fontColour = "white", border = "TopBottomLeftRight")) 
+    if (val > 80) return(createStyle(fgFill = "#bd0026", fontColour = "white", border = "TopBottomLeftRight"))
+    if (val > 70) return(createStyle(fgFill = "#e31a1c", fontColour = "white", border = "TopBottomLeftRight"))
+    if (val > 50) return(createStyle(fgFill = "#fc4e2a", border = "TopBottomLeftRight")) 
+    if (val > 25) return(createStyle(fgFill = "#fd8d3c", border = "TopBottomLeftRight"))
+    if (val > 10) return(createStyle(fgFill = "#feb24c", border = "TopBottomLeftRight"))
+    if (val > 5)  return(createStyle(fgFill = "#fed976", border = "TopBottomLeftRight")) # Light Yellow-Orange
+    if (val > 2)  return(createStyle(fgFill = "#ffeda0", border = "TopBottomLeftRight")) # Pale Yellow
+    if (val > 1)  return(createStyle(fgFill = "#ffffcc", border = "TopBottomLeftRight")) # Very Light Cream
+    if (val > 0)  return(createStyle(fgFill = "grey75", border = "TopBottomLeftRight")) 
     return(createStyle(fgFill = "#9ecae1", border = "TopBottomLeftRight"))
   }
-
+  
   wb <- createWorkbook()
   sheets <- list("Included_Samples" = SNP_TABLE_Included_Samples_Wide, "All_Samples" = SNP_Table_Wide_All)
-
+  
   for (sname in names(sheets)) {
     addWorksheet(wb, sname)
     dat <- sheets[[sname]]
     writeData(wb, sname, dat)
     
-    # Only apply styling and loops if there are rows present
     if (nrow(dat) > 0) {
-      
-      # Base Styling
       addStyle(wb, sname, createStyle(border = "TopBottomLeftRight"), 
-              rows = 1:(nrow(dat) + 1), cols = 1:ncol(dat), gridExpand = TRUE)
+               rows = 1:(nrow(dat) + 1), cols = 1:ncol(dat), gridExpand = TRUE)
       
-      # Header Rotation
       addStyle(wb, sname, createStyle(textRotation = -90), 
-              rows = 1, cols = 8:ncol(dat), gridExpand = TRUE)
+               rows = 1, cols = 8:ncol(dat), gridExpand = TRUE)
       
-      # Conditional Cell Styling
       for (r in 1:nrow(dat)) {
         for (c in 8:ncol(dat)) {
+          # Use [[ ]] to extract the single value correctly from the data frame
           addStyle(wb, sname, style = getStyle(dat[r, c]), rows = r + 1, cols = c)
         }
       }
@@ -282,11 +202,11 @@ if (SNP_XLS == TRUE){
       freezePane(wb, sname, firstActiveRow = 2, firstActiveCol = 8)
       
     } else {
-      # Optional: Add a message or specific formatting for empty sheets
       message(paste("Sheet", sname, "is empty. Skipping styling loops."))
     }
   }
-
-  saveWorkbook(wb, paste0(PREFIX, "_SNP_Table_Final.xlsx"), overwrite = TRUE)} else {
-    cat("Excel file skipped based on input parameters...")
+  
+  saveWorkbook(wb, paste0(PREFIX, "_SNP_Table_Final.xlsx"), overwrite = TRUE)
+} else {
+  cat("Excel file skipped based on input parameters...")
 }

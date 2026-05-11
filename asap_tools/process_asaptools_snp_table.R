@@ -25,17 +25,17 @@ SNP_RDATA          <- args[9]
 SNP_XLS            <- args[10]
 GB_FILES           <- args[11:length(args)]
 
-# RDATA_INPUT        <- "/scratch/tporter/ASAP_RSV_Results/work/eb/34919aa89a69685f5f8ec49607d67f/Combined_ASAP_Data.Rdata"
-# PREFIX             <- "RSV_Test"
-# MIN_SNP_PERC       <- as.numeric(0.9) * 100
-# MAX_SNP_COUNT      <- as.numeric(5000000)
-# MIN_LOCATION_DEPTH <- as.numeric(499)
-# REMOVE_NAMES       <- if("NONE" == "NONE" || args[6] == "") character(0) else unlist(strsplit(args[6], ","))
-# POI_CSV            <- NA # "/tgen_labs/EPIC/tporter/ASAP/nextflow/tests/Genes_Of_Interest/H37Rv_Genes_Of_Interst.csv"
-# BED_FILE           <- NULL #"/scratch/tporter/ASAP_RSV_Results/work/eb/34919aa89a69685f5f8ec49607d67f/H37Rv_NC0009623_Primer_File_Ampseq.bed"
-# SNP_RDATA          <- "/scratch/tporter/ASAP_RSV_Results/work/eb/34919aa89a69685f5f8ec49607d67f/SNP_Amino_Acid_Table.Rdata"
-# SNP_XLS            <- FALSE
-# GB_FILES           <- "/scratch/tporter/ASAP_RSV_Results/work/eb/34919aa89a69685f5f8ec49607d67f/genbank_input/"
+RDATA_INPUT        <- "/scratch/tporter/ASAP_RSV_Results/work/eb/34919aa89a69685f5f8ec49607d67f/Combined_ASAP_Data.Rdata"
+PREFIX             <- "RSV_Test"
+MIN_SNP_PERC       <- as.numeric(0.9) * 100
+MAX_SNP_COUNT      <- as.numeric(5000000)
+MIN_LOCATION_DEPTH <- as.numeric(499)
+REMOVE_NAMES       <- if("NONE" == "NONE" || args[6] == "") character(0) else unlist(strsplit(args[6], ","))
+POI_CSV            <- NA # "/tgen_labs/EPIC/tporter/ASAP/nextflow/tests/Genes_Of_Interest/H37Rv_Genes_Of_Interst.csv"
+BED_FILE           <- NULL #"/scratch/tporter/ASAP_RSV_Results/work/eb/34919aa89a69685f5f8ec49607d67f/H37Rv_NC0009623_Primer_File_Ampseq.bed"
+SNP_RDATA          <- "/scratch/tporter/ASAP_RSV_Results/work/eb/34919aa89a69685f5f8ec49607d67f/SNP_Amino_Acid_Table.Rdata"
+SNP_XLS            <- FALSE
+GB_FILES           <- "/scratch/tporter/ASAP_RSV_Results/work/eb/34919aa89a69685f5f8ec49607d67f/genbank_input/"
 
 ######################
 # Load data from ASAP_Import_XML
@@ -151,6 +151,87 @@ if (length(REMOVE_NAMES) > 0) {
 ######################
 # Create QCed Table Functions
 ######################
+generate_wide_table <- function(include_only = TRUE) {
+  
+  # 1. Determine which samples are being processed
+  target_samples <- if(include_only) {
+    unique(array_info$name[!array_info$name %in% SAMPLE_Exclude$name])
+  } else {
+    unique(array_info$name)
+  }
+  
+  # 2. Identify "Significant Positions"
+  # These are coordinates where at least one sample passed your QC filters
+  sig_positions <- SNPS %>%
+    filter(as.numeric(snp_proportion) > MIN_SNP_PERC,
+           as.numeric(location_depth) > MIN_LOCATION_DEPTH,
+           as.numeric(snp_position) %in% positions_of_interest) %>%
+    {if (length(valid_refs) > 0) filter(., grepl(paste(valid_refs, collapse="|"), assay_name)) else .} %>%
+    select(assay_name, snp_position, SNP, any_of(c("AA", "Gene_SNP", "Gene", "Product"))) %>%
+    distinct()
+  
+  # 3. Join background with SNP metadata.
+  Background <- array_info %>%
+    filter(name %in% target_samples) %>%
+    inner_join(sig_positions, by = c("assay_name", "position" = "snp_position"), relationship = "many-to-many")
+  
+  # 4. Join with the observed SNP data and SNP calls
+  # This tells us if a SPECIFIC sample has that specific SNP.
+  Background <- Background %>%
+    left_join(
+      SNPS %>% select(run, assay_name, name, SNP, snp_proportion),
+      by = c("run", "assay_name", "name", "SNP")
+    )
+  
+  Background$snp_proportion[is.na(Background$snp_proportion)] <- 0
+  
+  # 5. Logical Branching for Coverage vs SNP
+  Background <- Background %>%
+    mutate(
+      snp_prop_final = case_when(
+        # CONDITION 1: Depth is too low -> Identify as No Data (NA)
+        depth <= MIN_LOCATION_DEPTH ~ paste0("Low Coverage [SNP:", round(snp_proportion, 2), "%, Depth:", depth,"]"),
+        
+        # CONDITION 2: Depth is good and SNP exists or is 0 -> Identify as Variant (%)
+        TRUE ~ as.character(round(snp_proportion, 2))
+      ),
+      Primer = case_when(
+        (is.null(BED_FILE) || BED_FILE == "NULL" || BED_FILE == "NA") ~ "Unknown",
+        position %in% Primer_Locations ~ "TRUE",
+        TRUE ~ "FALSE"
+      )
+    ) %>%
+    select(Run = run, 
+           Assay = assay_name, 
+           Sample = name, 
+           any_of("Gene"), 
+           `SNP (Genome)` = SNP, 
+           `SNP (Gene)` = any_of("Gene_SNP"), 
+           `Amino Acid Change` = any_of("AA"), 
+           `Primer Region` = Primer,
+           `SNP Proportion (%)` = snp_prop_final)
+  
+  # 6. Pivot to Wide format
+  Wide <- Background %>%
+    distinct() %>%
+    pivot_wider(names_from = Sample, values_from = `SNP Proportion (%)`)
+  
+  return(Wide)
+}
+
+# Generate SNP Tables
+SNP_TABLE_Included_Samples_Wide <- generate_wide_table(include_only = TRUE)
+SNP_Table_Wide_All <- generate_wide_table(include_only = FALSE)
+
+# Save CSVs
+write.csv(SNP_TABLE_Included_Samples_Wide, paste0(PREFIX, "_SNP_Table_Included_Samples.csv"))
+write.csv(SNP_Table_Wide_All, paste0(PREFIX, "_SNP_Table_All_Samples.csv"))
+
+
+######################
+# Excel Export & Styling
+######################
+
 if (SNP_XLS == TRUE){
   cat("Generating excel table, this can take a very long time.")
   

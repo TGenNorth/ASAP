@@ -25,17 +25,17 @@ SNP_RDATA          <- args[9]
 SNP_XLS            <- args[10]
 GB_FILES           <- args[11:length(args)]
 
-RDATA_INPUT        <- "/scratch/tporter/ASAP_RSV_Results/work/eb/34919aa89a69685f5f8ec49607d67f/Combined_ASAP_Data.Rdata"
-PREFIX             <- "RSV_Test"
-MIN_SNP_PERC       <- as.numeric(0.9) * 100
-MAX_SNP_COUNT      <- as.numeric(5000000)
-MIN_LOCATION_DEPTH <- as.numeric(499)
-REMOVE_NAMES       <- if("NONE" == "NONE" || args[6] == "") character(0) else unlist(strsplit(args[6], ","))
-POI_CSV            <- NA # "/tgen_labs/EPIC/tporter/ASAP/nextflow/tests/Genes_Of_Interest/H37Rv_Genes_Of_Interst.csv"
-BED_FILE           <- NULL #"/scratch/tporter/ASAP_RSV_Results/work/eb/34919aa89a69685f5f8ec49607d67f/H37Rv_NC0009623_Primer_File_Ampseq.bed"
-SNP_RDATA          <- "/scratch/tporter/ASAP_RSV_Results/work/eb/34919aa89a69685f5f8ec49607d67f/SNP_Amino_Acid_Table.Rdata"
-SNP_XLS            <- FALSE
-GB_FILES           <- "/scratch/tporter/ASAP_RSV_Results/work/eb/34919aa89a69685f5f8ec49607d67f/genbank_input/"
+# RDATA_INPUT        <- "/scratch/tporter/ASAP_RSV_Results/work/eb/34919aa89a69685f5f8ec49607d67f/Combined_ASAP_Data.Rdata"
+# PREFIX             <- "RSV_Test"
+# MIN_SNP_PERC       <- as.numeric(0.9) * 100
+# MAX_SNP_COUNT      <- as.numeric(5000000)
+# MIN_LOCATION_DEPTH <- as.numeric(499)
+# REMOVE_NAMES       <- if("NONE" == "NONE" || args[6] == "") character(0) else unlist(strsplit(args[6], ","))
+# POI_CSV            <- NA # "/tgen_labs/EPIC/tporter/ASAP/nextflow/tests/Genes_Of_Interest/H37Rv_Genes_Of_Interst.csv"
+# BED_FILE           <- NULL #"/scratch/tporter/ASAP_RSV_Results/work/eb/34919aa89a69685f5f8ec49607d67f/H37Rv_NC0009623_Primer_File_Ampseq.bed"
+# SNP_RDATA          <- "/scratch/tporter/ASAP_RSV_Results/work/eb/34919aa89a69685f5f8ec49607d67f/SNP_Amino_Acid_Table.Rdata"
+# SNP_XLS            <- FALSE
+# GB_FILES           <- "/scratch/tporter/ASAP_RSV_Results/work/eb/34919aa89a69685f5f8ec49607d67f/genbank_input/"
 
 ######################
 # Load data from ASAP_Import_XML

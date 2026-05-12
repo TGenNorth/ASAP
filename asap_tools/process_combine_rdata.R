@@ -62,6 +62,10 @@ combined_list <- foreach(f = files, .packages = c("tidyverse")) %do% {
       
     genes <- read.csv(poi_csv)
     
+    if (nrow(genes == 0)) {
+      stop(paste("Positions of interest file is seemingly empty. Please check:", poi_csv))
+    }
+    
     # Generate positions for each gene in the CSV
     Gene_Positions <- genes %>%
       rowwise() %>%

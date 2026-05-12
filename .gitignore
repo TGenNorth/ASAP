@@ -7,3 +7,4 @@ asap.egg-info
 __pycache__
 *.gz
 nextflow/tests/
+asap_tutorials/

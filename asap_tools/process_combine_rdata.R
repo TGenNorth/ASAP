@@ -19,7 +19,7 @@ files <- args[2:length(args)]
 
 # Test env
 # files <- list.files("/scratch/tporter/ASAP_TB_Validation/ASAP_TB_PTC_Reads_Correction/XML_Rdata/", pattern = "Rdata", full.names = T)
-# poi_csv <- "/scratch/tporter/ASAP_TB_Validation/Updated_TB_Genes.csv"
+# poi_csv <- "/tgen_labs/EPIC/tporter/ASAP/nextflow/tests/Genes_Of_Interest/H37Rv_Genes_Of_Interst.csv"
 #poi_csv <- NULL
 
 # 2. Setup Parallel Backend
@@ -62,7 +62,7 @@ combined_list <- foreach(f = files, .packages = c("tidyverse")) %do% {
       
     genes <- read.csv(poi_csv)
     
-    if (nrow(genes == 0)) {
+    if (nrow(genes) == 0) {
       stop(paste("Positions of interest file is seemingly empty. Please check:", poi_csv))
     }
     

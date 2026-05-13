@@ -151,7 +151,7 @@ if (length(REMOVE_NAMES) > 0) {
 ######################
 # Create QCed Table Functions
 ######################
-generate_wide_table <- function(include_only = TRUE) {
+generate_SNP_table <- function(include_only = TRUE) {
   
   # 1. Determine which samples are being processed
   target_samples <- if(include_only) {
@@ -179,7 +179,7 @@ generate_wide_table <- function(include_only = TRUE) {
   # This tells us if a SPECIFIC sample has that specific SNP.
   Background <- Background %>%
     left_join(
-      SNPS %>% select(run, assay_name, name, SNP, snp_proportion),
+      SNPS %>% select(run, assay_name, name, SNP, snp_proportion, snp_depth),
       by = c("run", "assay_name", "name", "SNP")
     )
   
@@ -190,43 +190,69 @@ generate_wide_table <- function(include_only = TRUE) {
     mutate(
       snp_prop_final = case_when(
         # CONDITION 1: Depth is too low -> Identify as No Data (NA)
-        depth <= MIN_LOCATION_DEPTH ~ paste0("Low Coverage [SNP:", round(snp_proportion, 2), "%, Depth:", depth,"]"),
+        depth <= MIN_LOCATION_DEPTH ~ paste0("Low Coverage [SNP:", round(snp_proportion, 2), "%, Depth:", depth, "Depth Threshold:", MIN_LOCATION_DEPTH,"]"),
         
         # CONDITION 2: Depth is good and SNP exists or is 0 -> Identify as Variant (%)
         TRUE ~ as.character(round(snp_proportion, 2))
       ),
       Primer = case_when(
-        (is.null(BED_FILE) || BED_FILE == "NULL" || BED_FILE == "NA") ~ "Unknown",
+        (is.null(BED_FILE) || BED_FILE == "NULL" || BED_FILE == "NA") ~ "No Bed File Provided",
         position %in% Primer_Locations ~ "TRUE",
         TRUE ~ "FALSE"
       )
-    ) %>%
-    select(Run = run, 
-           Assay = assay_name, 
-           Sample = name, 
-           any_of("Gene"), 
-           `SNP (Genome)` = SNP, 
-           `SNP (Gene)` = any_of("Gene_SNP"), 
-           `Amino Acid Change` = any_of("AA"), 
-           `Primer Region` = Primer,
-           `SNP Proportion (%)` = snp_prop_final)
+    )
   
-  # 6. Pivot to Wide format
+  #6. Pivot to Wide format
   Wide <- Background %>%
+    select(Run = run,
+           Assay = assay_name,
+           Sample = name,
+           any_of("Gene"),
+           `SNP (Genome)` = SNP,
+           `SNP (Gene)` = any_of("Gene_SNP"),
+           `Amino Acid Change` = any_of("AA"),
+           `Primer Region` = Primer,
+           `SNP Proportion (%)` = snp_prop_final) %>%
     distinct() %>%
     pivot_wider(names_from = Sample, values_from = `SNP Proportion (%)`)
   
-  return(Wide)
+  # 7. Return linelist of SNPS
+  SNP_Linelist <- Background %>% 
+    filter(depth > MIN_LOCATION_DEPTH) %>% # Reversed logic for clarity: keep if > min
+    filter(snp_proportion > MIN_SNP_PERC) %>% 
+    filter(SNP %in% sig_positions$SNP)
+  
+  if (!"Gene" %in% names(Background)) Background$Gene <- "No GB file provided."
+  if (!"Gene_SNP" %in% names(Background)) Background$Gene_SNP <- "NA"
+  if (!"AA" %in% names(Background)) Background$AA <- "NA"
+  
+  SNP_Linelist <- Background %>% 
+    filter(!depth <= MIN_LOCATION_DEPTH) %>% # Filter Low Depth Samples
+    filter(snp_proportion > MIN_SNP_PERC) %>% 
+    filter(`SNP` %in% sig_positions$SNP) %>% 
+    mutate(DATA = paste0(Gene,":", `Gene_SNP`," (", AA, ") [", `SNP`,"]- ", snp_depth, "/", `depth`, " (", round(`snp_proportion`,2), "%)")) %>% 
+    select(run, assay_name, name, `Primer Region` = Primer, `Gene:SNP (Amino Acid Change) [Genome SNP]- SNP Depth / Total Depth (SNP Prevalence %)`= DATA)
+  
+  return(list(Wide, SNP_Linelist))
 }
 
 # Generate SNP Tables
-SNP_TABLE_Included_Samples_Wide <- generate_wide_table(include_only = TRUE)
-SNP_Table_Wide_All <- generate_wide_table(include_only = FALSE)
+SNP_Table_Included <- generate_SNP_table(include_only = TRUE)
+SNP_Table_All <- generate_SNP_table(include_only = FALSE)
 
-# Save CSVs
-write.csv(SNP_TABLE_Included_Samples_Wide, paste0(PREFIX, "_SNP_Table_Included_Samples.csv"))
+SNP_Table_Included_Samples_Wide <- SNP_Table_Included[[1]]
+SNP_Table_Included_LineList <- SNP_Table_Included[[2]]
+
+SNP_Table_Wide_All <- SNP_Table_All[[1]]
+SNP_Table_All_Linelist <- SNP_Table_All[[2]]
+
+# Save CSVs for Wide Data
+write.csv(SNP_Table_Included_Samples_Wide, paste0(PREFIX, "_SNP_Table_Included_Samples.csv"))
 write.csv(SNP_Table_Wide_All, paste0(PREFIX, "_SNP_Table_All_Samples.csv"))
 
+# Save CSVs for Linelist Data
+write.csv(SNP_Table_Included_LineList, paste0(PREFIX, "_SNP_Linelist_Included_Samples.csv"))
+write.csv(SNP_Table_All_Linelist, paste0(PREFIX, "_SNP_Linelist_All_Samples.csv"))
 
 ######################
 # Excel Export & Styling
@@ -237,7 +263,7 @@ if (SNP_XLS == TRUE){
   
   getStyle <- function(value) {
     # 1. Handle the "Low Coverage" string check first
-    if (grepl("Low Coverage", value)) return(createStyle(fgFill = "gray10", fontColour = "white", border = "TopBottomLeftRight"))
+    if (grepl("Low Coverage", value)) return(createStyle(fgFill = "gray15", fontColour = "white", border = "TopBottomLeftRight"))
     
     # 2. Convert value to numeric so the '>' comparisons work
     val <- as.numeric(value)
@@ -259,7 +285,7 @@ if (SNP_XLS == TRUE){
   }
   
   wb <- createWorkbook()
-  sheets <- list("Included_Samples" = SNP_TABLE_Included_Samples_Wide, "All_Samples" = SNP_Table_Wide_All)
+  sheets <- list("Included_Samples" = SNP_Table_Included_Samples_Wide, "All_Samples" = SNP_Table_Wide_All)
   
   for (sname in names(sheets)) {
     addWorksheet(wb, sname)

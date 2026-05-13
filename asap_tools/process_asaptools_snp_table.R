@@ -223,16 +223,15 @@ generate_SNP_table <- function(include_only = TRUE) {
     filter(SNP %in% sig_positions$SNP)
   
   if (!"Gene" %in% names(Background)) Background$Gene <- "No GB file provided."
-  if (!"Gene_SNP" %in% names(Background)) Background$Gene_SNP <- "NA"
-  if (!"AA" %in% names(Background)) Background$AA <- "NA"
+  if (!"Gene_SNP" %in% names(Background)) Background$Gene_SNP <- "No GB file provided."
+  if (!"AA" %in% names(Background)) Background$AA <- "No GB file provided."
   
   SNP_Linelist <- Background %>% 
     filter(!depth <= MIN_LOCATION_DEPTH) %>% # Filter Low Depth Samples
     filter(snp_proportion > MIN_SNP_PERC) %>% 
     filter(`SNP` %in% sig_positions$SNP) %>% 
-    mutate(DATA = paste0(Gene,":", `Gene_SNP`," (", AA, ") [", `SNP`,"]- ", snp_depth, "/", `depth`, " (", round(`snp_proportion`,2), "%)")) %>% 
-    select(run, assay_name, name, `Primer Region` = Primer, `Gene:SNP (Amino Acid Change) [Genome SNP]- SNP Depth / Total Depth (SNP Prevalence %)`= DATA)
-  
+    select(run, assay_name, name, `Primer Region` = Primer, `SNP (Genome)` = SNP, Gene, `SNP (Gene)` = `Gene_SNP`, `Amino Acid Change` = AA, `SNP Depth` = snp_depth, `Location Depth` = depth, `SNP Prevalence` = snp_prop_final)
+
   return(list(Wide, SNP_Linelist))
 }
 

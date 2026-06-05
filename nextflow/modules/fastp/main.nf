@@ -12,8 +12,8 @@ process RUN_FASTP {
     output:
     // FIX: The asterisk before AND after 'cleaned' ensures SE and PE are both caught
     tuple val(meta), path("*.cleaned*.fastq.gz"), emit: trimmed_reads
-    path "*.fastp.html",                        emit: html
-    path "*.fastp.json",                        emit: json
+    tuple val(meta), path("*.fastp.html"),        emit: html
+    tuple val(meta), path("*.fastp.json"),        emit: json
 
     script:
     def extra_args = params.fastp_extra_args ?: ""

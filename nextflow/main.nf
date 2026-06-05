@@ -173,6 +173,13 @@ workflow {
     def aligned_bams = ch_aligned_with_meta
         .map { meta, bam, bai -> [ meta.id, bam, bai ] }
 
+    // Snapshot the aligned BAMs before any ASAP filtering so PROCESS_BAM can
+    // report the original mapped read count (not post-SMOR/identity-filter count)
+    def original_aligned_bams = aligned_bams.map { id, bam, bai -> [ id, bam ] }
+
+    // Key trimmer JSON by sample_id for joining into PROCESS_BAM
+    def fastp_stats_by_id = ch_trim_json_for_multiqc.map { meta, json -> [ meta.id, json ] }
+
     // --- Optional STEP 5: Primer masking ---
     def primer_bed_path = params.primer_file ? file(params.primer_file).toAbsolutePath() : null
     if(params.mask_primers || (params.primer_file && params.mask_primers != false)) {
@@ -206,7 +213,11 @@ workflow {
 
     // --- STEP 9: ASAP Processing ---
     if(params.asap_snps) {
-        def xml_output = PROCESS_BAM(ch_split.asap.combine(json_ch))
+        // Join filtered BAM with original (pre-filter) BAM and fastp stats for complete read counting
+        def ch_bam_for_asap = ch_split.asap
+            .join(original_aligned_bams)
+            .join(fastp_stats_by_id)
+        def xml_output = PROCESS_BAM(ch_bam_for_asap.combine(json_ch))
         
         // --- ASAP Tools  R Processing ---
         if(params.asaptools_processing) {

@@ -216,7 +216,8 @@
 	    <body>
 	        <center><h1>ASAP Results for Sample: <xsl:value-of select="@name"/></h1></center>
 	        <br />
-	        Total reads: <xsl:value-of select="@mapped_reads + @unmapped_reads"/><br/>
+	        <xsl:if test="@total_reads">Raw reads: <xsl:value-of select="@total_reads"/><br/></xsl:if>
+	        <xsl:if test="@trimmed_reads">Trimmed reads: <xsl:value-of select="@trimmed_reads"/><br/></xsl:if>
 	        Mapped reads: <xsl:value-of select="@mapped_reads"/><br/>
 	        Unmapped reads: <xsl:value-of select="@unmapped_reads"/><br/>
 	        <br/>

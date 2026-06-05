@@ -11,8 +11,8 @@ process FASTPLONG {
 
     output:
     tuple val(meta), path("*.fastplong.fastq.gz"), emit: reads
-    path "*.fastplong.json"                      , emit: json
-    path "*.fastplong.html"                      , emit: html
+    tuple val(meta), path("*.fastplong.json")    , emit: json
+    tuple val(meta), path("*.fastplong.html")    , emit: html
     path "versions.yml"                          , emit: versions
 
     script:

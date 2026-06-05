@@ -144,15 +144,14 @@ process PROCESS_BAM {
     publishDir "${params.outdir}/xml", mode: 'copy'
 
     input:
-    tuple val(sample_id), path(bamfile), path(bamindex), path(assay_json)
+    tuple val(sample_id), path(bamfile), path(bamindex), path(original_bam), path(fastp_json), path(assay_json)
 
     output:
     tuple val(sample_id), path("${sample_id}.xml"), emit: xml_output
 
     script:
-    // Create a string variable that is either the flag or empty
     def wg_flag = params.whole_genome ? "--whole-genome" : ""
-    
+
     """
     newBamProcessor.py \\
         -j ${assay_json} \\
@@ -165,6 +164,8 @@ process PROCESS_BAM {
         --consensus-proportion ${params.consensus_proportion} \\
         --fill-gaps ${params.fill_gaps} \\
         --mark-deletions ${params.mark_deletions} \\
+        --original-bam ${original_bam} \\
+        --fastp-json ${fastp_json} \\
         ${wg_flag} \\
         -o ${sample_id}.xml
     """

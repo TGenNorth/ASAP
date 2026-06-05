@@ -1,7 +1,17 @@
 #!/usr/bin/env Rscript
 
 library(tidyverse)
-library(ASAPTools)
+library(xml2)
+
+# Resolve path to local function files relative to this script
+.script_path   <- normalizePath(sub("--file=", "", commandArgs(trailingOnly = FALSE)[grep("--file=", commandArgs(trailingOnly = FALSE))]))
+.functions_dir <- file.path(dirname(.script_path), "asap_tools_functions")
+source(file.path(.functions_dir, "_read.ASAP.individual.R"))
+source(file.path(.functions_dir, "_read.ASAP.snps.individual.R"))
+source(file.path(.functions_dir, "_ASAP.get.depth.R"))
+source(file.path(.functions_dir, "_ASAP.get.proportions.R"))
+source(file.path(.functions_dir, "_ASAP.get.nreads.R"))
+source(file.path(.functions_dir, "_ASAP.get.quality.discards.R"))
 
 # Capture arguments passed from Nextflow
 args <- commandArgs(trailingOnly = TRUE)
@@ -20,11 +30,11 @@ sample_id  <- args[3]
 
 
 # 1. Individual Processing
-ASAP <- ASAPTools::read.ASAP.individual(xml_file)
-SNPS <- ASAPTools::read.ASAP.snps.individual(xml_file)
+ASAP <- read.ASAP.individual(xml_file)
+SNPS <- read.ASAP.snps.individual(xml_file)
 
 # Define the columns that SHOULD be numeric
-asap_numeric_names <- c("mapped_reads", "unassigned_reads", "unmapped_reads", "amplicon_number", "amplicon_reads", "breadth", "avg_depth")
+asap_numeric_names <- c("total_reads", "trimmed_reads", "mapped_reads", "unassigned_reads", "unmapped_reads", "amplicon_number", "amplicon_reads", "breadth", "avg_depth")
 snps_numeric_names <- c("Mapped_Reads", "unassigned_reads", "unmapped_reads",
                         "amplicon_number", "location_depth", "snp_position",
                         "snp_depth", "snp_proportion")

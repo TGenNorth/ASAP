@@ -4,6 +4,13 @@ library(tidyverse)
 library(openxlsx)
 library(doParallel)
 library(foreach)
+library(parallelly)
+
+# Resolve path to local function files relative to this script
+.script_path   <- normalizePath(sub("--file=", "", commandArgs(trailingOnly = FALSE)[grep("--file=", commandArgs(trailingOnly = FALSE))]))
+.functions_dir <- file.path(dirname(.script_path), "asap_tools_functions")
+source(file.path(.functions_dir, "_genome.snp.to.gene.snp.R"))
+source(file.path(.functions_dir, "_snps.to.amino.R"))
 
 args <- commandArgs(trailingOnly = TRUE)
 
@@ -92,7 +99,7 @@ for (REFERENCE in GENBANK_FILES) {
   message(paste0("Processing Gene SNPS: ", REFERENCE, " (ID: ", acc_id, " | FileBase: ", file_base, ")"))
 
   # Convert SNP to Gene SNP using the specific reference
-  gene_snps_sub <- suppressWarnings(TGenGenomicTools::genome.snp.to.gene.snp(
+  gene_snps_sub <- suppressWarnings(genome.snp.to.gene.snp(
     snp_db = SNPS_To_AA,
     ref_seq = REFERENCE,
     cores = parallelly::availableCores()
@@ -102,7 +109,7 @@ for (REFERENCE in GENBANK_FILES) {
   message(paste0("Processing Amino Acids: ", REFERENCE, " (ID: ", acc_id, " | FileBase: ", file_base, ")"))
 
   # Convert SNP to amino acid using the specific reference
-  amino_acids_sub <- suppressWarnings(TGenGenomicTools::snps.to.amino(
+  amino_acids_sub <- suppressWarnings(snps.to.amino(
     snp_db = SNPS_To_AA,
     ref_seq = REFERENCE,
     cores = parallelly::availableCores()

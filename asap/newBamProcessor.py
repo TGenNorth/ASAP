@@ -1013,6 +1013,8 @@ USAGE
         #parser.add_argument("--fill-gaps", nargs="?", const="n", default=None, dest="gap_char", help="fill no coverage gaps in the consensus sequence [default: False], optional parameter is the character to use for filling [defaut: n]") # TP edited
         parser.add_argument("--mark-deletions", nargs="?", const="_", dest="del_char", help="fill deletions in the consensus sequence [default: _] or `false` for consensus without deletions.")
         #parser.add_argument("--mark-deletions", nargs="?", const="_", dest="del_char", help="fill deletions in the consensus sequence [default: False], optional parameter is the character to use for filling [defaut: _]") # TP edited
+        parser.add_argument("--original-bam", metavar="FILE", dest="original_bam", type=argparse.FileType('rb'), default=None, help="Original aligned BAM (pre-ASAP filtering) used to report mapped_reads. [default: use --bam]")
+        parser.add_argument("--fastp-json", metavar="FILE", dest="fastp_json", type=argparse.FileType('r'), default=None, help="fastp/fastplong JSON file; provides total_reads and trimmed_reads attributes in output. [default: none]")
 
         # Process arguments
         args = parser.parse_args()
@@ -1055,9 +1057,25 @@ USAGE
             sample_dict['name'] = samdata.header.to_dict()['RG'][0]['ID']
         else:
             sample_dict['name'] = os.path.splitext(os.path.basename(bam_fp.name))[0]
-        sample_dict['mapped_reads'] = str(samdata.mapped)
+        # Use original pre-filter BAM for mapped_reads when available (restores pre-split semantics
+        # where mapped_reads was counted before SMOR/identity-filter changed the BAM)
+        if args.original_bam:
+            orig = pysam.AlignmentFile(args.original_bam.name, "rb")
+            sample_dict['mapped_reads'] = str(orig.mapped)
+            orig.close()
+        else:
+            sample_dict['mapped_reads'] = str(samdata.mapped)
         sample_dict['unmapped_reads'] = str(samdata.unmapped)
         sample_dict['unassigned_reads'] = str(samdata.nocoordinate)
+        # Add pre-QC and post-QC read counts from fastp/fastplong JSON when available
+        if args.fastp_json:
+            import json as _json
+            fastp_data = _json.load(args.fastp_json)
+            sample_dict['total_reads'] = str(fastp_data['summary']['before_filtering']['total_reads'])
+            sample_dict['trimmed_reads'] = str(fastp_data['summary']['after_filtering']['total_reads'])
+        # Restore SMOR flag when the input BAM was produced by generateSMORbam
+        if '_SMOR' in os.path.basename(bam_fp.name):
+            sample_dict['SMOR'] = 'True'
         sample_dict['depth_filter'] = str(depth)
         sample_dict['proportion_filter'] = str(proportion)
         sample_dict['breadth_filter'] = str(breadth)

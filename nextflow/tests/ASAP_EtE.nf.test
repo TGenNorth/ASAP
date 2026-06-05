@@ -1,91 +1,464 @@
-//conda activate /home/dlemmer/miniconda3/envs/asap
-//module load singularity
-//nf-test test ./tests/ASAP_EtE.nf.test --profile slurm --update-snapshot
-//nf-test test ./tests/ASAP_EtE.nf.test --profile slurm --updateSnapshot --wipeSnapshot
-//nf-test test ./tests/ASAP_EtE.nf.test --tag "TB_Amplicon"
+// Run commands:
+//   nf-test test ./tests/ASAP_EtE.nf.test --profile slurm
+//   nf-test test ./tests/ASAP_EtE.nf.test --profile slurm --update-snapshot
+//   nf-test test ./tests/ASAP_EtE.nf.test --profile slurm --tag <tag>
+//
+// On first run after changes delete the .snap file and regenerate with --update-snapshot.
+//
+// Tags:
+//   help            – CLI help output
+//   rsv             – RSV amplicon tests
+//   tb              – TB amplicon tests
+//   sc2             – SARS-CoV-2 tests
+//   bwa             – BWA aligner path
+//   bowtie2         – Bowtie2 aligner path
+//   minimap2        – Minimap2 / ONT path
+//   multi_gb        – Multiple GenBank reference files
+//   json_input      – Pre-built JSON passed directly (no conversion)
+//   excel_input     – Excel → JSON conversion
+//   fasta_input     – FASTA → JSON conversion
+//   paired_end      – Paired-end Illumina reads
+//   single_end      – Single-end Illumina reads
+//   ont             – ONT long reads + fastplong
+//   primer_masking  – maskPrimers.py step
+//   identity_filter – identityFilter.py step
+//   smor            – SMOR / SMOR-correction step
+//   ivar            – iVAR trim + variant + consensus branch
+//   asaptools       – R post-processing (PROCESS_XML_R, SNP table, cov table, etc.)
+//   combine_output  – OUTPUT_COMBINER + FORMAT_OUTPUT (XML → HTML)
+//   whole_genome    – --whole_genome mode
 
 nextflow_pipeline {
-    name "Test E2E ASAP Pipeline"
+    name "ASAP Comprehensive End-to-End Tests"
     script "main.nf"
 
-    test ("Nextflow Help Test") {
-        tag "Help"
-        // Goal of this test is to ensure that the help documentation is functional.
+    // =========================================================================
+    // 1. HELP DOCUMENTATION
+    // Verifies --help is functional and the schema-driven help text renders.
+    // =========================================================================
+    test("Help Documentation") {
+        tag "help"
+
         when {
             params {
                 help = true
             }
         }
+
         then {
             assert workflow.success
-            def targetFile = new File("tests/test_output/Help/help_docs.txt")
-            targetFile.parentFile.mkdirs()
-            targetFile.text = workflow.stdout
-            
-            assert snapshot(workflow.stdout).match("Help")
+            assert snapshot(workflow.stdout).match("help_stdout")
         }
     }
 
-    test ("RSV E2E Multiple GB Input") {
-        tag "RSV_Amplicon"
-        // Goal is to test simple ASAP functionality using RSV amplicon reads.
-        // Paired end, 2 GB files, no asaptools testing.
+    // =========================================================================
+    // 2. RSV – MULTI-GENBANK REFERENCE + BWA + COMBINE OUTPUT
+    // Covers: multiple GenBank files, BWA aligner, paired-end reads,
+    //         OUTPUT_COMBINER, FORMAT_OUTPUT (HTML report), MultiQC.
+    // =========================================================================
+    test("RSV - Multi-GenBank Reference, BWA, Paired-End, Combine Output") {
+        tag "rsv", "multi_gb", "bwa", "paired_end", "combine_output"
+
         when {
             params {
                 read_dir             = "${baseDir}/tests/data/RSV/"
                 reference_input      = "${baseDir}/tests/preparejson/RSV*.gb"
-                outdir               = "${baseDir}/tests/test_output/RSV_End_To_End_Test"
+                outdir               = "${baseDir}/tests/test_output/RSV_MultiGB_BWA"
                 aligner              = "bwa"
+                file_name            = "RSV_MultiGB_BWA"
                 proportion           = 0.1
-                file_name            = "RSV_End_To_End_Test"
+                combine_output       = true
                 asaptools_processing = false
             }
         }
 
         then {
             assert workflow.success
-            assert snapshot(workflow.stdout).match("RSV_End_To_End_Test_Out")
-            
-            // Check the combined XML
-            def xmlReport = path("${baseDir}/tests/test_output/RSV_End_To_End_Test/RSV_End_To_End_Test_analysis.xml")
-            assert xmlReport.exists()
-            assert snapshot(xmlReport).match("combined_xml")
-            
-            // Check the combined HTML (Final Output)
-            def htmlReport = path("${baseDir}/tests/test_output/RSV_End_To_End_Test/ASAP_Report_RSV_End_To_End_Test.html")
+
+            def out = "${baseDir}/tests/test_output/RSV_MultiGB_BWA"
+
+            // Pipeline metadata
+            assert path("${out}/pipeline_info/sample_read_type_summary.tsv").exists()
+
+            // Reference generation
+            assert path("${out}/reference/reference.fasta").exists()
+
+            // Per-sample XML spot-checks (representative samples)
+            assert path("${out}/xml/CONTROL_RSVA_PTC_Dil_110_reg_S8_L001.xml").exists()
+            assert path("${out}/xml/CONTROL_RSVA_PTC_Dil_110_tiled_S20_L001.xml").exists()
+            assert path("${out}/xml/CONTROL_RSVB_PTC_Dil_110_reg_S14_L001.xml").exists()
+            assert path("${out}/xml/RSV_Nested_RSVA_PTC_S53_L001.xml").exists()
+            assert path("${out}/xml/RSV_TG1451730_S4_L001.xml").exists()
+
+            // Combined XML and HTML report
+            def combinedXml = path("${out}/RSV_MultiGB_BWA_analysis.xml")
+            assert combinedXml.exists()
+            assert snapshot(combinedXml).match("rsv_combined_xml")
+
+            def htmlReport = path("${out}/ASAP_Report_RSV_MultiGB_BWA.html")
             assert htmlReport.exists()
-            assert snapshot(htmlReport).match("html_report")
-            
-            }
+            assert snapshot(htmlReport).match("rsv_html_report")
+
+            // Per-sample fastp and BWA outputs for one sample
+            def sample = "RSV_TG1451730_S4_L001"
+            assert path("${out}/sample_info/${sample}/fastp").isDirectory()
+            assert path("${out}/sample_info/${sample}/bwa/${sample}-bwa.bam").exists()
+            assert path("${out}/sample_info/${sample}/bwa/${sample}-bwa.bam.bai").exists()
+            assert path("${out}/sample_info/${sample}/bwa/${sample}.flagstat.txt").exists()
+
+            // MultiQC aggregation
+            assert path("${out}/multiqc").isDirectory()
+        }
     }
-    
-    test ("TB Ampseq E2E") {
-        tag "TB_Amplicon"
-        // Goal is to test simple ASAP functionality using TBamplicon reads.
+
+    // =========================================================================
+    // 3. SC2 – JSON DIRECT INPUT + BOWTIE2 + PAIRED-END + COMBINE OUTPUT
+    // Covers: JSON passed directly (no PREPARE_ASAP_JSON), Bowtie2 aligner,
+    //         paired-end reads, combined XML and HTML.
+    // =========================================================================
+    test("SC2 - JSON Direct Input, Bowtie2, Paired-End, Combine Output") {
+        tag "sc2", "json_input", "bowtie2", "paired_end", "combine_output"
+
         when {
             params {
-                read_dir             = "${baseDir}/tests/data/TB_Ampseq/"
-                reference_input      = "${baseDir}/tests/preparejson/H37Rv_NC0009623.gb"
-                outdir               = "${baseDir}/tests/test_output/TB_End_To_End_Test"
-                aligner              = "bwa"
-                proportion           = 0.0001
-                file_name            = "RSV_End_To_End_Test"
-                asaptools_processing = true
-                primer_file          = "${baseDir}/tests/bedfiles/H37Rv_NC0009623_Primer_File_Ampseq.bed"
-                asaptools_positions_of_interest = "${baseDir}/tests/Genes_Of_Interest/H37Rv_Genes_Of_Interst.csv"
-                asaptools_min_location_depth = 499 
-                mask_primers         = true
-                smor_correction      = true
-                fastp_extra_args     = '-l 100'
-                identity             = 0.97
-                combine_output       = false
+                read_dir             = "${baseDir}/tests/data/SC2_Paired_Illumina/"
+                reference_input      = "${baseDir}/tests/json/SC2_Reference.json"
+                outdir               = "${baseDir}/tests/test_output/SC2_JSON_Bowtie2"
+                aligner              = "bowtie2"
+                file_name            = "SC2_JSON_Bowtie2"
+                proportion           = 0.1
+                combine_output       = true
+                asaptools_processing = false
             }
         }
 
         then {
             assert workflow.success
-            assert snapshot(workflow.stdout).match("TB_End_To_End_Test_Out")
 
+            def out    = "${baseDir}/tests/test_output/SC2_JSON_Bowtie2"
+            def sample = "SRR25496336"
+
+            // Reference built from the JSON (no conversion step)
+            assert path("${out}/reference/reference.fasta").exists()
+
+            // Pipeline metadata — sample is paired-end
+            def summary = path("${out}/pipeline_info/sample_read_type_summary.tsv")
+            assert summary.exists()
+            assert summary.text.contains("Paired-End")
+
+            // Bowtie2-specific output naming
+            assert path("${out}/sample_info/${sample}/bowtie2/${sample}-bt2.bam").exists()
+            assert path("${out}/sample_info/${sample}/bowtie2/${sample}-bt2.bam.bai").exists()
+            assert path("${out}/sample_info/${sample}/bowtie2/${sample}.flagstat.txt").exists()
+
+            // Per-sample XML
+            def sampleXml = path("${out}/xml/${sample}.xml")
+            assert sampleXml.exists()
+            assert snapshot(sampleXml).match("sc2_bowtie2_sample_xml")
+
+            // Combined outputs
+            assert path("${out}/SC2_JSON_Bowtie2_analysis.xml").exists()
+            assert path("${out}/ASAP_Report_SC2_JSON_Bowtie2.html").exists()
+        }
+    }
+
+    // =========================================================================
+    // 4. SC2 – SINGLE-END ILLUMINA + BWA
+    // Covers: single-end read detection, SE fastp trimming, BWA alignment,
+    //         ASAP BAM processing, combined output.
+    // =========================================================================
+    test("SC2 - Single-End Illumina, BWA") {
+        tag "sc2", "single_end", "bwa", "combine_output"
+
+        when {
+            params {
+                read_dir             = "${baseDir}/tests/data/SC2_Single_Illumina/"
+                reference_input      = "${baseDir}/tests/json/SC2_Reference.json"
+                outdir               = "${baseDir}/tests/test_output/SC2_SE_BWA"
+                aligner              = "bwa"
+                file_name            = "SC2_SE_BWA"
+                proportion           = 0.1
+                combine_output       = true
+                asaptools_processing = false
             }
+        }
+
+        then {
+            assert workflow.success
+
+            def out    = "${baseDir}/tests/test_output/SC2_SE_BWA"
+            def sample = "ERR9990397_SE"
+
+            // Sample type detection
+            def summary = path("${out}/pipeline_info/sample_read_type_summary.tsv")
+            assert summary.exists()
+            assert summary.text.contains("Single-End")
+
+            // SE fastp produces a single cleaned file (not _R1/_R2)
+            assert path("${out}/sample_info/${sample}/fastp/${sample}.cleaned.fastq.gz").exists()
+
+            // Alignment
+            assert path("${out}/sample_info/${sample}/bwa/${sample}-bwa.bam").exists()
+            assert path("${out}/sample_info/${sample}/bwa/${sample}-bwa.bam.bai").exists()
+
+            // ASAP XML
+            assert path("${out}/xml/${sample}.xml").exists()
+
+            // Combined output
+            assert path("${out}/SC2_SE_BWA_analysis.xml").exists()
+            assert path("${out}/ASAP_Report_SC2_SE_BWA.html").exists()
+        }
+    }
+
+    // =========================================================================
+    // 5. SC2 – ONT LONG READS + MINIMAP2
+    // Covers: technology=ont, fastplong trimmer, minimap2 alignment,
+    //         ASAP BAM processing, combined output.
+    // =========================================================================
+    test("SC2 - ONT Long Reads, Minimap2") {
+        tag "sc2", "ont", "minimap2", "single_end", "combine_output"
+
+        when {
+            params {
+                read_dir             = "${baseDir}/tests/data/SC2_Single_ONT/"
+                reference_input      = "${baseDir}/tests/json/SC2_Reference.json"
+                outdir               = "${baseDir}/tests/test_output/SC2_ONT_Minimap2"
+                technology           = "ont"
+                file_name            = "SC2_ONT_Minimap2"
+                proportion           = 0.1
+                combine_output       = true
+                asaptools_processing = false
+            }
+        }
+
+        then {
+            assert workflow.success
+
+            def out    = "${baseDir}/tests/test_output/SC2_ONT_Minimap2"
+            def sample = "SRR29282607_SE"
+
+            // fastplong output (ONT trimmer)
+            assert path("${out}/sample_info/${sample}/fastp_long").isDirectory()
+            assert path("${out}/sample_info/${sample}/fastp_long/${sample}.fastplong.fastq.gz").exists()
+
+            // Minimap2 alignment published to /alignment
+            assert path("${out}/sample_info/${sample}/alignment").isDirectory()
+
+            // ASAP XML
+            assert path("${out}/xml/${sample}.xml").exists()
+
+            // Combined output
+            assert path("${out}/SC2_ONT_Minimap2_analysis.xml").exists()
+            assert path("${out}/ASAP_Report_SC2_ONT_Minimap2.html").exists()
+        }
+    }
+
+    // =========================================================================
+    // 6. SC2 – PRIMER MASKING + iVAR VARIANT CALLING
+    // Covers: MASK_PRIMERS, iVAR trim, iVAR variants, iVAR consensus.
+    //         Uses the SC2 concatenated BED file.
+    // =========================================================================
+    test("SC2 - Primer Masking + iVAR Variant Calling") {
+        tag "sc2", "primer_masking", "ivar", "bwa", "paired_end"
+
+        when {
+            params {
+                read_dir             = "${baseDir}/tests/data/SC2_Paired_Illumina/"
+                reference_input      = "${baseDir}/tests/json/SC2_Reference.json"
+                outdir               = "${baseDir}/tests/test_output/SC2_Primer_iVAR"
+                aligner              = "bwa"
+                file_name            = "SC2_Primer_iVAR"
+                proportion           = 0.1
+                primer_file          = "${baseDir}/tests/bedfiles/SC2_Concatenated_Bedfile.bed"
+                mask_primers         = true
+                ivar                 = true
+                combine_output       = true
+                asaptools_processing = false
+            }
+        }
+
+        then {
+            assert workflow.success
+
+            def out    = "${baseDir}/tests/test_output/SC2_Primer_iVAR"
+            def sample = "SRR25496336"
+
+            // Primer masking outputs
+            assert path("${out}/sample_info/${sample}/mask_primers/${sample}-bwa_primerMasked.bam").exists()
+            assert path("${out}/sample_info/${sample}/mask_primers/${sample}-bwa_primerMasked.bam.bai").exists()
+            assert path("${out}/sample_info/${sample}/mask_primers/primer_masking.tsv").exists()
+            assert path("${out}/sample_info/${sample}/mask_primers/primer_masking.log").exists()
+
+            // iVAR trim output
+            assert path("${out}/sample_info/${sample}/ivar_trim").isDirectory()
+
+            // iVAR variant calling output (TSV)
+            assert path("${out}/sample_info/${sample}/ivar_variants").isDirectory()
+
+            // iVAR consensus output
+            assert path("${out}/sample_info/${sample}/ivar_consensus").isDirectory()
+
+            // ASAP XML (runs in parallel with iVAR)
+            assert path("${out}/xml/${sample}.xml").exists()
+
+            // Combined ASAP outputs
+            assert path("${out}/SC2_Primer_iVAR_analysis.xml").exists()
+            assert path("${out}/ASAP_Report_SC2_Primer_iVAR.html").exists()
+        }
+    }
+
+    // =========================================================================
+    // 7. TB – FULL FEATURE SET
+    // Covers: single GenBank input, BWA, paired-end, primer masking,
+    //         identity filtering, SMOR correction, full asaptools suite
+    //         (PROCESS_XML_R, COMBINE_RDATA, COV_TABLE, QC_PLOTS,
+    //          GENERATE_FASTA, SNPS_TO_AMINOACIDS, SNP_TABLE),
+    //         positions of interest, combine_output=false.
+    // =========================================================================
+    test("TB - Full Feature Amplicon (primer masking, identity filter, SMOR, asaptools)") {
+        tag "tb", "bwa", "paired_end", "primer_masking", "identity_filter", "smor", "asaptools"
+
+        when {
+            params {
+                read_dir                        = "${baseDir}/tests/data/TB_Ampseq/"
+                reference_input                 = "${baseDir}/tests/preparejson/H37Rv_NC0009623.gb"
+                outdir                          = "${baseDir}/tests/test_output/TB_Full_Features"
+                aligner                         = "bwa"
+                file_name                       = "TB_Full_Features"
+                proportion                      = 0.0001
+                fastp_extra_args                = "-l 100"
+
+                // Primer masking
+                primer_file                     = "${baseDir}/tests/bedfiles/H37Rv_NC0009623_Primer_File_Ampseq.bed"
+                mask_primers                    = true
+
+                // Identity filter + SMOR correction
+                identity                        = 0.97
+                smor_correction                 = true
+
+                // asaptools – full suite
+                combine_output                  = false
+                asaptools_processing            = true
+                asaptools_cov_table             = true
+                asaptools_qc_plots              = true
+                asaptools_generate_fasta        = true
+                asaptools_snp_table             = true
+                asaptools_min_location_depth    = 499
+                asaptools_positions_of_interest = "${baseDir}/tests/Genes_Of_Interest/H37Rv_Genes_Of_Interst.csv"
+            }
+        }
+
+        then {
+            assert workflow.success
+
+            def out    = "${baseDir}/tests/test_output/TB_Full_Features"
+            def sample = "TB-10katGorig1-123_S36_L001"
+
+            // Reference
+            assert path("${out}/reference/reference.fasta").exists()
+
+            // Pipeline info
+            assert path("${out}/pipeline_info/sample_read_type_summary.tsv").exists()
+
+            // BAM processing chain for the representative sample
+            assert path("${out}/sample_info/${sample}/bwa/${sample}-bwa.bam").exists()
+
+            assert path("${out}/sample_info/${sample}/mask_primers/${sample}-bwa_primerMasked.bam").exists()
+            assert path("${out}/sample_info/${sample}/mask_primers/${sample}-bwa_primerMasked.bam.bai").exists()
+            assert path("${out}/sample_info/${sample}/mask_primers/primer_masking.tsv").exists()
+
+            assert path("${out}/sample_info/${sample}/identity_filter/${sample}-bwa_primerMasked_identityFiltered.bam").exists()
+            assert path("${out}/sample_info/${sample}/identity_filter/identity_filtering.log").exists()
+
+            assert path("${out}/sample_info/${sample}/smor_correction/${sample}-bwa_primerMasked_identityFiltered_SMOR.bam").exists()
+
+            // Per-sample ASAP XML
+            assert path("${out}/xml/${sample}.xml").exists()
+
+            // Per-sample R processing
+            assert path("${out}/XML_Rdata/${sample}_XML_Data.Rdata").exists()
+            assert path("${out}/XML_Rdata/${sample}_Summary.csv").exists()
+
+            // Combined R data
+            assert path("${out}/ASAP_R_Data/Combined_ASAP_Data.Rdata").exists()
+            assert path("${out}/ASAP_R_Data/Combined_Summary.csv").exists()
+
+            // Optional R outputs
+            assert path("${out}/ASAP_R_Data").isDirectory()
+
+            // MultiQC
+            assert path("${out}/multiqc").isDirectory()
+        }
+    }
+
+    // =========================================================================
+    // 8. TB – EXCEL REFERENCE INPUT
+    // Covers: Excel → JSON conversion via prepareJSONInput_nextflow.py,
+    //         then BWA alignment and ASAP BAM processing.
+    // =========================================================================
+    test("TB - Excel Reference Input") {
+        tag "tb", "excel_input", "bwa", "paired_end"
+
+        when {
+            params {
+                read_dir             = "${baseDir}/tests/data/TB_Ampseq/"
+                reference_input      = "${baseDir}/tests/preparejson/TB_Nitro_SMOR_fullgene_references.xlsx"
+                outdir               = "${baseDir}/tests/test_output/TB_Excel_Input"
+                aligner              = "bwa"
+                file_name            = "TB_Excel_Input"
+                proportion           = 0.1
+                combine_output       = false
+                asaptools_processing = false
+            }
+        }
+
+        then {
+            assert workflow.success
+
+            def out = "${baseDir}/tests/test_output/TB_Excel_Input"
+
+            // Reference FASTA generated from Excel → JSON
+            assert path("${out}/reference/reference.fasta").exists()
+
+            // XML output directory was populated
+            assert path("${out}/xml").isDirectory()
+            assert path("${out}/xml").list().size() > 0
+        }
+    }
+
+    // =========================================================================
+    // 9. TB – FASTA REFERENCE INPUT + WHOLE GENOME MODE
+    // Covers: FASTA → JSON conversion via prepareJSONInput_nextflow.py,
+    //         --whole_genome flag (skips per-sample consensus/depth arrays).
+    // =========================================================================
+    test("TB - FASTA Reference Input, Whole Genome Mode") {
+        tag "tb", "fasta_input", "whole_genome", "bwa", "paired_end"
+
+        when {
+            params {
+                read_dir             = "${baseDir}/tests/data/TB_Ampseq/"
+                reference_input      = "${baseDir}/tests/preparejson/TB_WGS_Reference.fasta"
+                outdir               = "${baseDir}/tests/test_output/TB_FASTA_WGS"
+                aligner              = "bwa"
+                file_name            = "TB_FASTA_WGS"
+                proportion           = 0.1
+                whole_genome         = true
+                combine_output       = false
+                asaptools_processing = false
+            }
+        }
+
+        then {
+            assert workflow.success
+
+            def out = "${baseDir}/tests/test_output/TB_FASTA_WGS"
+
+            // Reference FASTA generated from input FASTA → JSON
+            assert path("${out}/reference/reference.fasta").exists()
+
+            // XML output directory was populated
+            assert path("${out}/xml").isDirectory()
+            assert path("${out}/xml").list().size() > 0
+        }
     }
 }

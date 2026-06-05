@@ -1,0 +1,23 @@
+========================================
+ ASAP nf-test run
+ Started:  2026-06-05_10-35-37
+ SLURM ID: 33645089
+ Job name: ASAP_EtE_tests
+ Profile:  slurm
+ Log:      /tgen_labs/EPIC/tporter/ASAP/nextflow/logs/nf-test/run_2026-06-05_10-35-37_slurm33645089.log
+ Command:  nf-test test tests/ASAP_EtE.nf.test --profile slurm --stop-on-first-failure --verbose
+========================================
+
+
+🚀[1m nf-test 0.9.3[0m
+https://www.nf-test.com
+(c) 2021 - 2024 Lukas Forer and Sebastian Schoenherr
+
+[31mError: groovy.lang.MissingMethodException: No signature of method: ASAP_EtE_nf$_run_closure1$_closure3.tag() is applicable for argument types: (String, String, String, String, String) values: [rsv, multi_gb, bwa, paired_end, combine_output]
+Possible solutions: any(), any(), find(), dump(), stream(), grep()[0m
+
+========================================
+ RESULT: FAILED (exit 1)
+ Full log: /tgen_labs/EPIC/tporter/ASAP/nextflow/logs/nf-test/run_2026-06-05_10-35-37_slurm33645089.log
+ Finished: 2026-06-05_10-35-54
+========================================

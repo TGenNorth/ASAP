@@ -181,7 +181,7 @@ workflow {
     }
 
     // --- Optional STEP 6 & 7: Identity & SMOR ---
-    if(params.identity) {
+    if(params.identity != null) {
         def result = IDENTITY_FILTER(aligned_bams)
         aligned_bams = result[0]
     }
@@ -263,12 +263,11 @@ workflow {
                         gb_file_to_use
                     ).snp_to_amino_rdata
                 } else {
-                    // Pass a dummy string/path that the R script will recognize as "NULL"
-                    aa_data_ch = Channel.value("null_aa_placeholder")
+                    aa_data_ch = Channel.value(file("${baseDir}/bin/null"))
                 }
 
                 // 3. Handle Primer BED (Optional)
-                def primer_bed_ch = params.primer_file ? file(params.primer_file) : file("null_primer_placeholder")
+                def primer_bed_ch = params.primer_file ? file(params.primer_file) : file("${baseDir}/bin/null")
 
                 // 4. Run the SNP Table Process
                 // This now runs regardless of whether GB files exist

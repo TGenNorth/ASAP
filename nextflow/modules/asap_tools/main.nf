@@ -191,7 +191,7 @@ process PROCESS_GENERATE_SNP_TABLE {
     
     output:
     path "*.xlsx", emit: xlsx, optional: true
-    path "*.csv", emit: csv
+    path "*.csv", emit: csv, optional: true
 
     script:
     def poi_param = (poi_input == null || poi_input == "NULL" || poi_input == "") ? "NULL" : poi_input
@@ -203,6 +203,7 @@ process PROCESS_GENERATE_SNP_TABLE {
     def aa_param  = (aa_rdata && aa_rdata.name != 'null') ? aa_rdata : "NULL"
 
     """
+    shopt -s nullglob
     process_asaptools_snp_table.R \\
         ${combined_rdata} \\
         ${prefix} \\

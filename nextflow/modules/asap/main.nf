@@ -203,18 +203,6 @@ process FORMAT_OUTPUT {
 
     script:
     """
-    echo "--- DEBUGGING FILE SYSTEM ---"
-    echo "Current directory: \$(pwd)"
-    echo "Checking for XML: ${final_xml}"
-    ls -lh ${final_xml} || echo "XML NOT FOUND"
-    
-    echo "Checking for Stylesheet: ${stylesheet}"
-    ls -lh ${stylesheet} || echo "STYLESHEET NOT FOUND"
-    
-    echo "Checking if stylesheet is a valid link:"
-    readlink -f ${stylesheet}
-    
-    echo "--- STARTING PYTHON SCRIPT ---"
-    formatOutput.py -x ${final_xml} -s ${stylesheet} -o ${out_file} 
+    formatOutput.py -x ${final_xml} -s ${stylesheet} -o ${out_file}
     """
 }

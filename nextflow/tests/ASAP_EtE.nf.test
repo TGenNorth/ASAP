@@ -46,8 +46,9 @@ nextflow_pipeline {
         }
 
         then {
+            def _h = new File(outputDir).parentFile; def _l = new File(_h.parent, "01_help_documentation"); if (java.nio.file.Files.isSymbolicLink(_l.toPath())) _l.delete(); java.nio.file.Files.createSymbolicLink(_l.toPath(), _h.toPath())
             assert workflow.success
-            assert snapshot(workflow.stdout).match("help_stdout")
+            assert snapshot(workflow.stdout.findAll { !it.contains("Launching `") }).match("help_stdout")
         }
     }
 
@@ -57,7 +58,11 @@ nextflow_pipeline {
     //         OUTPUT_COMBINER, FORMAT_OUTPUT (HTML report), MultiQC.
     // =========================================================================
     test("RSV - Multi-GenBank Reference, BWA, Paired-End, Combine Output") {
-        tag "rsv", "multi_gb", "bwa", "paired_end", "combine_output"
+        tag "rsv"
+        tag "multi_gb"
+        tag "bwa"
+        tag "paired_end"
+        tag "combine_output"
 
         when {
             params {
@@ -73,6 +78,7 @@ nextflow_pipeline {
         }
 
         then {
+            def _h = new File(outputDir).parentFile; def _l = new File(_h.parent, "02_rsv_multigb_bwa_combine_output"); if (java.nio.file.Files.isSymbolicLink(_l.toPath())) _l.delete(); java.nio.file.Files.createSymbolicLink(_l.toPath(), _h.toPath())
             assert workflow.success
 
             def out = "${baseDir}/tests/test_output/RSV_MultiGB_BWA"
@@ -101,13 +107,13 @@ nextflow_pipeline {
 
             // Per-sample fastp and BWA outputs for one sample
             def sample = "RSV_TG1451730_S4_L001"
-            assert path("${out}/sample_info/${sample}/fastp").isDirectory()
+            assert path("${out}/sample_info/${sample}/fastp").toFile().isDirectory()
             assert path("${out}/sample_info/${sample}/bwa/${sample}-bwa.bam").exists()
             assert path("${out}/sample_info/${sample}/bwa/${sample}-bwa.bam.bai").exists()
             assert path("${out}/sample_info/${sample}/bwa/${sample}.flagstat.txt").exists()
 
             // MultiQC aggregation
-            assert path("${out}/multiqc").isDirectory()
+            assert path("${out}/multiqc").toFile().isDirectory()
         }
     }
 
@@ -117,7 +123,11 @@ nextflow_pipeline {
     //         paired-end reads, combined XML and HTML.
     // =========================================================================
     test("SC2 - JSON Direct Input, Bowtie2, Paired-End, Combine Output") {
-        tag "sc2", "json_input", "bowtie2", "paired_end", "combine_output"
+        tag "sc2"
+        tag "json_input"
+        tag "bowtie2"
+        tag "paired_end"
+        tag "combine_output"
 
         when {
             params {
@@ -133,6 +143,7 @@ nextflow_pipeline {
         }
 
         then {
+            def _h = new File(outputDir).parentFile; def _l = new File(_h.parent, "03_sc2_json_bowtie2_combine_output"); if (java.nio.file.Files.isSymbolicLink(_l.toPath())) _l.delete(); java.nio.file.Files.createSymbolicLink(_l.toPath(), _h.toPath())
             assert workflow.success
 
             def out    = "${baseDir}/tests/test_output/SC2_JSON_Bowtie2"
@@ -168,7 +179,10 @@ nextflow_pipeline {
     //         ASAP BAM processing, combined output.
     // =========================================================================
     test("SC2 - Single-End Illumina, BWA") {
-        tag "sc2", "single_end", "bwa", "combine_output"
+        tag "sc2"
+        tag "single_end"
+        tag "bwa"
+        tag "combine_output"
 
         when {
             params {
@@ -184,6 +198,7 @@ nextflow_pipeline {
         }
 
         then {
+            def _h = new File(outputDir).parentFile; def _l = new File(_h.parent, "04_sc2_single_end_bwa"); if (java.nio.file.Files.isSymbolicLink(_l.toPath())) _l.delete(); java.nio.file.Files.createSymbolicLink(_l.toPath(), _h.toPath())
             assert workflow.success
 
             def out    = "${baseDir}/tests/test_output/SC2_SE_BWA"
@@ -216,7 +231,11 @@ nextflow_pipeline {
     //         ASAP BAM processing, combined output.
     // =========================================================================
     test("SC2 - ONT Long Reads, Minimap2") {
-        tag "sc2", "ont", "minimap2", "single_end", "combine_output"
+        tag "sc2"
+        tag "ont"
+        tag "minimap2"
+        tag "single_end"
+        tag "combine_output"
 
         when {
             params {
@@ -232,17 +251,18 @@ nextflow_pipeline {
         }
 
         then {
+            def _h = new File(outputDir).parentFile; def _l = new File(_h.parent, "05_sc2_ont_minimap2"); if (java.nio.file.Files.isSymbolicLink(_l.toPath())) _l.delete(); java.nio.file.Files.createSymbolicLink(_l.toPath(), _h.toPath())
             assert workflow.success
 
             def out    = "${baseDir}/tests/test_output/SC2_ONT_Minimap2"
             def sample = "SRR29282607_SE"
 
             // fastplong output (ONT trimmer)
-            assert path("${out}/sample_info/${sample}/fastp_long").isDirectory()
+            assert path("${out}/sample_info/${sample}/fastp_long").toFile().isDirectory()
             assert path("${out}/sample_info/${sample}/fastp_long/${sample}.fastplong.fastq.gz").exists()
 
             // Minimap2 alignment published to /alignment
-            assert path("${out}/sample_info/${sample}/alignment").isDirectory()
+            assert path("${out}/sample_info/${sample}/alignment").toFile().isDirectory()
 
             // ASAP XML
             assert path("${out}/xml/${sample}.xml").exists()
@@ -259,7 +279,11 @@ nextflow_pipeline {
     //         Uses the SC2 concatenated BED file.
     // =========================================================================
     test("SC2 - Primer Masking + iVAR Variant Calling") {
-        tag "sc2", "primer_masking", "ivar", "bwa", "paired_end"
+        tag "sc2"
+        tag "primer_masking"
+        tag "ivar"
+        tag "bwa"
+        tag "paired_end"
 
         when {
             params {
@@ -278,6 +302,7 @@ nextflow_pipeline {
         }
 
         then {
+            def _h = new File(outputDir).parentFile; def _l = new File(_h.parent, "06_sc2_primer_masking_ivar"); if (java.nio.file.Files.isSymbolicLink(_l.toPath())) _l.delete(); java.nio.file.Files.createSymbolicLink(_l.toPath(), _h.toPath())
             assert workflow.success
 
             def out    = "${baseDir}/tests/test_output/SC2_Primer_iVAR"
@@ -290,13 +315,13 @@ nextflow_pipeline {
             assert path("${out}/sample_info/${sample}/mask_primers/primer_masking.log").exists()
 
             // iVAR trim output
-            assert path("${out}/sample_info/${sample}/ivar_trim").isDirectory()
+            assert path("${out}/sample_info/${sample}/ivar_trim").toFile().isDirectory()
 
             // iVAR variant calling output (TSV)
-            assert path("${out}/sample_info/${sample}/ivar_variants").isDirectory()
+            assert path("${out}/sample_info/${sample}/ivar_variants").toFile().isDirectory()
 
             // iVAR consensus output
-            assert path("${out}/sample_info/${sample}/ivar_consensus").isDirectory()
+            assert path("${out}/sample_info/${sample}/ivar_consensus").toFile().isDirectory()
 
             // ASAP XML (runs in parallel with iVAR)
             assert path("${out}/xml/${sample}.xml").exists()
@@ -316,7 +341,13 @@ nextflow_pipeline {
     //         positions of interest, combine_output=false.
     // =========================================================================
     test("TB - Full Feature Amplicon (primer masking, identity filter, SMOR, asaptools)") {
-        tag "tb", "bwa", "paired_end", "primer_masking", "identity_filter", "smor", "asaptools"
+        tag "tb"
+        tag "bwa"
+        tag "paired_end"
+        tag "primer_masking"
+        tag "identity_filter"
+        tag "smor"
+        tag "asaptools"
 
         when {
             params {
@@ -349,6 +380,7 @@ nextflow_pipeline {
         }
 
         then {
+            def _h = new File(outputDir).parentFile; def _l = new File(_h.parent, "07_tb_full_feature_amplicon"); if (java.nio.file.Files.isSymbolicLink(_l.toPath())) _l.delete(); java.nio.file.Files.createSymbolicLink(_l.toPath(), _h.toPath())
             assert workflow.success
 
             def out    = "${baseDir}/tests/test_output/TB_Full_Features"
@@ -384,10 +416,10 @@ nextflow_pipeline {
             assert path("${out}/ASAP_R_Data/Combined_Summary.csv").exists()
 
             // Optional R outputs
-            assert path("${out}/ASAP_R_Data").isDirectory()
+            assert path("${out}/ASAP_R_Data").toFile().isDirectory()
 
             // MultiQC
-            assert path("${out}/multiqc").isDirectory()
+            assert path("${out}/multiqc").toFile().isDirectory()
         }
     }
 
@@ -397,7 +429,10 @@ nextflow_pipeline {
     //         then BWA alignment and ASAP BAM processing.
     // =========================================================================
     test("TB - Excel Reference Input") {
-        tag "tb", "excel_input", "bwa", "paired_end"
+        tag "tb"
+        tag "excel_input"
+        tag "bwa"
+        tag "paired_end"
 
         when {
             params {
@@ -413,6 +448,7 @@ nextflow_pipeline {
         }
 
         then {
+            def _h = new File(outputDir).parentFile; def _l = new File(_h.parent, "08_tb_excel_input"); if (java.nio.file.Files.isSymbolicLink(_l.toPath())) _l.delete(); java.nio.file.Files.createSymbolicLink(_l.toPath(), _h.toPath())
             assert workflow.success
 
             def out = "${baseDir}/tests/test_output/TB_Excel_Input"
@@ -421,8 +457,8 @@ nextflow_pipeline {
             assert path("${out}/reference/reference.fasta").exists()
 
             // XML output directory was populated
-            assert path("${out}/xml").isDirectory()
-            assert path("${out}/xml").list().size() > 0
+            assert path("${out}/xml").toFile().isDirectory()
+            assert path("${out}/xml").toFile().list().size() > 0
         }
     }
 
@@ -432,7 +468,11 @@ nextflow_pipeline {
     //         --whole_genome flag (skips per-sample consensus/depth arrays).
     // =========================================================================
     test("TB - FASTA Reference Input, Whole Genome Mode") {
-        tag "tb", "fasta_input", "whole_genome", "bwa", "paired_end"
+        tag "tb"
+        tag "fasta_input"
+        tag "whole_genome"
+        tag "bwa"
+        tag "paired_end"
 
         when {
             params {
@@ -449,6 +489,7 @@ nextflow_pipeline {
         }
 
         then {
+            def _h = new File(outputDir).parentFile; def _l = new File(_h.parent, "09_tb_fasta_wgs"); if (java.nio.file.Files.isSymbolicLink(_l.toPath())) _l.delete(); java.nio.file.Files.createSymbolicLink(_l.toPath(), _h.toPath())
             assert workflow.success
 
             def out = "${baseDir}/tests/test_output/TB_FASTA_WGS"
@@ -457,8 +498,8 @@ nextflow_pipeline {
             assert path("${out}/reference/reference.fasta").exists()
 
             // XML output directory was populated
-            assert path("${out}/xml").isDirectory()
-            assert path("${out}/xml").list().size() > 0
+            assert path("${out}/xml").toFile().isDirectory()
+            assert path("${out}/xml").toFile().list().size() > 0
         }
     }
 }

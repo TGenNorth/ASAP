@@ -322,11 +322,16 @@ with and without detected primer sequences, confirming correct masking.
 +=====================+=========+=======================================================+
 | ``--primer_file``   | ``null``| Path to primer BED file (required to enable masking)  |
 +---------------------+---------+-------------------------------------------------------+
-| ``--mask_primers``  | ``false``| Enable primer masking                                |
+| ``--mask_primers``  | ``null``| Enable primer masking (auto-enabled when              |
+|                     |         | ``--primer_file`` is provided; set ``false`` to force |
+|                     |         | disable)                                              |
 +---------------------+---------+-------------------------------------------------------+
 | ``--wiggle``        | ``9``   | Bases outside primer boundary to include in mask      |
 +---------------------+---------+-------------------------------------------------------+
 | ``--mask_bam``      | ``true``| Replace masked bases with ``N`` in BAM sequence field |
++---------------------+---------+-------------------------------------------------------+
+| ``--primer_only``   | ``false``| Retain only primer-overlapping reads; discard all    |
+|                     |         | others after masking                                  |
 +---------------------+---------+-------------------------------------------------------+
 
 Step 4 — Percent-Identity Filtering *(optional)*
@@ -402,13 +407,17 @@ The core analysis step. ``newBamProcessor.py`` reads the assay JSON and the alig
 +--------------------------+----------+----------------------------------------------------------+
 | ``--consensus_proportion``| ``0.8`` | Minimum frequency to call a consensus base (else ``N``)  |
 +--------------------------+----------+----------------------------------------------------------+
-| ``--fill_gaps``          | ``n``    | Character to fill zero-coverage gaps in consensus        |
+| ``--fill_character``     | ``N``    | Character written at masked / gap positions (used by     |
+|                          |          | SMOR masking and bam_processor)                          |
 +--------------------------+----------+----------------------------------------------------------+
-| ``--mark_deletions``     | ``_``    | Character to represent deletion positions in consensus   |
+| ``--fill_gaps``          | ``n``    | Character written at zero-coverage positions in          |
+|                          |          | consensus sequence                                       |
++--------------------------+----------+----------------------------------------------------------+
+| ``--mark_deletions``     | ``_``    | Character written at deletion positions in consensus     |
 +--------------------------+----------+----------------------------------------------------------+
 | ``--whole_genome``       | ``false``| Skip per-sample consensus/depth arrays (WGS references)  |
 +--------------------------+----------+----------------------------------------------------------+
-| ``--asap_snps``          | ``true`` | Enable ASAP BAM processing                              |
+| ``--asap_snps``          | ``true`` | Enable ASAP BAM processing (set ``false`` to skip)       |
 +--------------------------+----------+----------------------------------------------------------+
 | ``--combine_output``     | ``true`` | Combine per-sample XMLs and generate HTML report         |
 +--------------------------+----------+----------------------------------------------------------+

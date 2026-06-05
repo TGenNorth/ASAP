@@ -4,12 +4,12 @@
 
     █████╗  ███████╗  █████╗  ██████╗
    ██╔══██╗ ██╔════╝ ██╔══██╗ ██╔══██╗
-   ███████║ ███████╗ ███████║ ██████╔╝       Don't just align.
-   ██╔══██║ ╚════██║ ██╔══██║ ██╔═══╝        Detect, interpret, and report with confidence.
+   ███████║ ███████╗ ███████║ ██████╔╝       
+   ██╔══██║ ╚════██║ ██╔══██║ ██╔═══╝       
    ██║  ██║ ███████║ ██║  ██║ ██║
    ╚═╝  ╚═╝ ╚══════╝ ╚═╝  ╚═╝ ╚═╝
    ──────────────────────────────────────────────────────────────────────────────────────────
-   Amplicon Sequencing Analysis Pipeline  ·  HPC-ready  ·  Nextflow + Python + R
+   Amplicon Sequencing Analysis Pipeline (ASAP)
    ──────────────────────────────────────────────────────────────────────────────────────────
 
 **Pre-release** | Authors: Darrin Lemmer, W. Tanner Porter, *et al.*,
@@ -73,25 +73,25 @@ Pipeline Summary
              │
              ▼
    PREPARE_ASAP_JSON ──► GENERATE_REFERENCE_FASTA ──────────────┐
-                                                                 │
+                                                                │
    Read Files (FASTQ) ──────────────────────────────────────────┤
-             │                                                   │
-             ▼                                                   │
+             │                                                  │
+             ▼                                                  │
    FastQC (initial QC)                                          │
-             │                                                   │
-             ▼                                                   │
+             │                                                  │
+             ▼                                                  │
    ┌─────────────────────────┐                                  │
    │ Illumina:  fastp        │                                  │
    │ ONT/PacBio: fastplong   │                                  │
    └─────────────────────────┘                                  │
-             │                                                   │
+             │                                                  │
    FastQC (post-trim QC)                                        │
-             │                                                   │
-             ▼                                                   ▼
+             │                                                  │
+             ▼                                                  ▼
    ┌──────────────────────────────────────────────────────────────┐
    │                      Alignment                               │
-   │   Illumina:     Bowtie2 (default) or BWA-MEM                │
-   │   ONT/PacBio:   minimap2 (auto-selected)                    │
+   │   Illumina:     Bowtie2 (default) or BWA-MEM                 │
+   │   ONT/PacBio:   minimap2 (auto-selected)                     │
    └──────────────────────────────────────────────────────────────┘
              │
              ▼
@@ -782,7 +782,7 @@ Contact
 | Flagstaff, AZ 86001-9435
 
 | Darrin Lemmer — dlemmer@tgen.org
-| W. Tanner Porter — wtporter@tgen.org
+| W. Tanner Porter — tporter@tgen.org
 
 Issues and feature requests:
 https://github.com/TGenNorth/ASAP/issues

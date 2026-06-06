@@ -1,0 +1,18 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/nf-core/modules/master/modules/environment-schema.json
+channels:
+  - conda-forge
+  - bioconda
+dependencies:
+  - conda-forge::r-base>=4.2
+  - conda-forge::r-tidyverse
+  - conda-forge::r-xml2
+  - conda-forge::r-data.table>=1.14
+  - conda-forge::r-foreach
+  - conda-forge::r-doparallel
+  - conda-forge::r-parallelly
+  - conda-forge::r-plotly
+  - conda-forge::r-htmlwidgets
+  - conda-forge::r-openxlsx
+  - conda-forge::r-zoo
+  - bioconda::bioconductor-biostrings
+  - bioconda::bioconductor-genbankr

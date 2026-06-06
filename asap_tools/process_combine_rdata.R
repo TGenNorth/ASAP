@@ -17,10 +17,6 @@ if (length(args) < 2) {
 poi_csv <- args[1] # Will be "NULL" if not provided
 files <- args[2:length(args)]
 
-# Test env
-# files <- list.files("/scratch/tporter/ASAP_TB_Validation/ASAP_TB_PTC_Reads_Correction/XML_Rdata/", pattern = "Rdata", full.names = T)
-# poi_csv <- "/tgen_labs/EPIC/tporter/ASAP/nextflow/tests/Genes_Of_Interest/H37Rv_Genes_Of_Interst.csv"
-#poi_csv <- NULL
 
 # 2. Setup Parallel Backend
 # parallelly::availableCores() is SLURM-aware and respects cpus allocated to the job

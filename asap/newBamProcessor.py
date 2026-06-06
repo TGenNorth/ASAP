@@ -495,10 +495,10 @@ def _add_roi_node(parent, roi, roi_dict, depth, proportion, mutdepth, offset, al
     roi_attributes['name'] = str(roi.name)
     roi_node = ElementTree.SubElement(parent, "region_of_interest", roi_attributes)
     if roi_dict["errors"] != {}:
-        for postion in roi_dict["errors"].keys():
+        for position in roi_dict["errors"].keys():
             err_node = ElementTree.SubElement(roi_node, "error")
             err_node.set("position", position)
-            err_node.set("message", roi_dict["errors"][postion])
+            err_node.set("message", roi_dict["errors"][position])
             pass
         pass
     if not roi.aa_sequence:
@@ -1260,8 +1260,8 @@ USAGE
                         ref_positions_node.text = ",".join(str(n) for n in ref_positions)
                     # Handle ROIs
                     for roi in amplicon.ROIs:
-                        roi_dict = _process_roi(roi, samdata, ref_name, smor, len(amplicon.sequence), reverse_comp)
-                        _add_roi_node(amplicon_node, roi, roi_dict, depth, proportion, mutdepth, smor, offset, allele_min_reads)
+                        roi_dict = _process_roi(roi, samdata, ref_name, len(amplicon.sequence), reverse_comp)
+                        _add_roi_node(amplicon_node, roi, roi_dict, depth, proportion, mutdepth, offset, allele_min_reads)
 
                 if temp_file and REMOVE_TEMP:
                     samdata.close()

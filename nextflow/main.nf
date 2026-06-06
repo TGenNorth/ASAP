@@ -195,20 +195,20 @@ workflow {
 
     // --- Optional STEP 6 & 7: Identity & SMOR ---
     if(params.identity != null) {
-        def result = IDENTITY_FILTER(aligned_bams)
-        aligned_bams = result[0]
+        IDENTITY_FILTER(aligned_bams)
+        aligned_bams = IDENTITY_FILTER.out.identity_filter_output
     }
     def identity_stats_by_id = (params.identity != null)
         ? IDENTITY_FILTER.out.identity_filter_stats.map { id, f -> [id, f] }
         : aligned_bams.map { id, bam, bai -> [id, null_file] }
 
     if(params.smor) {
-        def result = SMOR(aligned_bams)
-        aligned_bams = result[0]
+        SMOR(aligned_bams)
+        aligned_bams = SMOR.out.smor_output
     }
     if(params.smor_correction) {
-        def result = SMOR_CORRECTION(aligned_bams)
-        aligned_bams = result[0]
+        SMOR_CORRECTION(aligned_bams)
+        aligned_bams = SMOR_CORRECTION.out.smor_output
     }
     // SMOR_CORRECTION takes precedence when both run (it's the final step)
     def smor_stats_by_id = params.smor_correction

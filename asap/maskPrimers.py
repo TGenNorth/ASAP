@@ -78,7 +78,7 @@ def _primer_mask(samdata, primer_file, wiggle, mask_bases, ponlybam, outfile):
         primers["PrimerDirection"] = np.where((primers["PrimerDirection"] == "+") | (primers["PrimerDirection"] == "F"), "F", "R")
 
     except ValueError:
-        logging.error("Incorrect primer file format, ensure ")
+        logging.error("Incorrect primer file format, ensure file is tab-delimited with columns: CHROM, Start, End, PrimerName, <unused>, PrimerDirection")
         return samdata
     primers["PrimerDirection"] = np.char.upper(primers["PrimerDirection"])
     primer_stats = []
@@ -178,6 +178,7 @@ def _primer_mask(samdata, primer_file, wiggle, mask_bases, ponlybam, outfile):
                 outdata.write(read)
     logging.info("CHROM, Primer Found, Primer Missing")
     logging.info(primer_stats)
+    out.close()
     outdata.close()
     samdata.close()
     with open("primer_masking_stats.tsv", "w") as stats_out:

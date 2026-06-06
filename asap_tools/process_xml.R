@@ -24,10 +24,6 @@ xml_file   <- args[1]
 min_snp    <- as.numeric(args[2])*100
 sample_id  <- args[3]
 
-# xml_file   <- "/scratch/tporter/ASAP_SC2_Results/ASAP_Illumina_Reads_R_Out_Sunday/xml/DRR640392.xml"
-# min_snp    <- 0.01*100
-# sample_id  <- "DRR640392"
-
 
 # 1. Individual Processing
 ASAP <- read.ASAP.individual(xml_file)
@@ -58,23 +54,17 @@ SNPS <- safe_convert(SNPS, snps_numeric_names)
 # 3. Filter SNPs (Removed the backslash \$ since this is a pure R file now)
 SNPS <- SNPS[SNPS$snp_proportion >= min_snp, ]
 
-cat("Line 38")
-
 # 4. Extract Array Data
 Depth <- ASAP.get.depth(ASAP, num_cores = 1)
 Proportions <- ASAP.get.proportions(ASAP, num_cores = 1)
 N_Reads <- ASAP.get.nreads(ASAP, num_cores = 1)
 Quality.Discards <- ASAP.get.quality.discards(ASAP, num_cores = 1)
 
-cat("Line 46")
-
 # Joining results
 array_info <- Depth %>%
   left_join(Proportions,     by = c("run", "name", "assay_name", "position")) %>%
   left_join(N_Reads,         by = c("run", "name", "assay_name", "position")) %>%
   left_join(Quality.Discards, by = c("run", "name", "assay_name", "position"))
-
-cat("Line 57")
 
 # 5. Save outputs
 save(ASAP, SNPS, array_info, file = paste0(sample_id, "_XML_Data.Rdata"))

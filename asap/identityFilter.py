@@ -93,20 +93,23 @@ def _identity_filter(samdata, ref_names, percid, merge, out_fp):
             length = read.infer_query_length(False)
             logging.info("Checking %s against reference %s" % (read.query_name, read.reference_name))
             logging.info("\tAligned length %i, total read length %i" % (read.query_alignment_length or -1, length or -1))
+            if not length:
+                continue
             if read.query_alignment_length / length >= percid: #Quick check that the aligned length even passes threshold
                 matches = 0
+                gap_count = 0
                 for (qpos, rpos, seq) in read.get_aligned_pairs(with_seq=True):
                     query = read.query_sequence[qpos] if qpos else "None"
-                    #logging.info("\tqpos: %i\trpos: %i\tseq: %s\tquery[qpos]: %s" % (qpos or -1, rpos or -1, seq, query))
                     #if there is a gap in the alignment, extend the length of the query or reference accordingly
                     if rpos is None:
                         pass #amp_length += 1
                     elif qpos is None:
-                        length += 1
+                        gap_count += 1
                     else:
                         if read.query_sequence[qpos].upper() == seq.upper():
                             matches += 1
-                if matches / length >= percid: #Using length instead of amp_length to compare to query instead of reference
+                effective_length = length + gap_count
+                if matches / effective_length >= percid: #Using length instead of amp_length to compare to query instead of reference
                     logging.info("\t\tFound %i matches out of %i, keeping..." % (matches, length))
                     outdata.write(read)
                 else:
@@ -206,9 +209,8 @@ USAGE
             out_fp = "%s_identityFiltered.bam" % (os.path.splitext(os.path.basename(samdata.filename.decode("utf-8")))[0])
      
         (samout, discarded_reads) = _identity_filter(samdata, ref_names, percid, merge, out_fp)
-                
-        #bam_file_out_sorted = "%s_sorted.bam" % (os.path.splitext(os.path.basename(samout.filename.decode("utf-8")))[0])
-        
+        samdata.close()
+
         pysam.sort("-o", out_fp, out_fp)
         pysam.index(out_fp)
 

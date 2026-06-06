@@ -348,6 +348,7 @@ USAGE
             out_file = "%s_SMOR.bam" % (os.path.splitext(os.path.basename(samdata.filename.decode("utf-8")))[0])
             
         _write_bam(samdata, out_file, fill_char, base_qual, whole_genome)
+        samdata.close()
 
         return 0
     except KeyboardInterrupt:

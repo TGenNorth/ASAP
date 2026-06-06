@@ -21,6 +21,7 @@
 //   single_end      – Single-end Illumina reads
 //   ont             – ONT long reads + fastplong
 //   primer_masking  – maskPrimers.py step
+//   primer_only     – --primer-only BAM filtering (drops non-primer reads)
 //   identity_filter – identityFilter.py step
 //   smor            – SMOR / SMOR-correction step
 //   ivar            – iVAR trim + variant + consensus branch
@@ -415,8 +416,14 @@ nextflow_pipeline {
             assert path("${out}/sample_reports/rdata/TB_Full_Features_ASAP_Data.Rdata").exists()
             assert path("${out}/sample_reports/general_reports/TB_Full_Features_Summary.csv").exists()
 
-            // Optional R outputs directory
-            assert path("${out}/sample_reports").toFile().isDirectory()
+            // SNP → Amino Acid conversion (GenBank reference enables this path)
+            assert path("${out}/sample_reports/rdata/SNP_Amino_Acid_Table.Rdata").exists()
+
+            // asaptools suite output directories
+            assert path("${out}/sample_reports/snp_reports").toFile().isDirectory()
+            assert path("${out}/sample_reports/plots").toFile().isDirectory()
+            assert path("${out}/sample_reports/fasta").toFile().isDirectory()
+            assert path("${out}/sample_reports/general_reports").toFile().isDirectory()
 
             // MultiQC
             assert path("${out}/sample_reports/multiqc").toFile().isDirectory()
@@ -456,8 +463,11 @@ nextflow_pipeline {
             // Reference FASTA generated from Excel → JSON
             assert path("${out}/reference/reference.fasta").exists()
 
-            // XML output directory was populated (now per-sample)
-            assert path("${out}/sample_info").toFile().isDirectory()
+            // Per-sample XML for a representative sample
+            def sample = "TB-01gyrAorig3-123_S10_L001"
+            assert path("${out}/sample_info/${sample}/xml/${sample}.xml").exists()
+
+            // Multiple samples processed
             assert path("${out}/sample_info").toFile().list().size() > 0
         }
     }
@@ -497,9 +507,134 @@ nextflow_pipeline {
             // Reference FASTA generated from input FASTA → JSON
             assert path("${out}/reference/reference.fasta").exists()
 
-            // XML output directory was populated (now per-sample)
-            assert path("${out}/sample_info").toFile().isDirectory()
+            // Per-sample XML for a representative sample
+            def sample = "TB-01gyrAorig3-123_S10_L001"
+            assert path("${out}/sample_info/${sample}/xml/${sample}.xml").exists()
+
+            // Multiple samples processed
             assert path("${out}/sample_info").toFile().list().size() > 0
+        }
+    }
+
+    // =========================================================================
+    // 10. SC2 – PRIMER-ONLY BAM FILTERING
+    // Covers: --primer-only flag (maskPrimers.py ponlybam mode) — only reads
+    //         overlapping a primer region are kept in the output BAM.
+    //         Verifies that the masking stats file is written and downstream
+    //         ASAP BAM processing continues from the filtered BAM.
+    // =========================================================================
+    test("SC2 - Primer-Only BAM Filtering") {
+        tag "sc2"
+        tag "primer_masking"
+        tag "primer_only"
+        tag "bwa"
+        tag "paired_end"
+        tag "combine_output"
+
+        when {
+            params {
+                read_dir             = "${baseDir}/tests/data/SC2_Paired_Illumina/"
+                reference_input      = "${baseDir}/tests/json/SC2_Reference.json"
+                outdir               = "${baseDir}/tests/test_output/SC2_Primer_Only"
+                aligner              = "bwa"
+                file_name            = "SC2_Primer_Only"
+                proportion           = 0.1
+                primer_file          = "${baseDir}/tests/bedfiles/SC2_Concatenated_Bedfile.bed"
+                mask_primers         = true
+                primer_only          = true
+                combine_output       = true
+                asaptools_processing = false
+            }
+        }
+
+        then {
+            def _h = new File(outputDir).parentFile; def _l = new File(_h.parent, "10_sc2_primer_only"); if (java.nio.file.Files.isSymbolicLink(_l.toPath())) _l.delete(); java.nio.file.Files.createSymbolicLink(_l.toPath(), _h.toPath())
+            assert workflow.success
+
+            def out    = "${baseDir}/tests/test_output/SC2_Primer_Only"
+            def sample = "SRR25496336"
+
+            // Primer masking outputs
+            assert path("${out}/sample_info/${sample}/mask_primers/${sample}-bwa_primerMasked.bam").exists()
+            assert path("${out}/sample_info/${sample}/mask_primers/${sample}-bwa_primerMasked.bam.bai").exists()
+            assert path("${out}/sample_info/${sample}/mask_primers/primer_masking.tsv").exists()
+            assert path("${out}/sample_info/${sample}/mask_primers/primer_masking_stats.tsv").exists()
+
+            // Stats file must have the header row (written regardless of read count)
+            assert path("${out}/sample_info/${sample}/mask_primers/primer_masking_stats.tsv")
+                .text.contains("primer_reads")
+
+            // ASAP XML — pipeline continues from the primer-only filtered BAM
+            assert path("${out}/sample_info/${sample}/xml/${sample}.xml").exists()
+
+            // Combined outputs
+            assert path("${out}/sample_reports/SC2_Primer_Only_analysis.xml").exists()
+            assert path("${out}/sample_reports/SC2_Primer_Only_report.html").exists()
+        }
+    }
+
+    // =========================================================================
+    // 11. TB – JSON INPUT + asaptools_genbank_location (SNP → AA CONVERSION)
+    // Covers: JSON reference (no conversion needed), asaptools full suite,
+    //         and the asaptools_genbank_location parameter which supplies a
+    //         GenBank file for PROCESS_SNPS_TO_AMINOACIDS when the primary
+    //         reference is not a GenBank file.
+    // =========================================================================
+    test("TB - JSON Input, asaptools with GenBank SNP-to-AA Conversion") {
+        tag "tb"
+        tag "json_input"
+        tag "bwa"
+        tag "paired_end"
+        tag "asaptools"
+
+        when {
+            params {
+                read_dir                        = "${baseDir}/tests/data/TB_Ampseq/"
+                reference_input                 = "${baseDir}/tests/preparejson/H37Rv_NC0009623.json"
+                outdir                          = "${baseDir}/tests/test_output/TB_JSON_Asaptools"
+                aligner                         = "bwa"
+                file_name                       = "TB_JSON_Asaptools"
+                proportion                      = 0.0001
+                fastp_extra_args                = "-l 100"
+
+                // Full asaptools suite; GenBank supplied explicitly for SNP→AA
+                combine_output                  = false
+                asaptools_processing            = true
+                asaptools_cov_table             = true
+                asaptools_qc_plots              = true
+                asaptools_generate_fasta        = true
+                asaptools_snp_table             = true
+                asaptools_genbank_location      = "${baseDir}/tests/preparejson/H37Rv_NC0009623.gb"
+                asaptools_min_location_depth    = 499
+                asaptools_positions_of_interest = "${baseDir}/tests/Genes_Of_Interest/H37Rv_Genes_Of_Interst.csv"
+            }
+        }
+
+        then {
+            def _h = new File(outputDir).parentFile; def _l = new File(_h.parent, "11_tb_json_asaptools_snp_aa"); if (java.nio.file.Files.isSymbolicLink(_l.toPath())) _l.delete(); java.nio.file.Files.createSymbolicLink(_l.toPath(), _h.toPath())
+            assert workflow.success
+
+            def out    = "${baseDir}/tests/test_output/TB_JSON_Asaptools"
+            def sample = "TB-10katGorig1-123_S36_L001"
+
+            // Reference built directly from JSON (no conversion step)
+            assert path("${out}/reference/reference.fasta").exists()
+
+            // Per-sample XML and per-sample Rdata
+            assert path("${out}/sample_info/${sample}/xml/${sample}.xml").exists()
+            assert path("${out}/sample_info/${sample}/rdata/${sample}_XML_Data.Rdata").exists()
+
+            // Combined R data outputs
+            assert path("${out}/sample_reports/rdata/TB_JSON_Asaptools_ASAP_Data.Rdata").exists()
+            assert path("${out}/sample_reports/general_reports/TB_JSON_Asaptools_Summary.csv").exists()
+
+            // SNP → Amino Acid table — exercises the asaptools_genbank_location path
+            assert path("${out}/sample_reports/rdata/SNP_Amino_Acid_Table.Rdata").exists()
+
+            // asaptools suite output directories
+            assert path("${out}/sample_reports/snp_reports").toFile().isDirectory()
+            assert path("${out}/sample_reports/plots").toFile().isDirectory()
+            assert path("${out}/sample_reports/general_reports").toFile().isDirectory()
         }
     }
 }

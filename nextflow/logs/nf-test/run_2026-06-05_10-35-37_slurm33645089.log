@@ -1,7 +1,0 @@
-
-🚀[1m nf-test 0.9.3[0m
-https://www.nf-test.com
-(c) 2021 - 2024 Lukas Forer and Sebastian Schoenherr
-
-[31mError: groovy.lang.MissingMethodException: No signature of method: ASAP_EtE_nf$_run_closure1$_closure3.tag() is applicable for argument types: (String, String, String, String, String) values: [rsv, multi_gb, bwa, paired_end, combine_output]
-Possible solutions: any(), any(), find(), dump(), stream(), grep()[0m

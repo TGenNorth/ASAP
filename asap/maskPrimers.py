@@ -82,7 +82,6 @@ def _primer_mask(samdata, primer_file, wiggle, mask_bases, ponlybam, outfile):
         return samdata
     primers["PrimerDirection"] = np.char.upper(primers["PrimerDirection"])
     primer_stats = []
-    # TODO add ponlybam option to only emit reads with primer sequence, will need to deal with pairs in this case
     # for each ref in bam
     for chrom in samdata.references:
         # check that all chroms are accounted for in input file
@@ -99,8 +98,8 @@ def _primer_mask(samdata, primer_file, wiggle, mask_bases, ponlybam, outfile):
             for read in samdata.fetch(chrom, until_eof=True):
                 # TP ADDED TO FIX TYPE ERROR THAT SEEMS TO ARISE WITH LONG READ DATA
                 if read.query_sequence is None or read.query_qualities is None:
-                    outdata.write(read)
-                    # This line ensures the read still shows up in your report
+                    if not ponlybam:
+                        outdata.write(read)
                     out.write(f'{chrom}\t{read.query_name}\tSkipped\tMissing_Data\tNone\n')
                     continue
                 ###############################
@@ -109,7 +108,8 @@ def _primer_mask(samdata, primer_file, wiggle, mask_bases, ponlybam, outfile):
                     align_end = max(read.get_reference_positions())
                 except Exception as e:
                     no_primer += 1
-                    outdata.write(read)
+                    if not ponlybam:
+                        outdata.write(read)
                     out.write(f'{chrom}\t{read.query_name}\tNone\t\t{read.query_sequence}\n')
                     continue
 
@@ -169,7 +169,8 @@ def _primer_mask(samdata, primer_file, wiggle, mask_bases, ponlybam, outfile):
                     no_primer += 1
                     out.write(f'{chrom}\t{read.query_name}\tNone\t\t{read.query_sequence}\n')
 
-                outdata.write(read)
+                if not ponlybam or primer_masked:
+                    outdata.write(read)
 
             primer_stats.append([chrom, primer_found, no_primer])
         else:

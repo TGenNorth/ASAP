@@ -114,25 +114,27 @@ def _write_bam(samdata, out_file, fill_char):
     # Use a temporary name for sorting to avoid "file-in-use" indexing errors
     tmp_out = out_file + ".unsorted.tmp"
     outdata = pysam.AlignmentFile(tmp_out, "wb", template=samdata)
-    
-    grand_total_bases = 0
-    grand_corrected = 0
-    grand_ns = 0
-    total_pairs = 0
+
+    smor_stats = {}  # ref_name -> {input_reads, pairs_dropped, consensus_reads}
 
     for ref_name in samdata.references:
         logging.info(f"Processing reference: {ref_name}")
         # Sorting by name is essential for find pairs in order
-        reads = sorted(samdata.fetch(ref_name), key=attrgetter('query_name'))
-        
-        for read, pair in grouped_pairs(reads):
+        ref_reads = sorted(samdata.fetch(ref_name), key=attrgetter('query_name'))
+        input_reads = len(ref_reads)
+        pairs_dropped = 0
+        consensus_written = 0
+
+        for read, pair in grouped_pairs(ref_reads):
             if not pair or read.query_name != pair.query_name:
                 continue
             if read.is_unmapped or pair.is_unmapped:
+                pairs_dropped += 2
                 continue
-            
+
             # Simple overlap check
             if read.reference_end < pair.reference_start or pair.reference_end < read.reference_start:
+                pairs_dropped += 2
                 continue
 
             try:
@@ -148,31 +150,36 @@ def _write_bam(samdata, out_file, fill_char):
                     new_read.cigartuples = cigar
                     new_read.mapping_quality = max(read.mapping_quality, pair.mapping_quality)
                     outdata.write(new_read)
-                    
-                    grand_total_bases += stats['total']
-                    grand_corrected += stats['corrected']
-                    grand_ns += stats['ns']
-                    total_pairs += 1
+                    consensus_written += 1
             except Exception as e:
                 logging.error(f"Error processing {read.query_name}: {e}")
 
+        smor_stats[ref_name] = {
+            'input_reads': input_reads,
+            'pairs_dropped': pairs_dropped,
+            'consensus_reads': consensus_written,
+        }
+
     outdata.close()
-    
+
     # Summary Log
+    total_pairs = sum(s['consensus_reads'] for s in smor_stats.values())
     logging.info("-" * 30)
     logging.info(f"Pairs Processed:  {total_pairs}")
-    logging.info(f"Overlap Bases:    {grand_total_bases}")
-    logging.info(f"Corrected:        {grand_corrected} ({(grand_corrected/max(1,grand_total_bases))*100:.2f}%)")
-    logging.info(f"Masked (N):       {grand_ns} ({(grand_ns/max(1,grand_total_bases))*100:.2f}%)")
     logging.info("-" * 30)
 
     # Coordinate Sort and Index
     logging.info(f"Sorting and Indexing {out_file}...")
     pysam.sort("-o", out_file, tmp_out)
     pysam.index(out_file)
-    
+
     if os.path.exists(tmp_out):
         os.remove(tmp_out)
+
+    with open("smor_stats.tsv", "w") as stats_out:
+        stats_out.write("ref_name\tinput_reads\tpairs_dropped\tconsensus_reads\n")
+        for ref, s in smor_stats.items():
+            stats_out.write(f"{ref}\t{s['input_reads']}\t{s['pairs_dropped']}\t{s['consensus_reads']}\n")
 
 def main():
     parser = argparse.ArgumentParser(description="SMOR Consensus Generator with Corrected CIGARs")

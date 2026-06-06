@@ -192,26 +192,31 @@ def _generate_cigar(offset, length, orig_cigar):
 
 def _write_bam(samdata, out_file, fill_char, base_qual, whole_genome):
     outdata = pysam.AlignmentFile(out_file, "wb", template=samdata)
-    
+
+    smor_stats = {}  # ref_name -> {input_reads, pairs_dropped, consensus_reads}
+
     for ref_name in samdata.references:
         logging.info("Starting SMOR Processing for ref: %s" % ref_name)
-        #(start, end) = _find_overlap_region(samdata.fetch(ref_name))
-        #if (start == None or end == None):
-        #   logging.info("No Overlap region: %s - %s; skipping" % (start, end))
-        #   continue
-        #logging.info("Overlap region: %i - %i" % (start, end))
-        reads = iter(sorted(samdata.fetch(ref_name), key=attrgetter('query_name')))
+        ref_reads = sorted(samdata.fetch(ref_name), key=attrgetter('query_name'))
+        input_reads = len(ref_reads)
+        pairs_dropped = 0
+        consensus_written = 0
+
+        reads = iter(ref_reads)
         for read, pair in pairwise(reads):
             logging.debug("Read:%s, ref_start:%s, ref_end:%s -- Pair:%s, ref_start:%s, ref_end:%s" % (read.query_name, read.reference_start, read.reference_end, pair.query_name, pair.reference_start, pair.reference_end))
             if read.query_name != pair.query_name:
                 continue
             if read.reference_end == None or pair.reference_end == None:
+                pairs_dropped += 2
                 continue
             if read.reference_end < pair.reference_start or read.reference_start > pair.reference_end:
+                pairs_dropped += 2
                 continue
             read1_alignment = read.get_aligned_pairs(True)
             read2_alignment = pair.get_aligned_pairs(True)
             if not read1_alignment or not read2_alignment:
+                pairs_dropped += 2
                 continue
 
             start = max(read.reference_start, pair.reference_start)
@@ -250,9 +255,23 @@ def _write_bam(samdata, out_file, fill_char, base_qual, whole_genome):
                 new_read.cigartuples = cigar
                 new_read.query_qualities = quals
                 outdata.write(new_read)
+                consensus_written += 1
+
+        smor_stats[ref_name] = {
+            'input_reads': input_reads,
+            'pairs_dropped': pairs_dropped,
+            'consensus_reads': consensus_written,
+        }
+
     outdata.close()
     pysam.sort("-o", out_file, out_file)
     pysam.index(out_file)
+
+    with open("smor_stats.tsv", "w") as stats_out:
+        stats_out.write("ref_name\tinput_reads\tpairs_dropped\tconsensus_reads\n")
+        for ref, s in smor_stats.items():
+            stats_out.write(f"{ref}\t{s['input_reads']}\t{s['pairs_dropped']}\t{s['consensus_reads']}\n")
+
     return (out_file)
 
 class CLIError(Exception):

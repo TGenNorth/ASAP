@@ -3,7 +3,7 @@ dist
 ASAP.egg-info
 asap.egg-info
 .*
-!.gitignnore
+!.gitignore
 __pycache__
 *.gz
 nextflow/tests/
@@ -11,3 +11,10 @@ asap_tutorials/
 
 # Local test run logs
 logs/
+
+# Nextflow runtime directories
+work/
+nextflow/work/
+nextflow/logs/
+nextflow/bin/null
+nextflow/tests/test_output/

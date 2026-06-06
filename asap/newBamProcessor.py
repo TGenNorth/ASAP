@@ -1015,6 +1015,9 @@ USAGE
         #parser.add_argument("--mark-deletions", nargs="?", const="_", dest="del_char", help="fill deletions in the consensus sequence [default: False], optional parameter is the character to use for filling [defaut: _]") # TP edited
         parser.add_argument("--original-bam", metavar="FILE", dest="original_bam", type=argparse.FileType('rb'), default=None, help="Original aligned BAM (pre-ASAP filtering) used to report mapped_reads. [default: use --bam]")
         parser.add_argument("--fastp-json", metavar="FILE", dest="fastp_json", type=argparse.FileType('r'), default=None, help="fastp/fastplong JSON file; provides total_reads and trimmed_reads attributes in output. [default: none]")
+        parser.add_argument("--primer-stats", metavar="FILE", dest="primer_stats", type=argparse.FileType('r'), default=None, help="primer_masking_stats.tsv from MASK_PRIMERS step. [default: none]")
+        parser.add_argument("--identity-stats", metavar="FILE", dest="identity_stats", type=argparse.FileType('r'), default=None, help="identity_filter_stats.tsv from IDENTITY_FILTER step. [default: none]")
+        parser.add_argument("--smor-stats", metavar="FILE", dest="smor_stats", type=argparse.FileType('r'), default=None, help="smor_stats.tsv from SMOR/SMOR_CORRECTION step. [default: none]")
 
         # Process arguments
         args = parser.parse_args()
@@ -1051,20 +1054,37 @@ USAGE
             operation_err = str(e)
         assay_list = assayInfo.parseJSON(args.json.name)
 
+        def _primary_mapped(bam_path):
+            import re
+            flagstat = pysam.flagstat(bam_path)
+            m = re.search(r'^(\d+) \+ \d+ primary mapped', flagstat, re.MULTILINE)
+            return m.group(1) if m else None
+
+        def _load_ref_stats(fp):
+            """Load a ref_name-keyed TSV stats file. Returns {} if fp is None or null sentinel."""
+            import csv
+            if fp is None:
+                return {}
+            try:
+                if os.path.basename(fp.name) == 'null' or os.path.getsize(fp.name) == 0:
+                    return {}
+            except OSError:
+                return {}
+            stats = {}
+            fp.seek(0)
+            for row in csv.DictReader(fp, delimiter='\t'):
+                stats[row['ref_name']] = row
+            return stats
+
         samdata = pysam.AlignmentFile(bam_fp.name, "rb")
         sample_dict = {}
         if 'RG' in samdata.header.to_dict() :
             sample_dict['name'] = samdata.header.to_dict()['RG'][0]['ID']
         else:
             sample_dict['name'] = os.path.splitext(os.path.basename(bam_fp.name))[0]
-        # Use original pre-filter BAM for mapped_reads when available (restores pre-split semantics
-        # where mapped_reads was counted before SMOR/identity-filter changed the BAM)
-        if args.original_bam:
-            orig = pysam.AlignmentFile(args.original_bam.name, "rb")
-            sample_dict['mapped_reads'] = str(orig.mapped)
-            orig.close()
-        else:
-            sample_dict['mapped_reads'] = str(samdata.mapped)
+        # Use original pre-filter BAM for mapped_reads (primary alignments only)
+        bam_for_count = args.original_bam.name if args.original_bam else bam_fp.name
+        sample_dict['mapped_reads'] = _primary_mapped(bam_for_count) or str(samdata.mapped)
         sample_dict['unmapped_reads'] = str(samdata.unmapped)
         sample_dict['unassigned_reads'] = str(samdata.nocoordinate)
         # Add pre-QC and post-QC read counts from fastp/fastplong JSON when available
@@ -1076,6 +1096,15 @@ USAGE
         # Restore SMOR flag when the input BAM was produced by generateSMORbam
         if '_SMOR' in os.path.basename(bam_fp.name):
             sample_dict['SMOR'] = 'True'
+
+        # Load per-reference stats from upstream filter steps
+        primer_stats  = _load_ref_stats(args.primer_stats)
+        identity_stats = _load_ref_stats(args.identity_stats)
+        smor_stats    = _load_ref_stats(args.smor_stats)
+
+        # Open original BAM for per-amplicon aligned_reads counts
+        orig_samdata = pysam.AlignmentFile(args.original_bam.name, "rb") if args.original_bam else None
+
         sample_dict['depth_filter'] = str(depth)
         sample_dict['proportion_filter'] = str(proportion)
         sample_dict['breadth_filter'] = str(breadth)
@@ -1150,6 +1179,19 @@ USAGE
                 amplicon_dict['reads'] = str(samdata.count(ref_name))
                 if amplicon.variant_name:
                     amplicon_dict['variant'] = amplicon.variant_name
+                # Per-amplicon read funnel from upstream filter steps
+                if orig_samdata:
+                    amplicon_dict['aligned_reads'] = str(orig_samdata.count(ref_name))
+                if ref_name in primer_stats:
+                    amplicon_dict['primer_reads']    = primer_stats[ref_name]['primer_reads']
+                    amplicon_dict['no_primer_reads'] = primer_stats[ref_name]['no_primer_reads']
+                if ref_name in identity_stats:
+                    amplicon_dict['identity_input']     = identity_stats[ref_name]['input_reads']
+                    amplicon_dict['identity_discarded'] = identity_stats[ref_name]['discarded_reads']
+                if ref_name in smor_stats:
+                    amplicon_dict['smor_input']           = smor_stats[ref_name]['input_reads']
+                    amplicon_dict['smor_pairs_dropped']   = smor_stats[ref_name]['pairs_dropped']
+                    amplicon_dict['smor_consensus_reads'] = smor_stats[ref_name]['consensus_reads']
                 amplicon_node = ElementTree.SubElement(assay_node, "amplicon", amplicon_dict)
                 if seq_counter:
                     ElementTree.SubElement(amplicon_node, "sequence_distribution", {k:str(v) for k,v in seq_counter.items()})
@@ -1230,6 +1272,8 @@ USAGE
         # Close File
         if samdata.is_open():
             samdata.close()
+        if orig_samdata and orig_samdata.is_open():
+            orig_samdata.close()
 
         # Handle Operations
         # For each true operation add a 'significance' into the output detailing the operation

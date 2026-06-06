@@ -39,7 +39,7 @@ message(paste("🚀 Combining", length(files), "samples using", num_cores, "core
 
 # 3. Parallel Loading with foreach
 # We use %dopar% to read files simultaneously across available cores
-combined_list <- foreach(f = files, .packages = c("tidyverse")) %do% {
+combined_list <- foreach(f = files, .packages = c("tidyverse")) %dopar% {
   
   if (!file.exists(f)) {
     stop(paste("File not found in task directory:", f))
@@ -99,7 +99,7 @@ combined_list <- foreach(f = files, .packages = c("tidyverse")) %do% {
 }
 
 # Explicitly stop the cluster to free system resources
-stopCluster(cl)
+if (length(files) > 1) stopCluster(cl)
 
 # 4. Fast Binding with data.table
 # rbindlist is written in C and is significantly faster than map_df or rbind
@@ -122,6 +122,7 @@ gc()
 message(paste("💾 Saving results"))
 
 save(final_asap, final_snps, final_array, file = "Combined_ASAP_Data.Rdata")
-write.csv(final_asap, file = "Combined_Summary.csv", row.names = FALSE)
+cols_to_drop <- c("consensus_seq", "depths", "proportions", "quality_discards", "n_reads")
+write.csv(final_asap[, !names(final_asap) %in% cols_to_drop, drop = FALSE], file = "Combined_Summary.csv", row.names = FALSE)
 
 message("✅ Success: Combined data saved to current working directory.")

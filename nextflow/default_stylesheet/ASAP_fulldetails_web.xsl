@@ -239,6 +239,7 @@
 	    		<tr>
 	    		<th>Assay Name</th>
 	    		<th># of Reads</th>
+	    		<th>Read Funnel</th>
 	    		<th>Coverage Breadth</th>
 	    		<th>Significance</th>
 	    		<th>SNPs found(% reads containing SNP)</th>
@@ -249,6 +250,19 @@
 	    		    <tr>
 	    		        <td><a href="#{@name}-graph" onclick="render_{translate(translate(@name, '+', '_'), '-', '_')}()"><xsl:value-of select="@name"/></a></td>
 	    		        <td><xsl:value-of select="amplicon/@reads"/></td>
+	    		        <td>
+	    		            <xsl:if test="amplicon/@aligned_reads">
+	    		                Aligned: <xsl:value-of select="amplicon/@aligned_reads"/><br/>
+	    		                <xsl:if test="amplicon/@identity_discarded">
+	    		                    &#8722;Identity: <xsl:value-of select="amplicon/@identity_discarded"/><br/>
+	    		                </xsl:if>
+	    		                <xsl:if test="amplicon/@smor_pairs_dropped">
+	    		                    &#8722;SMOR drop: <xsl:value-of select="amplicon/@smor_pairs_dropped"/><br/>
+	    		                    Consensus: <xsl:value-of select="amplicon/@smor_consensus_reads"/><br/>
+	    		                </xsl:if>
+	    		                &#8594; Analyzed: <xsl:value-of select="amplicon/@reads"/>
+	    		            </xsl:if>
+	    		        </td>
 	    		        <td><xsl:value-of select='format-number(amplicon/breadth, "##.##")'/>%</td>
 	    		        <td><xsl:value-of select="amplicon/significance"/><xsl:if test="amplicon/significance/@flag"> (<xsl:value-of select="amplicon/significance/@flag"/>)</xsl:if></td>
 	    		        <td><xsl:for-each select="amplicon/snp">

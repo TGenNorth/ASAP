@@ -174,24 +174,34 @@ workflow {
         .map { meta, bam, bai -> [ meta.id, bam, bai ] }
 
     // Snapshot the aligned BAMs before any ASAP filtering so PROCESS_BAM can
-    // report the original mapped read count (not post-SMOR/identity-filter count)
-    def original_aligned_bams = aligned_bams.map { id, bam, bai -> [ id, bam ] }
+    // report the original mapped read count (not post-SMOR/identity-filter count).
+    // Both bam and bai are passed; stageAs in PROCESS_BAM renames them to avoid
+    // filename collisions when original == filtered (i.e. no filtering was run).
+    def original_aligned_bams = aligned_bams.map { id, bam, bai -> [ id, bam, bai ] }
 
     // Key trimmer JSON by sample_id for joining into PROCESS_BAM
     def fastp_stats_by_id = ch_trim_json_for_multiqc.map { meta, json -> [ meta.id, json ] }
 
     // --- Optional STEP 5: Primer masking ---
     def primer_bed_path = params.primer_file ? file(params.primer_file).toAbsolutePath() : null
+    def null_file = file("${baseDir}/bin/null")
     if(params.mask_primers || (params.primer_file && params.mask_primers != false)) {
         MASK_PRIMERS(aligned_bams.combine(Channel.value(primer_bed_path)))
         aligned_bams = MASK_PRIMERS.out.mask_primers_output
     }
+    def primer_stats_by_id = (params.mask_primers || (params.primer_file && params.mask_primers != false))
+        ? MASK_PRIMERS.out.mask_primers_stats.map { id, f -> [id, f] }
+        : aligned_bams.map { id, bam, bai -> [id, null_file] }
 
     // --- Optional STEP 6 & 7: Identity & SMOR ---
     if(params.identity != null) {
         def result = IDENTITY_FILTER(aligned_bams)
         aligned_bams = result[0]
     }
+    def identity_stats_by_id = (params.identity != null)
+        ? IDENTITY_FILTER.out.identity_filter_stats.map { id, f -> [id, f] }
+        : aligned_bams.map { id, bam, bai -> [id, null_file] }
+
     if(params.smor) {
         def result = SMOR(aligned_bams)
         aligned_bams = result[0]
@@ -200,23 +210,32 @@ workflow {
         def result = SMOR_CORRECTION(aligned_bams)
         aligned_bams = result[0]
     }
+    // SMOR_CORRECTION takes precedence when both run (it's the final step)
+    def smor_stats_by_id = params.smor_correction
+        ? SMOR_CORRECTION.out.smor_stats.map { id, f -> [id, f] }
+        : params.smor
+            ? SMOR.out.smor_stats.map { id, f -> [id, f] }
+            : aligned_bams.map { id, bam, bai -> [id, null_file] }
 
     // --- STEP 8: Forking ---
     // Changed .set to assignment to fix "Missing name" error
     def ch_split = aligned_bams.multiMap { sample_id, bam, bai ->
-        asap: [ sample_id, bam, bai ]   
-        ivar: [ [id: sample_id], bam, bai ] 
+        asap: [ sample_id, bam, bai ]
+        ivar: [ [id: sample_id], bam, bai ]
     }
-    
+
     // // Define the variable OUTSIDE the specific cov_table if-block
     // def poi_file = params.asaptools_positions_of_interest ? file(params.asaptools_positions_of_interest) : "NULL"
 
     // --- STEP 9: ASAP Processing ---
     if(params.asap_snps) {
-        // Join filtered BAM with original (pre-filter) BAM and fastp stats for complete read counting
+        // Join filtered BAM with original BAM, fastp stats, and per-step filter stats
         def ch_bam_for_asap = ch_split.asap
             .join(original_aligned_bams)
             .join(fastp_stats_by_id)
+            .join(primer_stats_by_id)
+            .join(identity_stats_by_id)
+            .join(smor_stats_by_id)
         def xml_output = PROCESS_BAM(ch_bam_for_asap.combine(json_ch))
         
         // --- ASAP Tools  R Processing ---

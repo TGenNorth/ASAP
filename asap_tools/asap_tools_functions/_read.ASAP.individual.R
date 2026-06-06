@@ -44,8 +44,16 @@ read.ASAP.individual <- function(XML) {
       }
 
       Amplicon_Info <- data.frame(
-        amplicon_number  = AMPLICON,
-        amplicon_reads   = xml_attr(Amplicon_Node, "reads"),
+        amplicon_number      = AMPLICON,
+        amplicon_reads       = xml_attr(Amplicon_Node, "reads"),
+        aligned_reads        = xml_attr(Amplicon_Node, "aligned_reads"),
+        primer_reads         = xml_attr(Amplicon_Node, "primer_reads"),
+        no_primer_reads      = xml_attr(Amplicon_Node, "no_primer_reads"),
+        identity_input       = xml_attr(Amplicon_Node, "identity_input"),
+        identity_discarded   = xml_attr(Amplicon_Node, "identity_discarded"),
+        smor_input           = xml_attr(Amplicon_Node, "smor_input"),
+        smor_pairs_dropped   = xml_attr(Amplicon_Node, "smor_pairs_dropped"),
+        smor_consensus_reads = xml_attr(Amplicon_Node, "smor_consensus_reads"),
         amplicon_variant = ifelse(!is.na(xml_attr(Amplicon_Node, "variant")), xml_attr(Amplicon_Node, "variant"), "No variant"),
         breadth          = get_node_text(Amplicon_Node, "breadth", "No Breadth"),
         avg_depth        = get_node_text(Amplicon_Node, "average_depth", "No Average Depth"),
@@ -64,7 +72,11 @@ read.ASAP.individual <- function(XML) {
   }
 
   num_cols <- c("total_reads", "trimmed_reads", "mapped_reads", "unassigned_reads",
-                "unmapped_reads", "amplicon_reads", "breadth", "avg_depth")
+                "unmapped_reads", "amplicon_reads", "aligned_reads",
+                "primer_reads", "no_primer_reads",
+                "identity_input", "identity_discarded",
+                "smor_input", "smor_pairs_dropped", "smor_consensus_reads",
+                "breadth", "avg_depth")
   num_cols <- intersect(num_cols, names(Out))
   Out[num_cols] <- lapply(Out[num_cols], function(x) as.numeric(as.character(x)))
 

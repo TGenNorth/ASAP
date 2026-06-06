@@ -180,6 +180,10 @@ def _primer_mask(samdata, primer_file, wiggle, mask_bases, ponlybam, outfile):
     logging.info(primer_stats)
     outdata.close()
     samdata.close()
+    with open("primer_masking_stats.tsv", "w") as stats_out:
+        stats_out.write("ref_name\tprimer_reads\tno_primer_reads\n")
+        for row in primer_stats:
+            stats_out.write("\t".join(str(x) for x in row) + "\n")
     if mask_bases:
         pysam.sort("-o", outfile, outfile)
     pysam.index(outfile)

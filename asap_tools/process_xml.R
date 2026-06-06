@@ -34,7 +34,12 @@ ASAP <- read.ASAP.individual(xml_file)
 SNPS <- read.ASAP.snps.individual(xml_file)
 
 # Define the columns that SHOULD be numeric
-asap_numeric_names <- c("total_reads", "trimmed_reads", "mapped_reads", "unassigned_reads", "unmapped_reads", "amplicon_number", "amplicon_reads", "breadth", "avg_depth")
+asap_numeric_names <- c("total_reads", "trimmed_reads", "mapped_reads", "unassigned_reads", "unmapped_reads",
+                        "amplicon_number", "amplicon_reads", "aligned_reads",
+                        "primer_reads", "no_primer_reads",
+                        "identity_input", "identity_discarded",
+                        "smor_input", "smor_pairs_dropped", "smor_consensus_reads",
+                        "breadth", "avg_depth")
 snps_numeric_names <- c("Mapped_Reads", "unassigned_reads", "unmapped_reads",
                         "amplicon_number", "location_depth", "snp_position",
                         "snp_depth", "snp_proportion")

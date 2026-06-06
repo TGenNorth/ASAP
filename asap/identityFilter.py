@@ -73,18 +73,23 @@ def _identity_filter(samdata, ref_names, percid, merge, out_fp):
     discarded_reads = 0
     #seq_counter = Counter()
     aligned_reads = []
-    
+
+    # Per-reference counters for stats output
+    ref_input = {}
+    ref_discarded = {}
+
     # if user didn't specify any specific refs, apply percid filter to all
     if ref_names == None:
         ref_names = samdata.references
-    
+
     # Iterate through all the references that need to be filtered
     for read in samdata.fetch(until_eof=True):
         if read.is_unmapped:
             logging.info("Read %s is unmapped -- copying it over, as is...." % read.query_name);
             outdata.write(read)
             continue
-        if read.reference_name in ref_names:    
+        if read.reference_name in ref_names:
+            ref_input[read.reference_name] = ref_input.get(read.reference_name, 0) + 1
             length = read.infer_query_length(False)
             logging.info("Checking %s against reference %s" % (read.query_name, read.reference_name))
             logging.info("\tAligned length %i, total read length %i" % (read.query_alignment_length or -1, length or -1))
@@ -107,17 +112,25 @@ def _identity_filter(samdata, ref_names, percid, merge, out_fp):
                 else:
                     logging.info("\t\tFound %i matches out of %i, marking as unaligned..." % (matches, length))
                     discarded_reads += 1
+                    ref_discarded[read.reference_name] = ref_discarded.get(read.reference_name, 0) + 1
                     #seq_counter.update([read.query_sequence])
                     outdata.write(_mark_read_unaligned(read))
             else: #aligned proportion below threshold
                 logging.info("\t\tAlignment too short, marking as unaligned...")
                 discarded_reads += 1
+                ref_discarded[read.reference_name] = ref_discarded.get(read.reference_name, 0) + 1
                 #seq_counter.update([read.query_sequence])
                 outdata.write(_mark_read_unaligned(read))
         else: # Read is not aligned to a reference we are verifying, let it go
             logging.info("Read %s is aligned to a reference we aren't checking -- copying it over, as is...." % read.query_name);
             outdata.write(read)
     outdata.close()
+
+    with open("identity_filter_stats.tsv", "w") as stats_out:
+        stats_out.write("ref_name\tinput_reads\tdiscarded_reads\n")
+        for ref in ref_input:
+            stats_out.write(f"{ref}\t{ref_input[ref]}\t{ref_discarded.get(ref, 0)}\n")
+
     return (outdata, discarded_reads)
 
 class CLIError(Exception):

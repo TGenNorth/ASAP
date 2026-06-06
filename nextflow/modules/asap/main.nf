@@ -79,6 +79,7 @@ process MASK_PRIMERS {
     output:
     tuple val(sample_id), path("${bamfile.getBaseName()}_primerMasked.bam"), path("${bamfile.getBaseName()}_primerMasked.bam.bai"), emit: mask_primers_output
     tuple val(sample_id), path("primer_masking.tsv"), path("primer_masking.log"), emit: mask_primers_logging
+    tuple val(sample_id), path("primer_masking_stats.tsv"), emit: mask_primers_stats
 
     script:
     def mask_bam_string = params.mask_bam ? "--mask-bam" : "--no-mask-bam"
@@ -98,6 +99,7 @@ process IDENTITY_FILTER {
     output:
     tuple val(sample_id), path("${bamfile.getBaseName()}_identityFiltered.bam"), path("${bamfile.getBaseName()}_identityFiltered.bam.bai"), emit: identity_filter_output
     tuple val(sample_id), path("identity_filtering.log"), emit: identity_filter_logging
+    tuple val(sample_id), path("identity_filter_stats.tsv"), emit: identity_filter_stats
 
     script:
     """
@@ -111,10 +113,11 @@ process SMOR {
 
     input:
     tuple val(sample_id), path(bamfile), path(bamindex)
-    
+
     output:
     tuple val(sample_id), path("${bamfile.getBaseName()}_SMOR.bam"), path("${bamfile.getBaseName()}_SMOR.bam.bai"), emit: smor_output
     tuple val(sample_id), path("smor_processing.log"), emit: smor_logging
+    tuple val(sample_id), path("smor_stats.tsv"), emit: smor_stats
 
     script:
     """
@@ -128,10 +131,11 @@ process SMOR_CORRECTION {
 
     input:
     tuple val(sample_id), path(bamfile), path(bamindex)
-    
+
     output:
     tuple val(sample_id), path("${bamfile.getBaseName()}_SMOR.bam"), path("${bamfile.getBaseName()}_SMOR.bam.bai"), emit: smor_output
     tuple val(sample_id), path("smor_processing.log"), emit: smor_logging
+    tuple val(sample_id), path("smor_stats.tsv"), emit: smor_stats
 
     script:
     """
@@ -144,7 +148,14 @@ process PROCESS_BAM {
     publishDir "${params.outdir}/xml", mode: 'copy'
 
     input:
-    tuple val(sample_id), path(bamfile), path(bamindex), path(original_bam), path(fastp_json), path(assay_json)
+    tuple val(sample_id), path(bamfile), path(bamindex),
+          path(original_bam, stageAs: 'pre_filter.bam'),
+          path(original_bai, stageAs: 'pre_filter.bam.bai'),
+          path(fastp_json),
+          path(primer_stats),
+          path(identity_stats),
+          path(smor_stats),
+          path(assay_json)
 
     output:
     tuple val(sample_id), path("${sample_id}.xml"), emit: xml_output
@@ -166,6 +177,9 @@ process PROCESS_BAM {
         --mark-deletions ${params.mark_deletions} \\
         --original-bam ${original_bam} \\
         --fastp-json ${fastp_json} \\
+        --primer-stats ${primer_stats} \\
+        --identity-stats ${identity_stats} \\
+        --smor-stats ${smor_stats} \\
         ${wg_flag} \\
         -o ${sample_id}.xml
     """

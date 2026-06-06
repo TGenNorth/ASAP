@@ -22,9 +22,7 @@ import logging
 from xml.etree import ElementTree
 import lxml.etree as ET
 
-from asap import dispatcher
 from asap import __version__
-from asap import cmdParser
 
 __all__ = []
 __date__ = '2015-07-29'
@@ -95,10 +93,8 @@ USAGE
         if isinstance(argv, argparse.Namespace):
             args = argv
             pass
-        elif program_name != "asap":
-            args = parser.parse_args()
         else:
-            args = cmdParser.parser.parse_args(argv)
+            args = parser.parse_args(argv)
 
         stylesheet = args.stylesheet
         xml_file = args.xml
@@ -141,8 +137,8 @@ USAGE
     except Exception as e:
         if DEBUG or TESTRUN:
             raise(e)
-        indent = len(cmdParser.program_name) * " "
-        sys.stderr.write(cmdParser.program_name + ": " + repr(e) + "\n")
+        indent = len("formatOutput") * " "
+        sys.stderr.write("formatOutput: " + repr(e) + "\n")
         sys.stderr.write(indent + "  for help use --help")
         return 2
 

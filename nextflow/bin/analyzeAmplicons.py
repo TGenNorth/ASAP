@@ -1,1 +1,0 @@
-../../asap/analyzeAmplicons.py

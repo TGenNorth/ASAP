@@ -29,7 +29,6 @@ from skbio.alignment import local_pairwise_align_nucleotide
 
 from asap import assayInfo
 from asap import __version__
-from asap import cmdParser
 # https://github.com/martinblech/xmltodict
 import json
 import xmltodict
@@ -1295,8 +1294,8 @@ USAGE
     except Exception as e:
         if DEBUG or TESTRUN:
             raise(e)
-        indent = len(cmdParser.program_name) * " "
-        sys.stderr.write(cmdParser.program_name + ": " + repr(e) + "\n")
+        indent = len("newBamProcessor") * " "
+        sys.stderr.write("newBamProcessor: " + repr(e) + "\n")
         sys.stderr.write(indent + "  for help use --help")
         logging.info("An Exception Occured! "+str(e))
         return 2

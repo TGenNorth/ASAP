@@ -1,1 +1,0 @@
-/tgen_labs/EPIC/tporter/ASAP/asap_tools/process_asaptools_snps_amino_acids_old.R

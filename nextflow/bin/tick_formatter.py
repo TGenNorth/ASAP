@@ -1,1 +1,0 @@
-../../asap/tick_formatter.py

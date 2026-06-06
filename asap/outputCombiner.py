@@ -21,9 +21,7 @@ import argparse
 import logging
 from xml.etree import ElementTree
 
-from asap import dispatcher
 from asap import __version__
-from asap import cmdParser
 
 __all__ = []
 __date__ = '2015-07-29'
@@ -102,13 +100,13 @@ USAGE
         elif program_name != "asap":
             args = parser.parse_args()
         else:
-            args = cmdParser.parser.parse_args(argv)
+            args = parser.parse_args(argv)
 
         run_name = args.name
         xml_dir = args.xdir
         out_file = args.out
 
-        xml_dir = dispatcher.expandPath(xml_dir)
+        xml_dir = os.path.abspath(os.path.expanduser(xml_dir))
 
         root_node = ElementTree.Element("analysis", {'run_name':run_name})
 

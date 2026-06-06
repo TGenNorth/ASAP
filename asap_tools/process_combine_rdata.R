@@ -10,12 +10,13 @@ library(parallelly)
 
 # 1. Capture Arguments
 args <- commandArgs(trailingOnly = TRUE)
-if (length(args) < 2) {
-  stop("Usage: process_combine_rdata.R <optional_poi_csv> <input_files...>", call. = FALSE)
+if (length(args) < 3) {
+  stop("Usage: process_combine_rdata.R <optional_poi_csv> <file_name> <input_files...>", call. = FALSE)
 }
 
-poi_csv <- args[1] # Will be "NULL" if not provided
-files <- args[2:length(args)]
+poi_csv   <- args[1]
+file_name <- args[2]
+files     <- args[3:length(args)]
 
 
 # 2. Setup Parallel Backend
@@ -117,8 +118,8 @@ gc()
 # Saving both as a compressed Rdata object and a flat CSV summary
 message(paste("💾 Saving results"))
 
-save(final_asap, final_snps, final_array, file = "Combined_ASAP_Data.Rdata")
+save(final_asap, final_snps, final_array, file = paste0(file_name, "_ASAP_Data.Rdata"))
 cols_to_drop <- c("consensus_seq", "depths", "proportions", "quality_discards", "n_reads")
-write.csv(final_asap[, !names(final_asap) %in% cols_to_drop, drop = FALSE], file = "Combined_Summary.csv", row.names = FALSE)
+write.csv(final_asap[, !names(final_asap) %in% cols_to_drop, drop = FALSE], file = paste0(file_name, "_Summary.csv"), row.names = FALSE)
 
 message("✅ Success: Combined data saved to current working directory.")

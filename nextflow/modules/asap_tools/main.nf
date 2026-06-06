@@ -4,7 +4,7 @@ process PROCESS_XML_R {
     tag "$sample_id"
     label 'process_low'
 
-    publishDir "${params.outdir}/XML_Rdata", mode: 'copy'
+    publishDir "${params.outdir}/sample_info/${sample_id}/rdata", mode: 'copy'
 
     input:
     tuple val(sample_id), path(xml)
@@ -24,20 +24,21 @@ process PROCESS_COMBINE_RDATA {
     tag "combine_rdata"
     label 'process_medium'
 
-    publishDir "${params.outdir}/ASAP_R_Data", mode: 'copy'
+    publishDir "${params.outdir}/sample_reports/rdata",          mode: 'copy', pattern: "*.Rdata"
+    publishDir "${params.outdir}/sample_reports/general_reports", mode: 'copy', pattern: "*.csv"
 
     input:
     val  poi_input
     path rdata_files
 
     output:
-    path "Combined_ASAP_Data.Rdata", emit: combined_rdata
-    path "Combined_Summary.csv",   emit: combined_csv
+    path "${params.file_name}_ASAP_Data.Rdata", emit: combined_rdata
+    path "${params.file_name}_Summary.csv",     emit: combined_csv
 
     script:
     def poi_param = (poi_input == null || poi_input == "NULL" || poi_input == "") ? "NULL" : poi_input
     """
-    process_combine_rdata.R ${poi_param} ${rdata_files}
+    process_combine_rdata.R ${poi_param} ${params.file_name} ${rdata_files}
     """
 }
 
@@ -45,7 +46,7 @@ process PROCESS_GENERATE_FASTA {
     tag "GENERATE_FASTA"
     label 'process_low'
 
-    publishDir "${params.outdir}/ASAP_R_Data", mode: 'copy'
+    publishDir "${params.outdir}/sample_reports/fasta", mode: 'copy'
 
     input:
     path combined_rdata
@@ -65,7 +66,7 @@ process PROCESS_GENERATE_COV_TABLE {
     tag "coverage_table"
     label 'process_medium'
 
-    publishDir "${params.outdir}/ASAP_R_Data", mode: 'copy'
+    publishDir "${params.outdir}/sample_reports/general_reports", mode: 'copy'
 
     input:
     path combined_rdata
@@ -86,7 +87,8 @@ process PROCESS_GENERATE_COV_TABLE {
 process PROCESS_SNPS_TO_AMINOACIDS {
     tag "snp_to_aa_conversion"
 
-    publishDir "${params.outdir}/ASAP_R_Data", mode: 'copy'
+    publishDir "${params.outdir}/sample_reports/rdata",       mode: 'copy', pattern: "*.Rdata"
+    publishDir "${params.outdir}/sample_reports/snp_reports", mode: 'copy', pattern: "*.csv"
 
     input:
     path combined_rdata
@@ -108,7 +110,7 @@ process PROCESS_GENERATE_SNP_TABLE {
     tag "snp_table"
     label 'process_medium'
 
-    publishDir "${params.outdir}/ASAP_R_Data", mode: 'copy'
+    publishDir "${params.outdir}/sample_reports/snp_reports", mode: 'copy'
 
     input:
     path combined_rdata
@@ -150,7 +152,7 @@ process PROCESS_GENERATE_SNP_TABLE {
 process PROCESS_QC_PLOTS {
     tag "qc_plots"
 
-    publishDir "${params.outdir}/ASAP_R_Data", mode: 'copy'
+    publishDir "${params.outdir}/sample_reports/plots", mode: 'copy'
 
     input:
     path combined_rdata

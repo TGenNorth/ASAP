@@ -90,18 +90,18 @@ nextflow_pipeline {
             assert path("${out}/reference/reference.fasta").exists()
 
             // Per-sample XML spot-checks (representative samples)
-            assert path("${out}/xml/CONTROL_RSVA_PTC_Dil_110_reg_S8_L001.xml").exists()
-            assert path("${out}/xml/CONTROL_RSVA_PTC_Dil_110_tiled_S20_L001.xml").exists()
-            assert path("${out}/xml/CONTROL_RSVB_PTC_Dil_110_reg_S14_L001.xml").exists()
-            assert path("${out}/xml/RSV_Nested_RSVA_PTC_S53_L001.xml").exists()
-            assert path("${out}/xml/RSV_TG1451730_S4_L001.xml").exists()
+            assert path("${out}/sample_info/CONTROL_RSVA_PTC_Dil_110_reg_S8_L001/xml/CONTROL_RSVA_PTC_Dil_110_reg_S8_L001.xml").exists()
+            assert path("${out}/sample_info/CONTROL_RSVA_PTC_Dil_110_tiled_S20_L001/xml/CONTROL_RSVA_PTC_Dil_110_tiled_S20_L001.xml").exists()
+            assert path("${out}/sample_info/CONTROL_RSVB_PTC_Dil_110_reg_S14_L001/xml/CONTROL_RSVB_PTC_Dil_110_reg_S14_L001.xml").exists()
+            assert path("${out}/sample_info/RSV_Nested_RSVA_PTC_S53_L001/xml/RSV_Nested_RSVA_PTC_S53_L001.xml").exists()
+            assert path("${out}/sample_info/RSV_TG1451730_S4_L001/xml/RSV_TG1451730_S4_L001.xml").exists()
 
             // Combined XML and HTML report
-            def combinedXml = path("${out}/RSV_MultiGB_BWA_analysis.xml")
+            def combinedXml = path("${out}/sample_reports/RSV_MultiGB_BWA_analysis.xml")
             assert combinedXml.exists()
             assert snapshot(combinedXml).match("rsv_combined_xml")
 
-            def htmlReport = path("${out}/ASAP_Report_RSV_MultiGB_BWA.html")
+            def htmlReport = path("${out}/sample_reports/RSV_MultiGB_BWA_report.html")
             assert htmlReport.exists()
             assert snapshot(htmlReport).match("rsv_html_report")
 
@@ -113,7 +113,7 @@ nextflow_pipeline {
             assert path("${out}/sample_info/${sample}/bwa/${sample}.flagstat.txt").exists()
 
             // MultiQC aggregation
-            assert path("${out}/multiqc").toFile().isDirectory()
+            assert path("${out}/sample_reports/multiqc").toFile().isDirectory()
         }
     }
 
@@ -163,13 +163,13 @@ nextflow_pipeline {
             assert path("${out}/sample_info/${sample}/bowtie2/${sample}.flagstat.txt").exists()
 
             // Per-sample XML
-            def sampleXml = path("${out}/xml/${sample}.xml")
+            def sampleXml = path("${out}/sample_info/${sample}/xml/${sample}.xml")
             assert sampleXml.exists()
             assert snapshot(sampleXml).match("sc2_bowtie2_sample_xml")
 
             // Combined outputs
-            assert path("${out}/SC2_JSON_Bowtie2_analysis.xml").exists()
-            assert path("${out}/ASAP_Report_SC2_JSON_Bowtie2.html").exists()
+            assert path("${out}/sample_reports/SC2_JSON_Bowtie2_analysis.xml").exists()
+            assert path("${out}/sample_reports/SC2_JSON_Bowtie2_report.html").exists()
         }
     }
 
@@ -217,11 +217,11 @@ nextflow_pipeline {
             assert path("${out}/sample_info/${sample}/bwa/${sample}-bwa.bam.bai").exists()
 
             // ASAP XML
-            assert path("${out}/xml/${sample}.xml").exists()
+            assert path("${out}/sample_info/${sample}/xml/${sample}.xml").exists()
 
             // Combined output
-            assert path("${out}/SC2_SE_BWA_analysis.xml").exists()
-            assert path("${out}/ASAP_Report_SC2_SE_BWA.html").exists()
+            assert path("${out}/sample_reports/SC2_SE_BWA_analysis.xml").exists()
+            assert path("${out}/sample_reports/SC2_SE_BWA_report.html").exists()
         }
     }
 
@@ -261,15 +261,15 @@ nextflow_pipeline {
             assert path("${out}/sample_info/${sample}/fastp_long").toFile().isDirectory()
             assert path("${out}/sample_info/${sample}/fastp_long/${sample}.fastplong.fastq.gz").exists()
 
-            // Minimap2 alignment published to /alignment
-            assert path("${out}/sample_info/${sample}/alignment").toFile().isDirectory()
+            // Minimap2 alignment published to /minimap2
+            assert path("${out}/sample_info/${sample}/minimap2").toFile().isDirectory()
 
             // ASAP XML
-            assert path("${out}/xml/${sample}.xml").exists()
+            assert path("${out}/sample_info/${sample}/xml/${sample}.xml").exists()
 
             // Combined output
-            assert path("${out}/SC2_ONT_Minimap2_analysis.xml").exists()
-            assert path("${out}/ASAP_Report_SC2_ONT_Minimap2.html").exists()
+            assert path("${out}/sample_reports/SC2_ONT_Minimap2_analysis.xml").exists()
+            assert path("${out}/sample_reports/SC2_ONT_Minimap2_report.html").exists()
         }
     }
 
@@ -324,11 +324,11 @@ nextflow_pipeline {
             assert path("${out}/sample_info/${sample}/ivar_consensus").toFile().isDirectory()
 
             // ASAP XML (runs in parallel with iVAR)
-            assert path("${out}/xml/${sample}.xml").exists()
+            assert path("${out}/sample_info/${sample}/xml/${sample}.xml").exists()
 
             // Combined ASAP outputs
-            assert path("${out}/SC2_Primer_iVAR_analysis.xml").exists()
-            assert path("${out}/ASAP_Report_SC2_Primer_iVAR.html").exists()
+            assert path("${out}/sample_reports/SC2_Primer_iVAR_analysis.xml").exists()
+            assert path("${out}/sample_reports/SC2_Primer_iVAR_report.html").exists()
         }
     }
 
@@ -405,21 +405,21 @@ nextflow_pipeline {
             assert path("${out}/sample_info/${sample}/smor_correction/${sample}-bwa_primerMasked_identityFiltered_SMOR.bam").exists()
 
             // Per-sample ASAP XML
-            assert path("${out}/xml/${sample}.xml").exists()
+            assert path("${out}/sample_info/${sample}/xml/${sample}.xml").exists()
 
             // Per-sample R processing
-            assert path("${out}/XML_Rdata/${sample}_XML_Data.Rdata").exists()
-            assert path("${out}/XML_Rdata/${sample}_Summary.csv").exists()
+            assert path("${out}/sample_info/${sample}/rdata/${sample}_XML_Data.Rdata").exists()
+            assert path("${out}/sample_info/${sample}/rdata/${sample}_Summary.csv").exists()
 
-            // Combined R data
-            assert path("${out}/ASAP_R_Data/Combined_ASAP_Data.Rdata").exists()
-            assert path("${out}/ASAP_R_Data/Combined_Summary.csv").exists()
+            // Combined R data and summary
+            assert path("${out}/sample_reports/rdata/TB_Full_Features_ASAP_Data.Rdata").exists()
+            assert path("${out}/sample_reports/general_reports/TB_Full_Features_Summary.csv").exists()
 
-            // Optional R outputs
-            assert path("${out}/ASAP_R_Data").toFile().isDirectory()
+            // Optional R outputs directory
+            assert path("${out}/sample_reports").toFile().isDirectory()
 
             // MultiQC
-            assert path("${out}/multiqc").toFile().isDirectory()
+            assert path("${out}/sample_reports/multiqc").toFile().isDirectory()
         }
     }
 
@@ -456,9 +456,9 @@ nextflow_pipeline {
             // Reference FASTA generated from Excel → JSON
             assert path("${out}/reference/reference.fasta").exists()
 
-            // XML output directory was populated
-            assert path("${out}/xml").toFile().isDirectory()
-            assert path("${out}/xml").toFile().list().size() > 0
+            // XML output directory was populated (now per-sample)
+            assert path("${out}/sample_info").toFile().isDirectory()
+            assert path("${out}/sample_info").toFile().list().size() > 0
         }
     }
 
@@ -497,9 +497,9 @@ nextflow_pipeline {
             // Reference FASTA generated from input FASTA → JSON
             assert path("${out}/reference/reference.fasta").exists()
 
-            // XML output directory was populated
-            assert path("${out}/xml").toFile().isDirectory()
-            assert path("${out}/xml").toFile().list().size() > 0
+            // XML output directory was populated (now per-sample)
+            assert path("${out}/sample_info").toFile().isDirectory()
+            assert path("${out}/sample_info").toFile().list().size() > 0
         }
     }
 }

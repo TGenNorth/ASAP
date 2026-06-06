@@ -294,8 +294,9 @@ Trimmed reads are aligned to ``reference.fasta`` (extracted from the assay JSON)
 - **Illumina:** ``bowtie2`` (default) or ``bwa mem``
 - **ONT / PacBio:** ``minimap2`` (selected automatically by ``--technology``)
 
-All aligners produce a coordinate-sorted, indexed BAM. BWA and Bowtie2 also emit
-``flagstat`` files for MultiQC.
+All aligners produce a coordinate-sorted, indexed BAM published to
+``sample_info/<sample>/bwa/``, ``bowtie2/``, or ``minimap2/`` respectively.
+BWA and Bowtie2 also emit ``flagstat`` files for MultiQC.
 
 +------------------------+------------+-------------------------------------------+
 | Parameter              | Default    | Description                               |
@@ -457,16 +458,17 @@ figures, and FASTA files. Processing follows a fan-out / gather pattern:
 
 .. code-block:: none
 
-   PROCESS_XML_R         (per sample, parallel)  →  <sample>_XML_Data.Rdata
+   PROCESS_XML_R         (per sample, parallel)  →  sample_info/<id>/rdata/
          │
          ▼
-   PROCESS_COMBINE_RDATA (gather all)             →  Combined_ASAP_Data.Rdata
-         │
-         ├── PROCESS_GENERATE_COV_TABLE           →  Coverage table (Excel)
-         ├── PROCESS_QC_PLOTS                     →  QC figures (HTML + JPG)
-         ├── PROCESS_GENERATE_FASTA               →  Consensus FASTA files
-         ├── PROCESS_SNPS_TO_AMINOACIDS           →  AA change table (if GenBank)
-         └── PROCESS_GENERATE_SNP_TABLE           →  SNP / iSNV table (CSV ± Excel)
+   PROCESS_COMBINE_RDATA (gather all)             →  sample_reports/rdata/ (Rdata)
+         │                                           sample_reports/general_reports/ (CSV)
+         ├── PROCESS_GENERATE_COV_TABLE           →  sample_reports/general_reports/ (Excel)
+         ├── PROCESS_QC_PLOTS                     →  sample_reports/plots/ (HTML + JPG)
+         ├── PROCESS_GENERATE_FASTA               →  sample_reports/fasta/ (FASTA)
+         ├── PROCESS_SNPS_TO_AMINOACIDS           →  sample_reports/rdata/ (Rdata)
+         │                                           sample_reports/snp_reports/ (CSV)
+         └── PROCESS_GENERATE_SNP_TABLE           →  sample_reports/snp_reports/ (CSV ± Excel)
 
 +--------------------------------------+----------+--------------------------------------------------+
 | Parameter                            | Default  | Description                                      |
@@ -503,7 +505,7 @@ Step 9 — MultiQC
 
 MultiQC [CITATION]_ aggregates reports from FastQC (initial and post-trim),
 fastp/fastplong JSON, and SAMtools flagstat into a single interactive HTML report,
-published to ``<outdir>/multiqc/``.
+published to ``<outdir>/sample_reports/multiqc/``.
 
 ----
 
@@ -606,11 +608,15 @@ Output Structure
    │   └── bwa_index/ or bt2_index/            # Aligner index files
    │
    ├── sample_info/<sample>/
-   │   ├── fastp/                              # Trimmed reads + QC HTML / JSON
-   │   ├── fastp_long/                         # fastplong output (ONT / PacBio)
    │   ├── fastqc_initial/                     # Pre-trim FastQC reports
+   │   ├── fastp/ or fastp_long/               # Trimmed reads + QC HTML / JSON
    │   ├── fastqc_post/                        # Post-trim FastQC reports
-   │   ├── bwa/ or bowtie2/ or alignment/      # Sorted, indexed BAM + flagstat
+   │   ├── bwa/ or bowtie2/ or minimap2/       # Sorted, indexed BAM + flagstat
+   │   ├── xml/
+   │   │   └── <sample>.xml                    # Per-sample ASAP results
+   │   ├── rdata/
+   │   │   ├── <sample>_XML_Data.Rdata         # Per-sample R data object
+   │   │   └── <sample>_Summary.csv            # Per-sample summary table
    │   ├── mask_primers/                       # Primer-masked BAM + masking log/TSV
    │   ├── identity_filter/                    # Identity-filtered BAM + log
    │   ├── smor/ or smor_correction/           # SMOR-processed BAM + log
@@ -618,28 +624,25 @@ Output Structure
    │   ├── ivar_variants/                      # iVAR variant TSV
    │   └── ivar_consensus/                     # iVAR consensus FASTA
    │
-   ├── xml/
-   │   └── <sample>.xml                        # Per-sample ASAP results
-   │
-   ├── XML_Rdata/
-   │   ├── <sample>_XML_Data.Rdata             # Per-sample R data object
-   │   └── <sample>_Summary.csv                # Per-sample summary table
-   │
-   ├── ASAP_R_Data/
-   │   ├── Combined_ASAP_Data.Rdata            # Combined R data (all samples)
-   │   ├── Combined_Summary.csv                # Combined summary table
-   │   ├── <name>_Coverage_Table.xlsx          # Coverage depth table
-   │   ├── <name>_SNP_Table.csv                # SNP / iSNV table
-   │   ├── SNP_Amino_Acid_Table.Rdata          # Amino acid changes (GenBank required)
-   │   ├── *.fasta                             # Consensus FASTA exports
-   │   ├── *.html                              # QC figures (interactive)
-   │   └── *.jpg                               # QC figures (static)
-   │
-   ├── <name>_analysis.xml                     # Combined XML (all samples)
-   ├── ASAP_Report_<name>.html                 # Combined HTML report
-   │
-   └── multiqc/
-       └── multiqc_report.html                 # Aggregated QC report
+   └── sample_reports/
+       ├── <name>_analysis.xml                 # Combined XML (all samples)
+       ├── <name>_report.html                  # Combined HTML report
+       ├── multiqc/
+       │   └── <name>_multiqc.html             # Aggregated QC report
+       ├── rdata/
+       │   ├── <name>_ASAP_Data.Rdata          # Combined R data (all samples)
+       │   └── SNP_Amino_Acid_Table.Rdata      # Amino acid changes (GenBank required)
+       ├── general_reports/
+       │   ├── <name>_Summary.csv              # Combined summary table
+       │   └── <name>_coverage_table.xlsx      # Coverage depth table
+       ├── plots/
+       │   ├── *.html                          # QC figures (interactive)
+       │   └── *.jpg                           # QC figures (static)
+       ├── snp_reports/
+       │   ├── *.csv                           # SNP / iSNV table + amino acid changes
+       │   └── *.xlsx                          # SNP table Excel (if --asaptools_snp_table_xls)
+       └── fasta/
+           └── *.fasta                         # Consensus FASTA exports
 
 ----
 

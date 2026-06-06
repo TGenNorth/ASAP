@@ -145,7 +145,7 @@ process SMOR_CORRECTION {
 
 process PROCESS_BAM {
     tag "$sample_id"
-    publishDir "${params.outdir}/xml", mode: 'copy'
+    publishDir "${params.outdir}/sample_info/${sample_id}/xml", mode: 'copy'
 
     input:
     tuple val(sample_id), path(bamfile), path(bamindex),
@@ -162,6 +162,9 @@ process PROCESS_BAM {
 
     script:
     def wg_flag = params.whole_genome ? "--whole-genome" : ""
+    def primer_flag   = primer_stats.name   != 'null' ? "--primer-stats ${primer_stats}"     : ""
+    def identity_flag = identity_stats.name != 'null' ? "--identity-stats ${identity_stats}" : ""
+    def smor_flag     = smor_stats.name     != 'null' ? "--smor-stats ${smor_stats}"         : ""
 
     """
     newBamProcessor.py \\
@@ -177,9 +180,9 @@ process PROCESS_BAM {
         --mark-deletions ${params.mark_deletions} \\
         --original-bam ${original_bam} \\
         --fastp-json ${fastp_json} \\
-        --primer-stats ${primer_stats} \\
-        --identity-stats ${identity_stats} \\
-        --smor-stats ${smor_stats} \\
+        ${primer_flag} \\
+        ${identity_flag} \\
+        ${smor_flag} \\
         ${wg_flag} \\
         -o ${sample_id}.xml
     """
@@ -187,7 +190,7 @@ process PROCESS_BAM {
 
 process OUTPUT_COMBINER {
     tag "output_combiner"
-    publishDir "${params.outdir}/", mode: 'copy'
+    publishDir "${params.outdir}/sample_reports", mode: 'copy'
 
     input:
     path xml_files
@@ -203,10 +206,10 @@ process OUTPUT_COMBINER {
 
 process FORMAT_OUTPUT {
     tag "format_output"
-    publishDir "${params.outdir}/", mode: 'copy'
+    publishDir "${params.outdir}/sample_reports", mode: 'copy'
     stageInMode = 'copy'
-    
-    def out_file = params.out_file ? params.out_file : "ASAP_Report_${params.file_name}.html"
+
+    def out_file = params.out_file ? params.out_file : "${params.file_name}_report.html"
 
     input:
     path final_xml

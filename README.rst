@@ -250,21 +250,45 @@ Reference Input Formats
 
 ASAP accepts four reference formats via ``--reference_input``:
 
-+----------+-----------------------+----------------------------------------------------------+
-| Format   | Extension(s)          | Notes                                                    |
-+==========+=======================+==========================================================+
-| JSON     | ``.json``             | Used directly; no conversion step                        |
-+----------+-----------------------+----------------------------------------------------------+
-| GenBank  | ``.gb``, ``.gbk``    | Single or multiple files: ``"./refs/*.gb"``              |
-+----------+-----------------------+----------------------------------------------------------+
-| FASTA    | ``.fasta``, ``.fa``   | Single file; one amplicon entry per sequence             |
-+----------+-----------------------+----------------------------------------------------------+
-| Excel    | ``.xlsx``, ``.xls``   | Single file using the ASAP assay template                |
-+----------+-----------------------+----------------------------------------------------------+
++----------+---------------------+----------------+------------------+---------------------------------------------+
+| Format   | Extension(s)        | Files accepted | AA annotation    | Notes                                       |
++==========+=====================+================+==================+=============================================+
+| GenBank  | ``.gb``, ``.gbk``   | 1 or more      | Yes (CDS-based)  | **Recommended** — full features, standard   |
++----------+---------------------+----------------+------------------+---------------------------------------------+
+| JSON     | ``.json``           | 1              | Yes (full)       | Native format; custom significance rules    |
++----------+---------------------+----------------+------------------+---------------------------------------------+
+| FASTA    | ``.fasta``, ``.fa`` | 1              | No               | Presence/absence only; quick runs           |
++----------+---------------------+----------------+------------------+---------------------------------------------+
+| Excel    | ``.xlsx``, ``.xls`` | 1              | No               | Spreadsheet-based panel entry               |
++----------+---------------------+----------------+------------------+---------------------------------------------+
 
 All non-JSON formats are converted to an internal JSON assay description by
-``prepareJSONInput_nextflow.py`` before processing. The JSON encodes target names,
-reference sequences, SNP positions of interest, and significance rules.
+``prepareJSONInput_nextflow.py`` before processing.
+
+**GenBank** (``.gb``, ``.gbk``) — *Recommended*
+    The most feature-complete starting point for most users. One or more GenBank
+    files are accepted via glob: ``"./refs/*.gb"``. Each file becomes a separate
+    assay named by its filename. CDS feature annotations drive amino acid translation
+    and SNP consequence calling. Ideal for multi-reference panels (e.g., RSV-A and
+    RSV-B as separate ``.gb`` files), amplicons with known gene structures, or any
+    reference downloaded directly from NCBI.
+
+**JSON** (``.json``)
+    The native ASAP format. Pass directly to the pipeline — no conversion step.
+    Supports custom significance rules, presence/absence and gene-variant assay types,
+    and the full range of SNP annotation options. Best suited for advanced or
+    production use cases where rule-based significance calling is required.
+
+**FASTA** (``.fasta``, ``.fa``)
+    A single multi-FASTA file where each sequence entry becomes one amplicon target,
+    named by the sequence ID. No amino acid annotation or significance rules — targets
+    are evaluated for presence/absence only. Best for quick screening runs where
+    only coverage and raw SNP detection are needed.
+
+**Excel** (``.xlsx``, ``.xls``)
+    A single spreadsheet using the ASAP assay template; each row defines one assay.
+    No amino acid annotation. Useful for teams that manage amplicon panels in
+    spreadsheets and want a low-friction path into the pipeline.
 
 ----
 

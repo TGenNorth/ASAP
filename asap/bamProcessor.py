@@ -24,8 +24,8 @@ import math
 import pysam
 from collections import Counter
 from xml.etree import ElementTree
-from skbio import TabularMSA, DNA
-from skbio.alignment import local_pairwise_align_ssw
+from skbio import DNA
+from skbio.alignment import local_pairwise_align_nucleotide
 
 from asap import assayInfo
 from asap import __version__
@@ -789,7 +789,7 @@ def _add_roi_node(parent, roi, roi_dict, depth, proportion, mutdepth, smor, offs
             nt_seq_node.text = seq
             if skbio_reference:
                 #align to reference
-                alignment, score, start_end_positions = local_pairwise_align_ssw(skbio_reference,DNA(seq))
+                alignment, score, start_end_positions = local_pairwise_align_nucleotide(skbio_reference, DNA(seq))
                 #get string of the nt changes
                 changes = []
                 all_changes = []

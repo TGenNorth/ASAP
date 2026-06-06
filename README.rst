@@ -129,9 +129,11 @@ Pipeline Summary
 Requirements
 ============
 
-- **Nextflow** ≥ 23.04 (tested on 25.04.6)
+- **Nextflow** ≥ 23.04 (tested on 25.04.6) — must be available in your active environment
+- **nf-schema** plugin 2.5.1 — loaded automatically via ``nextflow.config`` on first run
+- **nf-test** ≥ 0.9.0 — required only to run the test suite
 - **Singularity / Apptainer** (for containerized alignment and QC tools)
-- **Conda / Mamba** with the ``r_mirror_env`` environment (for ASAP Tools R steps)
+- **Conda / Mamba** (environments are built automatically from module YMLs — no manual setup required)
 - A reference file in FASTA, GenBank, Excel (.xlsx), or JSON format
 
 **Execution profiles:**
@@ -139,9 +141,9 @@ Requirements
 +---------------+---------------------+---------------------+-----------------------------------+
 | Profile       | Executor            | Containers          | Best For                          |
 +===============+=====================+=====================+===================================+
-| ``slurm``     | SLURM (child jobs)  | Singularity         | Production HPC runs               |
+| ``slurm``     | SLURM (child jobs)  | Singularity + Conda | Production HPC runs               |
 +---------------+---------------------+---------------------+-----------------------------------+
-| *(default)*   | Local (current node)| Singularity / Conda | Interactive ``srun`` or laptop    |
+| ``conda``     | Local (current node)| Conda               | Interactive ``srun`` or laptop    |
 +---------------+---------------------+---------------------+-----------------------------------+
 
 **Key tool versions:**
@@ -179,15 +181,20 @@ Installation
    git clone https://github.com/TGenNorth/ASAP.git
    cd ASAP/nextflow
 
+   # Activate the conda environment that contains Nextflow (and nf-test for testing)
+   conda activate <your-nextflow-env>
+
    # Verify Nextflow is available
    nextflow -version
 
    # View full parameter help
    nextflow run main.nf --help
 
-No additional installation steps are required. Singularity containers are pulled
-automatically on first use. The ``r_mirror_env`` conda environment must be configured
-on your cluster for ASAP Tools R post-processing steps.
+Nextflow and nf-test must be available in your active environment — install them via
+conda or follow the `Nextflow installation guide <https://www.nextflow.io/docs/latest/install.html>`_.
+The **nf-schema** plugin (``nf-schema@2.5.1``) is declared in ``nextflow.config`` and
+downloaded automatically on first run. Singularity containers and all Conda environments
+for pipeline steps are also resolved automatically — no further manual setup is required.
 
 ----
 

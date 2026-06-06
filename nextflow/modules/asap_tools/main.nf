@@ -3,9 +3,6 @@
 process PROCESS_XML_R {
     tag "$sample_id"
     label 'process_low'
-    
-    // Direct path to your existing environment
-    conda "/tgen_labs/EPIC/miniconda3/envs/r_mirror_env"
 
     publishDir "${params.outdir}/XML_Rdata", mode: 'copy'
 
@@ -26,13 +23,12 @@ process PROCESS_XML_R {
 process PROCESS_COMBINE_RDATA {
     tag "combine_rdata"
     label 'process_medium'
-    conda "/tgen_labs/EPIC/miniconda3/envs/r_mirror_env"
-    
+
     publishDir "${params.outdir}/ASAP_R_Data", mode: 'copy'
 
     input:
     val  poi_input
-    path rdata_files // The list of all .Rdata files from .collect()
+    path rdata_files
 
     output:
     path "Combined_ASAP_Data.Rdata", emit: combined_rdata
@@ -41,7 +37,6 @@ process PROCESS_COMBINE_RDATA {
     script:
     def poi_param = (poi_input == null || poi_input == "NULL" || poi_input == "") ? "NULL" : poi_input
     """
-    # Use a shell script wrapper or call R directly
     process_combine_rdata.R ${poi_param} ${rdata_files}
     """
 }
@@ -49,13 +44,12 @@ process PROCESS_COMBINE_RDATA {
 process PROCESS_GENERATE_FASTA {
     tag "GENERATE_FASTA"
     label 'process_low'
-    conda "/tgen_labs/EPIC/miniconda3/envs/r_mirror_env"
-    
+
     publishDir "${params.outdir}/ASAP_R_Data", mode: 'copy'
 
     input:
-    path combined_rdata  // arg[1]
-    val  prefix          // arg[2]
+    path combined_rdata
+    val  prefix
 
     output:
     path "*.fasta", emit: fasta, optional: true
@@ -67,19 +61,17 @@ process PROCESS_GENERATE_FASTA {
     """
 }
 
-
 process PROCESS_GENERATE_COV_TABLE {
     tag "coverage_table"
     label 'process_medium'
-    conda "/tgen_labs/EPIC/miniconda3/envs/r_mirror_env"
-    
+
     publishDir "${params.outdir}/ASAP_R_Data", mode: 'copy'
 
     input:
-    path combined_rdata  // arg[1]
-    val  min_depth       // arg[2]
-    val  prefix          // arg[3]
-    val  poi_input       // arg[4] - Changed from 'any' to 'val'
+    path combined_rdata
+    val  min_depth
+    val  prefix
+    val  poi_input
 
     output:
     path "*.xlsx", emit: excel, optional: true
@@ -91,38 +83,14 @@ process PROCESS_GENERATE_COV_TABLE {
     """
 }
 
-// process PROCESS_SNPS_TO_AMINOACIDS {
-//     tag "snp_to_aa_conversion"
-//     label 'process_medium'
-//     conda "/tgen_labs/EPIC/miniconda3/envs/r_mirror_env"
-
-//     publishDir "${params.outdir}/ASAP_R_Data", mode: 'copy'
-
-//     input:
-//     path combined_rdata      // 1
-//     path genbank_ref        // 3
-
-//     output:
-//     path "SNP_Amino_Acid_Table.Rdata", emit: snp_to_amino_rdata
-//     path "*.csv",  emit: csv,   optional: true
-
-//     script:
-//     """
-//     process_asaptools_snps_amino_acids.R \\
-//         ${combined_rdata} \\
-//         ${genbank_ref}
-//     """
-// }
-
 process PROCESS_SNPS_TO_AMINOACIDS {
     tag "snp_to_aa_conversion"
-    conda "/tgen_labs/EPIC/miniconda3/envs/r_mirror_env"
 
     publishDir "${params.outdir}/ASAP_R_Data", mode: 'copy'
 
     input:
-    path combined_rdata      
-    path "genbank_input/*"   // Use a sub-directory to cleanly handle multiple files
+    path combined_rdata
+    path "genbank_input/*"
 
     output:
     path "SNP_Amino_Acid_Table.Rdata", emit: snp_to_amino_rdata
@@ -136,48 +104,9 @@ process PROCESS_SNPS_TO_AMINOACIDS {
     """
 }
 
-
-// process PROCESS_GENERATE_SNP_TABLE {
-//     tag "snp_table"
-//     label 'process_medium'
-//     conda "/tgen_labs/EPIC/miniconda3/envs/r_mirror_env"
-
-//     publishDir "${params.outdir}/ASAP_R_Data", mode: 'copy'
-
-//     input:
-//     path combined_rdata      // 1
-//     val  prefix              // 2
-//     path genbank_ref        // 3
-//     path primer_bed         // 4
-//     val  poi_input           // 5
-//     path aa_rdata           // 6 - This maps to the file from snp_amino_data
-    
-//     output:
-//     path "*.xlsx", emit: excel, optional: true
-
-//     script:
-//     def poi_param = (poi_input == null || poi_input == "NULL" || poi_input == "") ? "NULL" : poi_input
-//     def exclude_list = (params.asaptools_samples_to_remove == null || params.asaptools_samples_to_remove == "") ? "NONE" : params.asaptools_samples_to_remove
-    
-//     """
-//     process_asaptools_snp_table.R \\
-//         ${combined_rdata} \\
-//         ${prefix} \\
-//         ${params.asaptools_snp_proportion} \\
-//         ${params.asaptools_max_sample_snp_count} \\
-//         ${params.asaptools_min_location_depth} \\
-//         "${exclude_list}" \\
-//         ${poi_param} \\
-//         ${genbank_ref} \\
-//         ${primer_bed} \\
-//         ${aa_rdata} 
-//     """
-// }
-
 process PROCESS_GENERATE_SNP_TABLE {
     tag "snp_table"
     label 'process_medium'
-    conda "/tgen_labs/EPIC/miniconda3/envs/r_mirror_env"
 
     publishDir "${params.outdir}/ASAP_R_Data", mode: 'copy'
 
@@ -187,8 +116,8 @@ process PROCESS_GENERATE_SNP_TABLE {
     path "genbank_input/*"
     path primer_bed
     val  poi_input
-    path aa_rdata           // This is the file from PROCESS_SNPS_TO_AMINOACIDS
-    
+    path aa_rdata
+
     output:
     path "*.xlsx", emit: xlsx, optional: true
     path "*.csv", emit: csv, optional: true
@@ -198,7 +127,6 @@ process PROCESS_GENERATE_SNP_TABLE {
     def exclude_list = (params.asaptools_samples_to_remove == null || params.asaptools_samples_to_remove == "") ? "NONE" : params.asaptools_samples_to_remove
     def effective_prop = params.asaptools_snp_proportion ?: params.proportion
     def xls_toggle = params.asaptools_snp_table_xls.toString().toUpperCase()
-    // Handle optional files
     def bed_param = (primer_bed && primer_bed.name != 'null') ? primer_bed : "NULL"
     def aa_param  = (aa_rdata && aa_rdata.name != 'null') ? aa_rdata : "NULL"
 
@@ -221,7 +149,6 @@ process PROCESS_GENERATE_SNP_TABLE {
 
 process PROCESS_QC_PLOTS {
     tag "qc_plots"
-    conda "/tgen_labs/EPIC/miniconda3/envs/r_mirror_env"
 
     publishDir "${params.outdir}/ASAP_R_Data", mode: 'copy'
 

@@ -22,7 +22,6 @@ import sys
 import re
 import logging
 import skbio
-import pkg_resources
 
 from asap import analyzeAmplicons
 from asap import bamProcessor
@@ -90,7 +89,7 @@ def main(argv=None):
         on_off_group = trim_group.add_mutually_exclusive_group()
         on_off_group.add_argument("--trim", default="bbduk", help="perform adapter trimming on reads. [default: bbduk]. NOTE: cannot trim-primers if not using bbduk")
         on_off_group.add_argument("--no-trim", dest="trim", action="store_false", help="do not perform adapter trimming.")
-        trim_group.add_argument("--adapter-sequences", dest="adapters", default=pkg_resources.resource_filename(__name__,'illumina_adapters_all.fasta'), help="location of the adapter sequence file to use for trimming. [default: <ASAP install dir>/asap/illumina_adapters_all.fasta]")
+        trim_group.add_argument("--adapter-sequences", dest="adapters", default=os.path.join(os.path.dirname(os.path.abspath(__file__)), 'illumina_adapters_all.fasta'), help="location of the adapter sequence file to use for trimming. [default: <ASAP install dir>/asap/illumina_adapters_all.fasta]")
         trim_group.add_argument("--trim-primers", dest="primers", default=False, help="location of primer file to use for primer trimming. NOTE: Not possible if not using bbduk")
         trim_group.add_argument("-q", "--qual", nargs="?", const="SLIDINGWINDOW:5:20", help="perform quality trimming [default: False], optional parameter can be used to customize quality trimming parameters to trimmomatic. [default: SLIDINGWINDOW:5:20]")
         trim_group.add_argument("-l", "--minlen", metavar="LEN", default=80, type=int, help="minimum read length to keep after trimming. [default: 80]")

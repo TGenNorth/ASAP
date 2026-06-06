@@ -20,7 +20,6 @@ import re
 import argparse
 import logging
 import skbio
-import pkg_resources
 
 from asap import dispatcher
 from asap import assayInfo

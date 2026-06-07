@@ -149,12 +149,12 @@ process PROCESS_BAM {
 
     input:
     tuple val(sample_id), path(bamfile), path(bamindex),
-          path(original_bam, stageAs: 'pre_filter.bam'),
-          path(original_bai, stageAs: 'pre_filter.bam.bai'),
+          path(original_bam,   stageAs: 'pre_filter.bam'),
+          path(original_bai,   stageAs: 'pre_filter.bam.bai'),
           path(fastp_json),
-          path(primer_stats),
-          path(identity_stats),
-          path(smor_stats),
+          path(primer_stats,   stageAs: 'primer_stats'),
+          path(identity_stats, stageAs: 'identity_stats'),
+          path(smor_stats,     stageAs: 'smor_stats'),
           path(assay_json)
 
     output:
@@ -162,9 +162,9 @@ process PROCESS_BAM {
 
     script:
     def wg_flag = params.whole_genome ? "--whole-genome" : ""
-    def primer_flag   = primer_stats.name   != 'null' ? "--primer-stats ${primer_stats}"     : ""
-    def identity_flag = identity_stats.name != 'null' ? "--identity-stats ${identity_stats}" : ""
-    def smor_flag     = smor_stats.name     != 'null' ? "--smor-stats ${smor_stats}"         : ""
+    def primer_flag   = primer_stats.size()   > 0 ? "--primer-stats ${primer_stats}"     : ""
+    def identity_flag = identity_stats.size() > 0 ? "--identity-stats ${identity_stats}" : ""
+    def smor_flag     = smor_stats.size()     > 0 ? "--smor-stats ${smor_stats}"         : ""
 
     """
     newBamProcessor.py \\

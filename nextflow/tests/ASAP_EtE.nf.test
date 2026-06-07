@@ -184,6 +184,7 @@ nextflow_pipeline {
         tag "single_end"
         tag "bwa"
         tag "combine_output"
+        tag "sc2_se_bwa"
 
         when {
             params {
@@ -259,8 +260,8 @@ nextflow_pipeline {
             def sample = "SRR29282607_SE"
 
             // fastplong output (ONT trimmer)
-            assert path("${out}/sample_info/${sample}/fastp_long").toFile().isDirectory()
-            assert path("${out}/sample_info/${sample}/fastp_long/${sample}.fastplong.fastq.gz").exists()
+            assert path("${out}/sample_info/${sample}/fastplong").toFile().isDirectory()
+            assert path("${out}/sample_info/${sample}/fastplong/${sample}.fastplong.fastq.gz").exists()
 
             // Minimap2 alignment published to /minimap2
             assert path("${out}/sample_info/${sample}/minimap2").toFile().isDirectory()
@@ -586,6 +587,7 @@ nextflow_pipeline {
         tag "bwa"
         tag "paired_end"
         tag "asaptools"
+        tag "tb_json_snp_aa"
 
         when {
             params {

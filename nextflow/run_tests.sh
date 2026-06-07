@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 #SBATCH --job-name=ASAP_EtE_tests
 #SBATCH -c 1
-#SBATCH --mem=2G
+#SBATCH --mem=8G
 #SBATCH --time=4-00:00:00
 #SBATCH --output=logs/nf-test/ASAP_End_To_End_Testing_%j.out
 #SBATCH --error=logs/nf-test/ASAP_End_To_End_Testing_%j.err
@@ -25,6 +25,19 @@
 #   sbatch --job-name=ASAP_ivar       run_tests.sh --tag ivar
 #   sbatch --job-name=ASAP_asaptools  run_tests.sh --tag asaptools
 #   sbatch --job-name=ASAP_primers    run_tests.sh --tag primer_masking
+#
+# NOTE: the tags above overlap (e.g. `tb` and `sc2` each match several tests,
+# `ont`/`ivar`/`asaptools`/`primer_masking` are subsets of `tb`/`sc2`). Submitting
+# overlapping tag-scoped jobs concurrently would run the same test twice in
+# parallel and collide on its shared .nf-test work directory and outdir — only
+# run one of these at a time, or run them sequentially.
+#
+# Run the WHOLE suite in parallel (one SLURM job per test, ~11 jobs at once):
+#   ./run_tests_parallel.sh
+# This loops over a curated list of tags that each match EXACTLY ONE test (see
+# run_tests_parallel.sh for the tag → test mapping and the uniqueness rule to
+# follow when adding new tests) and submits one `sbatch run_tests.sh --tag <tag>`
+# job per test, so the suite finishes in roughly the time of its longest test.
 #
 # Available tags (defined in tests/ASAP_EtE.nf.test):
 #   help            – CLI help output

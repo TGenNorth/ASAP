@@ -798,11 +798,24 @@ End-to-end tests are defined in ``tests/ASAP_EtE.nf.test`` and executed via
    # Run a single data type
    sbatch --job-name=ASAP_tb run_tests.sh --tag tb --keep-going
 
+   # Run the whole suite in parallel — one SLURM job per test (~11 jobs at once)
+   ./run_tests_parallel.sh
+
 Available test tags: ``help``, ``rsv``, ``tb``, ``sc2``, ``bwa``, ``bowtie2``,
 ``minimap2``, ``multi_gb``, ``json_input``, ``excel_input``, ``fasta_input``,
 ``paired_end``, ``single_end``, ``ont``, ``primer_masking``, ``primer_only``,
 ``identity_filter``, ``smor``, ``ivar``, ``asaptools``, ``combine_output``,
-``whole_genome``.
+``whole_genome``, ``sc2_se_bwa``, ``tb_json_snp_aa``.
+
+``run_tests_parallel.sh`` runs the suite roughly in the time of its single
+longest test rather than the sum of all of them, by submitting one
+``sbatch run_tests.sh --tag <tag>`` job per test. It uses a curated list of
+tags that each match **exactly one** test (``sc2_se_bwa`` and
+``tb_json_snp_aa`` were added for tests that previously had no uniquely
+matching tag) — see the script's header comment for the full tag → test
+mapping and the uniqueness rule to follow when adding new tests. Note that
+the other tag-scoped examples above overlap (e.g. ``tb``/``sc2`` each match
+several tests), so they should be run one at a time, not concurrently.
 
 Test Descriptions
 -----------------

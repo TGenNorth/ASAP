@@ -2,7 +2,7 @@ process FASTPLONG {
     tag "$meta.id"
     label 'process_medium'
     // Ensure results are saved to the results folder like RUN_FASTP
-    publishDir "${params.outdir}/sample_info/${meta.id}/fastp_long", mode: 'copy'
+    publishDir "${params.outdir}/sample_info/${meta.id}/fastplong", mode: 'copy'
 
     container "quay.io/biocontainers/fastplong:0.4.1--h224cc79_0"
 

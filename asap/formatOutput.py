@@ -49,7 +49,7 @@ def main(argv=None): # IGNORE:C0111
     '''Command line options.'''
 
     if argv is None:
-        argv = sys.argv
+        argv = sys.argv[1:]
     else:
         if not isinstance(argv, argparse.Namespace):
             sys.argv.extend(argv)

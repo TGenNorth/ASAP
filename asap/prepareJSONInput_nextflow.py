@@ -151,18 +151,57 @@ def main(argv=None):
             target = None
             assay = None
             
-            # Simple iteration for Excel rows
-            for row in ws.iter_rows(min_row=2):
-                if _strip(row[0].value): 
+            for row in ws.iter_rows(min_row=3):
+                if _strip(row[0].value):  # Start a new Assay
                     if assay:
                         assay_list.append(assay)
                         target = None
                         amplicon = None
                     assay = assayInfo.Assay(name=_clean_str(_strip(row[0].value)), assay_type=_strip(row[1].value))
 
-                # Note: Expand Excel logic here as needed to match original script functionality
-                if assay: 
-                   pass
+                if _strip(row[18].value):
+                    significance = assayInfo.Significance(message=_strip(row[17].value), resistance=_strip(row[18].value))
+                else:
+                    significance = assayInfo.Significance(message=_strip(row[17].value))
+
+                element = None
+                if _strip(row[14].value):  # Significance attaches to a Region of Interest
+                    sequence = _strip(row[15].value)
+                    positions = _strip(row[14].value)
+                    if _isNT(sequence, positions):
+                        element = assayInfo.RegionOfInterest(position_range=positions, nt_sequence=sequence, mutations=_strip(row[16].value), name=_strip(row[13].value), significance=significance)
+                    else:
+                        element = assayInfo.RegionOfInterest(position_range=positions, aa_sequence=sequence, mutations=_strip(row[16].value), name=_strip(row[13].value), significance=significance)
+                elif _strip(row[10].value):  # Significance attaches to a SNP
+                    element = assayInfo.SNP(position=_strip(row[10].value), reference=_strip(row[11].value), variant=_strip(row[12].value), name=_strip(row[9].value), significance=significance)
+
+                if _strip(row[8].value):  # New Amplicon sequence on this row
+                    if os.path.isfile(_strip(row[8].value)):
+                        if assay.assay_type == "gene variant":
+                            amplicon = _process_fasta(_strip(row[8].value), GENE_VARIANT, significance)
+                        else:
+                            amplicon = _process_fasta_single(_strip(row[8].value))
+                            if element:
+                                amplicon.add_SNP(element) if isinstance(element, assayInfo.SNP) else amplicon.add_ROI(element)
+                            else:
+                                amplicon.significance = significance
+                    else:
+                        amplicon = assayInfo.Amplicon(sequence=_clean_seq(_strip(row[8].value)), variant_name=_clean_str(_strip(row[7].value)))
+                        if element:
+                            amplicon.add_SNP(element) if isinstance(element, assayInfo.SNP) else amplicon.add_ROI(element)
+                        else:
+                            amplicon.significance = significance
+                elif amplicon and element:  # Continuing rows: attach another SNP/ROI to the current Amplicon
+                    amplicon.add_SNP(element) if isinstance(element, assayInfo.SNP) else amplicon.add_ROI(element)
+
+                if target and _strip(row[8].value):
+                    target.add_amplicon(amplicon)
+                    amplicon = None
+                elif target:
+                    target.amplicon = amplicon
+                else:
+                    target = assayInfo.Target(function=_strip(row[2].value), gene_name=_strip(row[3].value), start_position=_strip(row[4].value), end_position=_strip(row[5].value), reverse_comp=_strip(row[6].value), amplicon=amplicon)
+                    assay.target = target
 
             if assay:
                 assay_list.append(assay)

@@ -64,17 +64,19 @@ nextflow_pipeline {
         tag "bwa"
         tag "paired_end"
         tag "combine_output"
+        tag "asaptools"
 
         when {
             params {
-                read_dir             = "${baseDir}/tests/data/RSV/"
-                reference_input      = "${baseDir}/tests/preparejson/RSV*.gb"
-                outdir               = "${baseDir}/tests/test_output/RSV_MultiGB_BWA"
-                aligner              = "bwa"
-                file_name            = "RSV_MultiGB_BWA"
-                proportion           = 0.1
-                combine_output       = true
-                asaptools_processing = false
+                read_dir                 = "${baseDir}/tests/data/RSV/"
+                reference_input          = "${baseDir}/tests/preparejson/RSV*.gb"
+                outdir                   = "${baseDir}/tests/test_output/RSV_MultiGB_BWA"
+                aligner                  = "bwa"
+                file_name                = "RSV_MultiGB_BWA"
+                proportion               = 0.1
+                combine_output           = true
+                asaptools_processing     = true
+                asaptools_generate_fasta = true
             }
         }
 
@@ -115,6 +117,10 @@ nextflow_pipeline {
 
             // MultiQC aggregation
             assert path("${out}/sample_reports/multiqc").toFile().isDirectory()
+
+            // asaptools FASTA export (breadth-threshold check exercised on RSV's small genome)
+            assert path("${out}/sample_reports/fasta").toFile().isDirectory()
+            assert path("${out}/sample_reports/fasta").toFile().list().findAll { it.endsWith(".fasta") }.size() > 0
         }
     }
 
@@ -421,9 +427,14 @@ nextflow_pipeline {
             assert path("${out}/sample_reports/rdata/SNP_Amino_Acid_Table.Rdata").exists()
 
             // asaptools suite output directories
+            // (sample_reports/fasta intentionally not asserted here: this test's
+            // proportion=0.0001 subsampling of the 4.4 Mb H37Rv genome can never
+            // clear the 80% breadth threshold, so PROCESS_GENERATE_FASTA always
+            // emits zero files and publishDir never creates the directory — see
+            // the RSV test, which exercises this path on a genome small enough
+            // to actually produce FASTA output.)
             assert path("${out}/sample_reports/snp_reports").toFile().isDirectory()
             assert path("${out}/sample_reports/plots").toFile().isDirectory()
-            assert path("${out}/sample_reports/fasta").toFile().isDirectory()
             assert path("${out}/sample_reports/general_reports").toFile().isDirectory()
 
             // MultiQC
